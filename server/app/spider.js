@@ -1,7 +1,6 @@
-// require('./extensions/');
+require('./extensions/');
 const readline = require('readline');
 const rl = readline.createInterface(process.stdin, process.stdout, null);
-var TorAgent = require('toragent');
 var request = require('request');
 var cheerio = require('cheerio');
 
@@ -17,6 +16,7 @@ class Spider{
 	}
 
 	scrape(url){
+		console.log("[spider.scrape] == Params: url=" + url);
 		// returns a tuple of url, content and list of found urls (content for later classification)
 		request({
 			method: 'GET',
@@ -43,10 +43,7 @@ class Spider{
 	}
 
 	start_spidering(){
-		console.log("Start spidering");
 		var new_found_urls = new Set();
-		console.log("iterate through urls");
-		console.log("this._start_urls: " + Array.from(this._start_urls));
 		var iteratable_url_array = Array.from(this._start_urls);
 		for(let index in iteratable_url_array){
 			console.log("URL: " + iteratable_url_array[index]);
@@ -72,6 +69,15 @@ class Spider{
 
 exports.start_spider = function(){
 	var spider;
+	console.log('Test set operations')
+	var a = new Set([1,2,3,4]);
+	var b = new Set([4,6,7,8]);
+	console.log('a: ' + a.toString());
+	console.log('b: ' + b.toString());
+	var union = b.union(a);
+	console.log('union: ' + union.toString());
+	var difference = union.difference(b);
+	console.log('difference: ' + difference.toString());
 	rl.question("Give a starting point for our darknet spider (a .onion address):\n", function(url) {
 		console.log("Start url: " + url);
 		spider = new Spider([url], 1 /* depth */);
