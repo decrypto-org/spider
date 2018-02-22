@@ -1,8 +1,17 @@
+
 require('./extensions/');
+
 const readline = require('readline');
+const http = require('http');
 const rl = readline.createInterface(process.stdin, process.stdout, null);
-var request = require('request');
-var cheerio = require('cheerio');
+
+const request = require('request');
+const cheerio = require('cheerio');
+const nightlink = require('nightlink');
+const ProxyAgent = require('proxy-agent');
+
+// Local/module private constants:
+var _port = 9050;
 
 class Spider{
 	constructor(start_urls, depth){
@@ -18,27 +27,48 @@ class Spider{
 	scrape(url){
 		console.log("[spider.scrape] == Params: url=" + url);
 		// returns a tuple of url, content and list of found urls (content for later classification)
-		request({
-			method: 'GET',
-			url: url,
-			agent: this._tor_agent
-		}, function(err, response, body){
-			if (err) return console.error(err);
+		// First scrape test
+		const scraper = async() => {
+			var proxyUri = 'socks://127.0.0.1:' + _port;
 
-			$ = cheerio.load(body);
-			/* Since the Torbrowser by default deactivates JS, we don't see JS that often, therefor we can fully rely on <a href > links, without missing too much information.
-			 * In this case we have the following scenarios:
-			 *	- href starts with # --> ignore, this is an anchor on the site we already fetched, no need to follow
-			 *	- href starts with / or ? --> Prepend URL and add to list of found URLs (Same server, but different page. Might contain other information)
-			 *	- href either starts with http://, https:// or any alphanumeric character --> new external link (yay, possible new website). Store in link list
-			 */
-			$("a").each(function(index){
-				console.log(index + ": " + $(this).text());
-			});
-		});
+			var request = {
+				method: 'GET',
+				host: 'msydqstlz2kzerdg.onion',
+				path: '/',
+				agent: new ProxyAgent(proxyUri)
+			};
+
+			const onresponse = async(response) => {
+				console.log(response.statusCode, response.headers);
+				response.pipe(process.stdout);
+			}
+
+			http.get(request, onresponse);
+		}
+
+		scraper();
+		// request({
+		// 	method: 'GET',
+		// 	url: url,
+		// 	agent: this._tor_agent
+		// }, function(err, response, body){
+		// 	if (err) return console.error(err);
+
+		// 	$ = cheerio.load(body);
+		// 	 Since the Torbrowser by default deactivates JS, we don't see JS that often, therefor we can fully rely on <a href > links, without missing too much information.
+		// 	 * In this case we have the following scenarios:
+		// 	 *	- href starts with # --> ignore, this is an anchor on the site we already fetched, no need to follow
+		// 	 *	- href starts with / or ? --> Prepend URL and add to list of found URLs (Same server, but different page. Might contain other information)
+		// 	 *	- href either starts with http://, https:// or any alphanumeric character --> new external link (yay, possible new website). Store in link list
+			 
+
+		// 	$("a").each(function(index){
+		// 		console.log(index + ": " + $(this).text());
+		// 	});
+		// });
 	}
 
-	set tor_agent(tor_agent){
+	set tor(tor_agent){
 		this._tor_agent = tor_agent;
 	}
 
@@ -82,11 +112,27 @@ exports.start_spider = function(){
 		console.log("Start url: " + url);
 		spider = new Spider([url], 1 /* depth */);
 
-		spider.start_spidering();
-		// TorAgent.create(true).then(function(agent){
+		const run = async function(){
+			const tor = await nightlink.launch({
+				SocksPort: _port
+			});
+
+			tor.on('log', console.log);
+			tor.on('notice', console.log);
+			tor.on('warn', console.warn);
+			tor.on('err', console.error);
+
+			spider.tor = tor;
+			spider.start_spidering();
+		}
+
+		run()
+
+		// TorAgent.create(true, (err, agent) => {
+		// 	if (err) return console.error(err);
+
 		// 	spider.tor_agent = agent;
 		// 	spider.start_spidering();
 		// });
-		process.exit(0);
 	});
 }

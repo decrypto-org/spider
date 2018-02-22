@@ -16,7 +16,9 @@
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
+    "https-proxy-agent": "^2.1.1",
     "nightlink": "^0.1.0",
+    "proxy-agent": "^2.2.0",
     "request": "^2.83.0"
   }
 }
