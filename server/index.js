@@ -3,4 +3,3 @@ console.log("Loaded app/index");
 
 console.log("Starting spider");
 main.init();
-
