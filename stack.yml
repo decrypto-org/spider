@@ -7,10 +7,11 @@ services:
     environment:
       POSTGRES_PASSWORD: tdse_d3f4u1t_d4t4b4s3_for_hon3y_coll3ction
       PGDATA: /var/lib/postgresql/data/spider
-      POSTGRES_DB: DARKNET_DATA_DUMP
+      POSTGRES_DB: postgres
     volumes:
       - postgres-vol:/var/lib/postgres/data/spider
-
+    ports:
+      - "5432:5432"
 volumes:
   postgres-vol:
     driver: local
