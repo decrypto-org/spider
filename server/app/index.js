@@ -1,6 +1,11 @@
+const postgres = require('pg')
+
 const spider = require('./spider')
 
 exports.init = function(){
+	// Set up db connection
+	
+	// Start spidering (Probably pass instance of db over)
 	spider.start_spider();
 };
 

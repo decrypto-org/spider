@@ -6,9 +6,11 @@ services:
     restart: always
     environment:
       POSTGRES_PASSWORD: tdse_d3f4u1t_d4t4b4s3_for_hon3y_coll3ction
-      POSTGRES_DB: postgres
+      POSTGRES_USER: tdse
+      POSTGRES_DB: DARKNET_DATA_DUMP
     volumes:
       - postgres-vol:/var/lib/postgresql/data
+      - $TDSE_HOST_SPIDER_REPO/deployment/setup.sql:/docker-entrypoint-initdb.d/1-setup.sql
     ports:
       - "5432:5432"
 

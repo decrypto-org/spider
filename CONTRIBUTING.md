@@ -6,3 +6,5 @@ Darknet testwebsite: https://msydqstlz2kzerdg.onion/ (ahmia.fi, was always avail
 <br>
 Requires the following packets
 <br>
+Requires the following environment variables:
+TDSE_HOST_SPIDER_REPO: Points to the root of the git repository (this directory)
