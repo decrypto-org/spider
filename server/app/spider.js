@@ -1,4 +1,4 @@
-require('./extensions/');
+require('./extensions/Set');
 
 const readline = require('readline');
 const http = require('http');
@@ -9,18 +9,37 @@ const cheerio = require('cheerio');
 const nightlink = require('nightlink');
 const ProxyAgent = require('proxy-agent');
 
-// Local/module private constants:
-var _port = 9050;
 
-class Spider{
-	constructor(start_urls, depth){
+var Spider = class Spider{
+	constructor(tor_port, start_urls, depth, db){
 		// Please note: only start the spider, when the tor agent is set
 		console.log("start_url: " + start_urls);
 		this._start_urls = new Set(start_urls);
 		console.log("this._start_urls: " + this._start_urls);
 		this._visited_urls = new Set();
 		this._init_depth = depth;
+		this._tor_port = tor_port
 		this._tor_agent = null;
+		this._db = db;
+		const run = async function(self){
+			// For whatever reason this is undefined in this context.
+			// We could either bind or the lazy workaround: self
+			const tor = await nightlink.launch({
+				SocksPort: tor_port
+			});
+
+			console.log("Tor up and running");
+
+			tor.on('log', console.log);
+			tor.on('notice', console.log);
+			tor.on('warn', console.warn);
+			tor.on('err', console.error);
+
+			self._tor_agent = tor;
+			self.start_spidering();
+		}
+
+		run(this /* self */);
 	}
 
 
@@ -31,7 +50,7 @@ class Spider{
 	async scrape(url){
 		console.log("[spider.scrape] == Params: url=" + url);
 		// stores a tuple of url, content and list of found urls (content for later classification) in the database
-		var proxyUri = 'socks://127.0.0.1:' + _port;
+		var proxyUri = 'socks://127.0.0.1:' + this._tor_port;
 
 		var request = {
 			method: 'GET',
@@ -87,16 +106,14 @@ class Spider{
 					}
 				});
 			}
+
+			this._db.add_base_url(url);
 			
 		}
 
 		http.get(request, onresponse).on('error', (err) => {
 			console.log("http request for url [" + url + "] failed with error\n" + err.message);
 		});
-	}
-
-	set tor(tor_agent){
-		this._tor_agent = tor_agent;
 	}
 
 	start_spidering(){
@@ -125,39 +142,20 @@ class Spider{
 	append_urls(urls){
 
 	}
-}
-
-exports.start_spider = function(){
-	var spider;
-	console.log('Test set operations')
-	var a = new Set([1,2,3,4]);
-	var b = new Set([4,6,7,8]);
-	console.log('a: ' + a.toString());
-	console.log('b: ' + b.toString());
-	var union = b.union(a);
-	console.log('union: ' + union.toString());
-	var difference = union.difference(b);
-	console.log('difference: ' + difference.toString());
-	rl.question("Give a starting point for our darknet spider (a .onion address):\n", function(url) {
-		console.log("Start url: " + url);
-		spider = new Spider([url], 1 /* depth */);
-
-		const run = async function(){
-			const tor = await nightlink.launch({
-				SocksPort: _port
-			});
-
-			console.log("Tor up and running");
-
-			tor.on('log', console.log);
-			tor.on('notice', console.log);
-			tor.on('warn', console.warn);
-			tor.on('err', console.error);
-
-			spider.tor = tor;
-			spider.start_spidering();
-		}
-
-		run()
-	});
 };
+
+exports.Spider = Spider;
+
+// exports.start_spider = function(){
+// 	var spider;
+// 	console.log('Test set operations')
+// 	var a = new Set([1,2,3,4]);
+// 	var b = new Set([4,6,7,8]);
+// 	console.log('a: ' + a.toString());
+// 	console.log('b: ' + b.toString());
+// 	var union = b.union(a);
+// 	console.log('union: ' + union.toString());
+// 	var difference = union.difference(b);
+// 	console.log('difference: ' + difference.toString());
+	
+// };

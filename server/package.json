@@ -20,7 +20,12 @@
     "https-proxy-agent": "^2.1.1",
     "nightlink": "^0.1.0",
     "pg": "^7.4.1",
+    "portscanner": "^2.1.1",
     "proxy-agent": "^2.2.0",
     "request": "^2.83.0"
+  },
+  "devDependencies": {
+    "flow-bin": "^0.66.0",
+    "flow-remove-types": "^1.2.3"
   }
 }

@@ -3,7 +3,8 @@
 CREATE TABLE IF NOT EXISTS BaseURL (
 	BaseUrlID bigserial NOT NULL,
 	BaseUrl text NOT NULL,
-	PRIMARY KEY (BaseUrlID)
+	PRIMARY KEY (BaseUrlID),
+	UNIQUE (BaseUrl)
 );
 
 CREATE TABLE IF NOT EXISTS Paths(
