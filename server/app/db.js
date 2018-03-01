@@ -1,5 +1,12 @@
 const { Pool } = require('pg');
 
+
+/* If we encounter an error in the connection to the database, we throw
+ * an error. Background: The caller is the only one to decide, whether to
+ * abort the run or not (e.g. insertion of a path - probably not, log an error and continue)
+ * Insertion fails for like x consecutive tries: terminate with nonzero --> Connection to DB lost
+ */
+
 var DB = class DB{
 	constructor(){
 		// Set up db connections pool 
@@ -17,37 +24,80 @@ var DB = class DB{
 		});
 	}
 
-	write(table_name, data /* JSON: key: value */){
-		// returns id
-		// INSERT INTO table (data.keys())
-		// VALUES data.values()
-		// RETURNING *
+	execute_query(query, callback, num_retries=10){
+		var current_number_of_retries = 0;
+		while (current_number_of_retries < num_retries){
+			const client = await this._db_connection_pool.connect();
+			try{
+				const res = await client.query(query);
+				console.log(res);
+				if(!callback){
+					return res;
+				} 
+				else{
+					callback(res);
+				}
+			}
+			catch(e){
+				current_number_of_retries ++;
+				if (current_number_of_retries >= num_retries){
+					console.error("An error occured while accessing the database. For more information, please see the stack trace")
+					console.error(e.stack);
+					throw Error("An error occured while accessing the database: " + e.message);
+				}
+			}
+			finally{
+				client.release();
+			}
+		}
 	}
 
-	read(table_name, querystring){
-
+	async get_base_url_id(base_url, callback){
+		var query = {
+			text: '\
+				SELECT (baseurlid) \
+				FROM baseurl \
+				WHERE baseurl.baseurl = $1',
+			values: [base_url]
+		};
+		if(!callback){
+			return await this.execute_query(query);
+		}
+		else {
+			this.execute_query(query, callback);
+		}
 	}
 
-	add_base_url(base_url){
+	async get_base_url(base_url_id, callback){
+		var query = {
+			text: '\
+				SELECT (baseurl) \
+				FROM baseurl \
+				WHERE baseurl.baseurlid = $1',
+			values: [base_url_id]
+		};
+		if(!callback){
+			return await this.execute_query(query);
+		}
+		else {
+			this.execute_query(query, callback);
+		}
+	}
+
+	async add_base_url(base_url, callback){
 		var query = {
 			text: '\
 				INSERT INTO baseurl(baseurl) \
 				VALUES($1) \
-				RETURNING baseurlid',
-			values: ['msydqstlz2kzerdg.onion']
+				ON CONFLICT(baseurl) DO NOTHING',
+			values: [base_url]
+		};
+		if (!callback){
+			await this.execute_query(query);
 		}
-		this._db_connection_pool.connect((err, client, done) => {
-			if(err) throw err;
-			client.query(query, (err, res) => {
-				done();
-				if(err){
-					console.log(err.stack);
-				}
-				else {
-					console.log(res.rows);
-				}
-			});
-		});
+		else {
+			this.execute_query(query, callback);
+		}
 	}
 
 	add_path(path, timestamp, success, contains_data, ){

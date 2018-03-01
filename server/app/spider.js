@@ -107,7 +107,7 @@ var Spider = class Spider{
 				});
 			}
 
-			this._db.add_base_url(url);
+			await this._db.add_base_url(url);  // This gets only executed if the base url does not yet exist
 			
 		}
 
@@ -117,8 +117,8 @@ var Spider = class Spider{
 	}
 
 	start_spidering(){
-		var new_found_urls = new Set();
-		var iteratable_url_array = Array.from(this._start_urls);
+		// Check DB every x seconds if new (not yet scraped entries or entries that should be rescraped) are available
+
 		for(let index in iteratable_url_array){
 			console.log("URL: " + iteratable_url_array[index]);
 			this.scrape(iteratable_url_array[index]).catch(function(error) {
@@ -126,21 +126,6 @@ var Spider = class Spider{
 					This was caused by " + error.message);
 			});
 		}
-		// new_found_urls now only contain those urls that haven't been visited before
-		new_found_urls = new_found_urls.difference(this._visited_urls);
-
-		// We now have to ensure that start_urls also do not contain any already visited urls
-		this._start_urls = this._start_urls.difference(this._visited_urls);
-
-		this._start_urls = this._start_urls.union(this._visited_urls);
-	}
-
-	add_url(url){
-
-	}
-
-	append_urls(urls){
-
 	}
 };
 
