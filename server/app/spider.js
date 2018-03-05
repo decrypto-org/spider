@@ -118,7 +118,7 @@ var Spider = class Spider{
 
 	start_spidering(){
 		// Check DB every x seconds if new (not yet scraped entries or entries that should be rescraped) are available
-
+		var iteratable_url_array = Array.from(this._start_urls);
 		for(let index in iteratable_url_array){
 			console.log("URL: " + iteratable_url_array[index]);
 			this.scrape(iteratable_url_array[index]).catch(function(error) {

@@ -1,6 +1,20 @@
 version: "3.0"
 
+networks:
+  backend:
+
 services:
+  server:
+    image: robrunne/tdse-spider:1.0.0
+    restart: always
+    networks:
+      backend:
+    ports:
+      - "9000-9100:9000-9100"
+      - "5858:5858"
+    volumes:
+      - spider-log-vol:/log
+
   db:
     image: postgres:10
     restart: always
@@ -11,8 +25,16 @@ services:
     volumes:
       - postgres-vol:/var/lib/postgresql/data
       - $TDSE_HOST_SPIDER_REPO/deployment/setup.sql:/docker-entrypoint-initdb.d/1-setup.sql
+    networks:
+      backend:
+        aliases:
+          - database
+          - db
+          - postgres
     ports:
       - "5432:5432"
+    pid: "host"
 
 volumes:
   postgres-vol:
+  spider-log-vol:

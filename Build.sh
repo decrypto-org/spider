@@ -1,4 +1,5 @@
 #!/bin/bash
 set -e
 
-docker build --rm -t tdse_spider/main .
+
+docker build -t robrunne/tdse-spider:1.0.0 server/

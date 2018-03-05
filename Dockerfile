@@ -1,1 +1,0 @@
-FROM tdse_spider/dependencies:latest

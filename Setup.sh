@@ -4,5 +4,6 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-echo "Creating volume for PostgreSQL"
-docker volume create postgres-vol
+
+docker build --rm -t robrunne/tdse_dependencies:1.0.0 deployment/
+docker build -t robrunne/tdse-spider:1.0.0 server/

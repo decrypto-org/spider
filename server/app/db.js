@@ -12,7 +12,7 @@ var DB = class DB{
 		// Set up db connections pool 
 		this._db_connection_pool = new Pool({
 			user: 'tdse',
-			host: '0.0.0.0',
+			host: 'postgres',
 			database: 'DARKNET_DATA_DUMP',
 			password: 'tdse_d3f4u1t_d4t4b4s3_for_hon3y_coll3ction',
 			port: 5432
@@ -24,7 +24,7 @@ var DB = class DB{
 		});
 	}
 
-	execute_query(query, callback, num_retries=10){
+	async execute_query(query, callback, num_retries=10){
 		var current_number_of_retries = 0;
 		while (current_number_of_retries < num_retries){
 			const client = await this._db_connection_pool.connect();

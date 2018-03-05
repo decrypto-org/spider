@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node test.js",
     "start": "node --use_strict index.js",
-    "debug": "node --inspect-brk index.js"
+    "debug": "node --inspect-brk --use_strict index.js"
   },
   "author": "Roman Brunner (robrunne@student.ethz.ch)",
   "license": "GPL-3.0",
@@ -19,6 +19,7 @@
     "cheerio": "^1.0.0-rc.2",
     "https-proxy-agent": "^2.1.1",
     "nightlink": "^0.1.0",
+    "node.date-time": "^1.2.2",
     "pg": "^7.4.1",
     "portscanner": "^2.1.1",
     "proxy-agent": "^2.2.0",
