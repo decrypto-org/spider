@@ -1,20 +1,13 @@
-version: "3.0"
+version: "3.2"
 
 networks:
   backend:
 
-services:
-  server:
-    image: robrunne/tdse-spider:1.0.0
-    restart: always
-    networks:
-      backend:
-    ports:
-      - "9000-9100:9000-9100"
-      - "5858:5858"
-    volumes:
-      - spider-log-vol:/log
+volumes:
+  postgres-vol:
+  spider-log-vol:
 
+services:
   db:
     image: postgres:10
     restart: always
@@ -35,6 +28,18 @@ services:
       - "5432:5432"
     pid: "host"
 
-volumes:
-  postgres-vol:
-  spider-log-vol:
+  server:
+    image: robrunne/tdse-spider:1.0.0
+    restart: always
+    networks:
+      backend:
+    ports:
+      - "9000-9100:9000-9100"
+      - target: 9101
+        published: 9101
+        protocol: ws
+        mode: host
+    volumes:
+      - spider-log-vol:/log
+    pid: "host"
+

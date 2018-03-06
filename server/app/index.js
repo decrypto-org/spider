@@ -4,7 +4,7 @@ const format = require('node.date-time');
 
 const portscanner = require('portscanner');
 
-exports.init = function(){
+exports.init = async function(){
 	// First initialize the db module
 	var db = new DB();
 

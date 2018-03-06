@@ -12,9 +12,10 @@ RUN npm install
 EXPOSE 10864
 
 # Connection to the Tor Network
-EXPOSE 9000-10000
+EXPOSE 9000-9100
 
 # Node JS Debug Port
+EXPOSE 9101
 EXPOSE 5858
 
-CMD [ "npm", "start" , ">>/log/spider.log", "2>>/log/spider.error"]
+CMD [ "npm", "start" ]

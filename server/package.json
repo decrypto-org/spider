@@ -7,13 +7,13 @@
   "scripts": {
     "test": "node test.js",
     "start": "node --use_strict index.js",
-    "debug": "node --inspect-brk --use_strict index.js"
+    "debug": "node --inspect-brk --use_strict --inspect=9101 index.js"
   },
   "author": "Roman Brunner (robrunne@student.ethz.ch)",
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://gitlab.vis.ethz.ch/darknet-search-engine/spider.git"
+    "url": "git@github.com:jogli5er/tdse-spider.git"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
