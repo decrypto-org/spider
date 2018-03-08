@@ -9,7 +9,7 @@ exports.init = async function(){
 	var db = new DB();
 
 	// Find available port to run tor on
-	portscanner.findAPortNotInUse(9000, 9100, '127.0.0.1', (error, tor_port) => {
+	portscanner.findAPortNotInUse(8900, 9100, '127.0.0.1', (error, tor_port) => {
 		if(error) {
 			console.error('No open ports found. Check if other instances are running and kill them.', error);
 			process.exit(-1);

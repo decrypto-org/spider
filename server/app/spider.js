@@ -43,11 +43,11 @@ var Spider = class Spider{
 	}
 
 
-	extract_data(body){
+	async extract_and_store_data(body){
 		console.log("Extracting data");
 	}
 
-	async scrape(url){
+	async scrape(url, path){
 		console.log("[spider.scrape] == Params: url=" + url);
 		// stores a tuple of url, content and list of found urls (content for later classification) in the database
 		var proxyUri = 'socks://127.0.0.1:' + this._tor_port;
@@ -55,7 +55,7 @@ var Spider = class Spider{
 		var request = {
 			method: 'GET',
 			host: url,
-			path: '/',
+			path: path,
 			agent: new ProxyAgent(proxyUri)
 		};
 
@@ -106,13 +106,12 @@ var Spider = class Spider{
 					}
 				});
 			}
-
-			await this._db.add_base_url(url);  // This gets only executed if the base url does not yet exist
-			
+			this._db.insert_response(url, path, body);
+			this.extract_and_store_data(body);
 		}
 
 		http.get(request, onresponse).on('error', (err) => {
-			console.log("http request for url [" + url + "] failed with error\n" + err.message);
+			console.log("http request for url [" + url + "] failed with error \"" + err.message + "\"");
 		});
 	}
 
