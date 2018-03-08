@@ -62,16 +62,18 @@ var DB = class DB{
 			values: [base_url]
 		};
 		var res = await this.execute_query(query);
+		if(!res)
+			return null;
 		var base_url_id;
-		if (len(res) != 0){
+		if (res.length != 0){
 			// Any url should be unique by constraint on the db, so we can assume len(res) is either 1 or 0
 			base_url_id = res[0].baseurlid;
 		}
 		if(!callback){
-			return res;
+			return base_url_id;
 		}
 		else {
-			callback(res);
+			callback(base_url_id);
 		}
 	}
 
@@ -84,11 +86,16 @@ var DB = class DB{
 			values: [base_url_id]
 		};
 		var res = await this.execute_query(query);
+		if (!res)
+			return null;
+		if(res.length != 0){
+			base_url = res[0].baseurl;
+		}
 		if(!callback){
-			return res;
+			return base_url;
 		}
 		else {
-			callback(res);
+			callback(base_url);
 		}
 	}
 
@@ -102,8 +109,10 @@ var DB = class DB{
 			values: [base_url]
 		};
 		var res = await this.execute_query(query);
+		if(!res)
+			return null;
 		var base_url_id;
-		if(len(res) == 0)
+		if(res.length == 0)
 			base_url_id = null
 		else
 			base_url_id = res[0].baseurlid;
@@ -124,7 +133,7 @@ var DB = class DB{
 			text: '\
 				INSERT INTO paths(lastscrapedtimestamp, lastsuccessfultimestamp, containsdata, path, baseurlid)\
 				VALUES ($1, $2, $3, $4, $5)\
-				ON CONFLIC (baseurlid, path) DO NOTHING \
+				ON CONFLICT (baseurlid, path) DO NOTHING \
 				RETURNING pathid',
 			values: [
 				timestamp,
@@ -135,11 +144,17 @@ var DB = class DB{
 			]
 		};
 		var response = await this.execute_query(query);
+		if (!response)
+			return null;
+		var path_id = null;
+		if (response.length != 0){
+			path_id = response[0].pathid;
+		}
 		if (!callback){
-			return response;
+			return path_id;
 		}
 		else {
-			callback(response);
+			callback(path_id);
 		}
 	}
 
@@ -149,7 +164,7 @@ var DB = class DB{
 			query = {
 				text: '\
 					UPDATE paths \
-					SET lastscrapedtimestamp=$1, lastsuccessfultimestamp=$2, contains_data=$3 \
+					SET lastscrapedtimestamp=$1, lastsuccessfultimestamp=$2, containsdata=$3 \
 					WHERE baseurlid=$4 and path=$5 \
 					RETURNING pathid',
 				values: [
@@ -177,11 +192,17 @@ var DB = class DB{
 			};
 		}
 		var response = await this.execute_query(query);
+		if(!response)
+			return null;
+		var path_id = null;
+		if (response.length != 0){
+			path_id = response[0].pathid;
+		}
 		if (!callback){
-			return response;
+			return path_id;
 		}
 		else {
-			callback(response);
+			callback(path_id);
 		}
 	}
 
@@ -194,11 +215,17 @@ var DB = class DB{
 			values: [path, base_url_id]
 		};
 		var res = await this.execute_query(query);
+		if(!res)
+			return null;
+		var path_id = null;
+		if (response.length != 0){
+			path_id = response[0].pathid;
+		}
 		if(!callback){
-			return res;
+			return path_id;
 		}
 		else {
-			callback(res);
+			callback(path_id);
 		}
 	}
 
@@ -211,24 +238,84 @@ var DB = class DB{
 			values: [timestamp, content, pathid]
 		}
 		var res = await this.execute_query(query);
+		if(!res)
+			return null;
+		var content_id = null;
+		if (response.length != 0){
+			content_id = response[0].contentid;
+		}
 		if(!callback){
-			return res;
+			return content_id;
 		}
 		else {
-			callback(res);
+			callback(content_id);
 		}
 	}
 
 	// Public insert functions
-	async insert_response(url, path, body){
+	async insert_response(url, path, body, success_flag, contains_data, fresh_insert){
+
+		if (contains_data === undefined)
+			contains_data = true;
+		if (success_flag === undefined)
+			success_flag = true;
+		if (fresh_insert === undefined)
+			fresh_insert = false;
+
+		// Take a timestamp. This is used as a) scraped timestamp, b) as lastsuccessfultimestamp
+		// This timestamp is in ms - TODO: Do we need this precision? higher/lower?
+		var timestamp;
+		if (fresh_insert){
+			timestamp = 0;
+		} 
+		else {
+			timestamp = new Date().getTime();
+		}
+
+		// Insert or get base url / base url id
 		var base_url_id =  await this.add_base_url(url);
+
+		// If base_url_id is undefined/null, there exists already an entry for this url, therefor we only need to get the id
 		if(!base_url_id){
 			base_url_id = await this.get_base_url_id(url);
 		}
 		if(!base_url_id){
-			console.error("An error occured while getting the base_url_id: Does not exist and cannot be inserted.\n\
+			console.error(TAG + "An error occured while getting the base_url_id: Does not exist and cannot be inserted.\n\
 				Please check the DB connection.");
 			return; // Return immediately, when we do not have a base url we can not proceed
+		}
+		// Insert path / get path id
+		var path_id = await this.add_path(
+			path,
+			timestamp,
+			success_flag,
+			contains_data,
+			base_url_id
+		);
+		// if path_id is undefined/null, there exists already an entry, we therefor only need to update
+		if(!path_id){
+			var path_id = await this.update_path(
+				path,
+				timestamp,
+				success_flag,
+				contains_data,
+				base_url_id
+			);
+		}
+		// Now path_id should be defined anyway. if it is not something very strange happened
+		if(!path_id){
+			console.error("An error occured while storing/updating the path. Please check the DB connection");
+			return;
+		}
+
+		// We only insert the scraped body, if the scrap was successful. Otherwise we only insert the attempts
+		if (success_flag){
+			// Insert scraped Content into database. We assume here, that the filtering already happened and we only handle string values
+			var content_id = await this.insert_content(
+				body,
+				path_id,
+				timestamp
+			);
 		}
 	}
 }

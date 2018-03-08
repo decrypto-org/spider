@@ -43,8 +43,12 @@ var Spider = class Spider{
 	}
 
 
-	async extract_and_store_data(body){
-		console.log("Extracting data");
+	async extract_and_store_data(current_url, current_path, body){
+		// Load data to cheerio/jquery interface
+		const $ = cheerio.load(body);
+		$('a').each((i, elem) =>{
+			console.log("currently looking at element: " + elem);
+		});
 	}
 
 	async scrape(url, path){
@@ -72,7 +76,7 @@ var Spider = class Spider{
 			let body;
 
 			if (statusCode != 200){
-				console.error("Request faile.\n" +
+				console.error("[spider.scrape.onresponse] Request faile.\n" +
 					`Status Code: ${statusCode}`);
 				response.consume();
 				return;
@@ -88,6 +92,13 @@ var Spider = class Spider{
 					`Only accept html and json, but received ${contentType}`);
 				// Todo: Add code here which inserts the dummy string (such as "Unsupported MIME Type")
 				body = "[Unsupported MIME Type]";
+				this._db.insert_response(
+					url,
+					path,
+					body,
+					true /* success_flag */,
+					false /* contains_data */
+				);
 			}
 			else{
 				response.setEncoding('utf8');
@@ -100,18 +111,24 @@ var Spider = class Spider{
 					try{
 						console.log(rawData);
 						body = rawData;
+						this._db.insert_response(url, path, body);
+						this.extract_and_store_data(url, path, body);
 					}
 					catch(e) {
-						console.error(e.message);
+						console.error("[spider.scrape.onresponse] " + e.message);
 					}
 				});
 			}
-			this._db.insert_response(url, path, body);
-			this.extract_and_store_data(body);
 		}
 
 		http.get(request, onresponse).on('error', (err) => {
 			console.log("http request for url [" + url + "] failed with error \"" + err.message + "\"");
+			this._db.insert_response(
+				url,
+				path,
+				'Error: http request failed',
+				false /* success_flag */
+			);
 		});
 	}
 
@@ -120,7 +137,7 @@ var Spider = class Spider{
 		var iteratable_url_array = Array.from(this._start_urls);
 		for(let index in iteratable_url_array){
 			console.log("URL: " + iteratable_url_array[index]);
-			this.scrape(iteratable_url_array[index]).catch(function(error) {
+			this.scrape(iteratable_url_array[index], "/").catch(function(error) {
 				console.warn("An error occured while scraping the website with URL " + iteratable_url_array[index] +".\n\
 					This was caused by " + error.message);
 			});
