@@ -1,15 +1,17 @@
 var format = require('node.date-time');
 var fs = require('fs');
+var dotenv = require('dotenv');
+var variableExpansion = require('dotenv-expand');
+
+var spiderEnv = dotenv.config()
+spiderEnv = variableExpansion(spiderEnv);
+// spiderEnv = envParser(spiderEnv);
+
+console.log(process.env.DB_HOST);
 
 var fsoptions = {
 	flags: 'a'
 }
-
-var accessLog = fs.createWriteStream("/log/spider.log", fsoptions);
-process.stdout.write = accessLog.write.bind(accessLog);
-
-var accessError = fs.createWriteStream("/log/spider.error", fsoptions);
-process.stderr.write = accessError.write.bind(accessError);
 
 process.on('uncaughtException', (err) => {
 	console.error((err && err.stack) ? err.stack : err);

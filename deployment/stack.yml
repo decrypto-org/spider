@@ -12,9 +12,9 @@ services:
     image: postgres:10
     restart: always
     environment:
-      POSTGRES_PASSWORD: tdse_d3f4u1t_d4t4b4s3_for_hon3y_coll3ction
-      POSTGRES_USER: tdse
-      POSTGRES_DB: DARKNET_DATA_DUMP
+      POSTGRES_PASSWORD: $TDSE_DB_PASSWORD
+      POSTGRES_USER: $TDSE_DB_USER
+      POSTGRES_DB: $TDSE_DB_NAME
     volumes:
       - postgres-vol:/var/lib/postgresql/data
       - $TDSE_HOST_SPIDER_REPO/deployment/setup.sql:/docker-entrypoint-initdb.d/1-setup.sql

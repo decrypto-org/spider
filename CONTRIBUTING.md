@@ -8,3 +8,8 @@ Requires the following packets
 <br>
 Requires the following environment variables:
 TDSE_HOST_SPIDER_REPO: Points to the root of the git repository (this directory)
+TDSE_DB_USER: The user name for the postgres db backend
+TDSE_DB_PASSWORD: The password for the user specified above
+TDSE_DB_NAME: The name of the DB
+TDSE_DB_HOST: The DB Host. If run in docker container, this corresponds to the specified aliases in stack.yml, otherwise one wants to typically choose either localhost or similar
+TDSE_DB_PORT: DB Port 

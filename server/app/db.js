@@ -11,11 +11,11 @@ var DB = class DB{
 	constructor(){
 		// Set up db connections pool 
 		this._db_connection_pool = new Pool({
-			user: 'tdse',
-			host: '0.0.0.0',
-			database: 'DARKNET_DATA_DUMP',
-			password: 'tdse_d3f4u1t_d4t4b4s3_for_hon3y_coll3ction',
-			port: 5432
+			user: process.env.DB_USER,
+			host: process.env.DB_HOST,
+			database: process.env.DB_NAME,
+			password: process.env.DB_PASSWORD,
+			port: process.env.DB_PORT
 		});
 
 		this._db_connection_pool.on('error', (err, client) => {
@@ -53,7 +53,7 @@ var DB = class DB{
 		}
 	}
 
-	async get_base_url_id(base_url, callback){
+	async get_base_url_id(base_url){
 		var query = {
 			text: '\
 				SELECT (baseurlid) \
@@ -69,15 +69,10 @@ var DB = class DB{
 			// Any url should be unique by constraint on the db, so we can assume len(res) is either 1 or 0
 			base_url_id = res[0].baseurlid;
 		}
-		if(!callback){
-			return base_url_id;
-		}
-		else {
-			callback(base_url_id);
-		}
+		return base_url_id;
 	}
 
-	async get_base_url(base_url_id, callback){
+	async get_base_url(base_url_id){
 		var query = {
 			text: '\
 				SELECT (baseurl) \
@@ -91,15 +86,10 @@ var DB = class DB{
 		if(res.length != 0){
 			base_url = res[0].baseurl;
 		}
-		if(!callback){
-			return base_url;
-		}
-		else {
-			callback(base_url);
-		}
+		return base_url;
 	}
 
-	async add_base_url(base_url, callback){
+	async add_base_url(base_url){
 		var query = {
 			text: '\
 				INSERT INTO baseurl(baseurl) \
@@ -116,15 +106,10 @@ var DB = class DB{
 			base_url_id = null
 		else
 			base_url_id = res[0].baseurlid;
-		if(!callback){
-			return base_url_id;
-		}
-		else {
-			callback(base_url_id);
-		}
+		return base_url_id;
 	}
 
-	async add_path(path, timestamp, success, contains_data, base_url_id, callback){
+	async add_path(path, timestamp, success, contains_data, base_url_id){
 		var last_successful_timestamp = 0;
 		if (success){
 			last_successful_timestamp = timestamp;
@@ -150,15 +135,10 @@ var DB = class DB{
 		if (response.length != 0){
 			path_id = response[0].pathid;
 		}
-		if (!callback){
-			return path_id;
-		}
-		else {
-			callback(path_id);
-		}
+		return path_id;
 	}
 
-	async update_path(path, timestamp, success, contains_data, base_url_id, callback){
+	async update_path(path, timestamp, success, contains_data, base_url_id){
 		var query = {};
 		if (success){
 			query = {
@@ -198,12 +178,7 @@ var DB = class DB{
 		if (response.length != 0){
 			path_id = response[0].pathid;
 		}
-		if (!callback){
-			return path_id;
-		}
-		else {
-			callback(path_id);
-		}
+		return path_id;
 	}
 
 	async get_path_id(path, base_url_id){
@@ -221,19 +196,14 @@ var DB = class DB{
 		if (response.length != 0){
 			path_id = response[0].pathid;
 		}
-		if(!callback){
-			return path_id;
-		}
-		else {
-			callback(path_id);
-		}
+		return path_id;
 	}
 
 	async insert_content(content, pathid, timestamp){
 		var query = {
 			text: '\
 				INSERT INTO content (scrapetimestamp, content, pathid) \
-				VALUES ($1, $2, 3)\
+				VALUES ($1, $2, $3)\
 				RETURNING contentid',
 			values: [timestamp, content, pathid]
 		}
@@ -241,15 +211,10 @@ var DB = class DB{
 		if(!res)
 			return null;
 		var content_id = null;
-		if (response.length != 0){
-			content_id = response[0].contentid;
+		if (res.length != 0){
+			content_id = res[0].contentid;
 		}
-		if(!callback){
-			return content_id;
-		}
-		else {
-			callback(content_id);
-		}
+		return content_id;
 	}
 
 	// Public insert functions
