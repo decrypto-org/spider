@@ -18,12 +18,10 @@ var Spider = class Spider{
 		console.log("this._start_urls: " + this._start_urls);
 		this._visited_urls = new Set();
 		this._init_depth = depth;
-		this._tor_port = tor_port
+		this._tor_port = tor_port;
 		this._tor_agent = null;
 		this._db = db;
-		const run = async function(self){
-			// For whatever reason this is undefined in this context.
-			// We could either bind or the lazy workaround: self
+		const run = async () => {
 			const tor = await nightlink.launch({
 				SocksPort: tor_port
 			});
@@ -37,11 +35,10 @@ var Spider = class Spider{
 
 			self._tor_agent = tor;
 			self.start_spidering();
-		}
+		};
 
-		run(this /* self */);
+		run();
 	}
-
 
 	async extract_and_store_data(current_url, current_path, body){
 		// Load data to cheerio/jquery interface
