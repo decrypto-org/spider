@@ -26,7 +26,6 @@
     "pg": "^7.4.1",
     "portscanner": "^2.1.1",
     "proxy-agent": "^2.2.0",
-    "request": "^2.83.0",
     "winston": "^3.0.0-rc2"
   },
   "devDependencies": {

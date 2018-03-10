@@ -1,4 +1,4 @@
-const { Pool } = require('pg');
+const { Pool } = require("pg");
 
 
 /* If we encounter an error in the connection to the database, we throw
@@ -18,8 +18,8 @@ var DB = class DB{
 			port: process.env.DB_PORT
 		});
 
-		this._db_connection_pool.on('error', (err, client) => {
-			console.error('unexpected error on idle client', err);
+		this._db_connection_pool.on("error", (err) => {
+			console.error("unexpected error on idle client", err);
 			process.exit(-1);
 		});
 	}
@@ -38,7 +38,7 @@ var DB = class DB{
 			catch(e){
 				current_number_of_retries ++;
 				if (current_number_of_retries >= num_retries){
-					console.error("An error occured while accessing the database. For more information, please see the stack trace")
+					console.error("An error occured while accessing the database. For more information, please see the stack trace");
 					console.error(e.stack);
 					console.error("============ DEBUG INFORMATION ============");
 					console.error("Query was not executed: " + query);
@@ -55,10 +55,10 @@ var DB = class DB{
 
 	async get_base_url_id(base_url){
 		var query = {
-			text: '\
+			text: "\
 				SELECT (baseurlid) \
 				FROM baseurl \
-				WHERE baseurl.baseurl = $1',
+				WHERE baseurl.baseurl = $1",
 			values: [base_url]
 		};
 		var res = await this.execute_query(query);
@@ -74,15 +74,16 @@ var DB = class DB{
 
 	async get_base_url(base_url_id){
 		var query = {
-			text: '\
+			text: "\
 				SELECT (baseurl) \
 				FROM baseurl \
-				WHERE baseurl.baseurlid = $1',
+				WHERE baseurl.baseurlid = $1",
 			values: [base_url_id]
 		};
 		var res = await this.execute_query(query);
 		if (!res)
 			return null;
+		var base_url = "";
 		if(res.length != 0){
 			base_url = res[0].baseurl;
 		}
@@ -91,11 +92,11 @@ var DB = class DB{
 
 	async add_base_url(base_url){
 		var query = {
-			text: '\
+			text: "\
 				INSERT INTO baseurl(baseurl) \
 				VALUES($1) \
 				ON CONFLICT(baseurl) DO NOTHING \
-				RETURNING baseurlid',
+				RETURNING baseurlid",
 			values: [base_url]
 		};
 		var res = await this.execute_query(query);
@@ -103,7 +104,7 @@ var DB = class DB{
 			return null;
 		var base_url_id;
 		if(res.length == 0)
-			base_url_id = null
+			base_url_id = null;
 		else
 			base_url_id = res[0].baseurlid;
 		return base_url_id;
@@ -115,11 +116,11 @@ var DB = class DB{
 			last_successful_timestamp = timestamp;
 		}
 		var query = {
-			text: '\
+			text: "\
 				INSERT INTO paths(lastscrapedtimestamp, lastsuccessfultimestamp, containsdata, path, baseurlid)\
 				VALUES ($1, $2, $3, $4, $5)\
 				ON CONFLICT (baseurlid, path) DO NOTHING \
-				RETURNING pathid',
+				RETURNING pathid",
 			values: [
 				timestamp,
 				last_successful_timestamp,
@@ -142,11 +143,11 @@ var DB = class DB{
 		var query = {};
 		if (success){
 			query = {
-				text: '\
+				text: "\
 					UPDATE paths \
 					SET lastscrapedtimestamp=$1, lastsuccessfultimestamp=$2, containsdata=$3 \
 					WHERE baseurlid=$4 and path=$5 \
-					RETURNING pathid',
+					RETURNING pathid",
 				values: [
 					timestamp,
 					timestamp,
@@ -159,11 +160,11 @@ var DB = class DB{
 		}
 		else{
 			query = {
-				text: '\
+				text: "\
 					UPDATE paths \
 					SET lastscrapedtimestamp=$1 \
 					WHERE baseurlid=$2 and path=$3 \
-					RETURNING pathid',
+					RETURNING pathid",
 				values: [
 					timestamp,
 					base_url_id,
@@ -183,30 +184,30 @@ var DB = class DB{
 
 	async get_path_id(path, base_url_id){
 		var query = {
-			text: '\
+			text: "\
 				SELECT (pathid) \
 				FROM paths \
-				WHERE paths.path = $1 and paths.baseurlid = $2',
+				WHERE paths.path = $1 and paths.baseurlid = $2",
 			values: [path, base_url_id]
 		};
 		var res = await this.execute_query(query);
 		if(!res)
 			return null;
 		var path_id = null;
-		if (response.length != 0){
-			path_id = response[0].pathid;
+		if (res.length != 0){
+			path_id = res[0].pathid;
 		}
 		return path_id;
 	}
 
 	async insert_content(content, pathid, timestamp){
 		var query = {
-			text: '\
+			text: "\
 				INSERT INTO content (scrapetimestamp, content, pathid) \
 				VALUES ($1, $2, $3)\
-				RETURNING contentid',
+				RETURNING contentid",
 			values: [timestamp, content, pathid]
-		}
+		};
 		var res = await this.execute_query(query);
 		if(!res)
 			return null;
@@ -245,7 +246,7 @@ var DB = class DB{
 			base_url_id = await this.get_base_url_id(url);
 		}
 		if(!base_url_id){
-			console.error(TAG + "An error occured while getting the base_url_id: Does not exist and cannot be inserted.\n\
+			console.error("An error occured while getting the base_url_id: Does not exist and cannot be inserted.\n\
 				Please check the DB connection.");
 			return; // Return immediately, when we do not have a base url we can not proceed
 		}
@@ -259,7 +260,7 @@ var DB = class DB{
 		);
 		// if path_id is undefined/null, there exists already an entry, we therefor only need to update
 		if(!path_id){
-			var path_id = await this.update_path(
+			path_id = await this.update_path(
 				path,
 				timestamp,
 				success_flag,
@@ -282,7 +283,8 @@ var DB = class DB{
 				timestamp
 			);
 		}
+		return (base_url_id, path_id, content_id);
 	}
-}
+};
 
 exports.DB = DB;

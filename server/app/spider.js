@@ -1,13 +1,9 @@
-require('./extensions/Set');
+require("./extensions/Set");
 
-const readline = require('readline');
-const http = require('http');
-const rl = readline.createInterface(process.stdin, process.stdout, null);
-
-const request = require('request');
-const cheerio = require('cheerio');
-const nightlink = require('nightlink');
-const ProxyAgent = require('proxy-agent');
+const http = require("http");
+const cheerio = require("cheerio");
+const nightlink = require("nightlink");
+const ProxyAgent = require("proxy-agent");
 
 
 var Spider = class Spider{
@@ -28,13 +24,13 @@ var Spider = class Spider{
 
 			console.log("Tor up and running");
 
-			tor.on('log', console.log);
-			tor.on('notice', console.log);
-			tor.on('warn', console.warn);
-			tor.on('err', console.error);
+			tor.on("log", console.log);
+			tor.on("notice", console.log);
+			tor.on("warn", console.warn);
+			tor.on("err", console.error);
 
-			self._tor_agent = tor;
-			self.start_spidering();
+			this._tor_agent = tor;
+			this.start_spidering();
 		};
 
 		run();
@@ -43,18 +39,18 @@ var Spider = class Spider{
 	async extract_and_store_data(current_url, current_path, body){
 		// Load data to cheerio/jquery interface
 		const $ = cheerio.load(body);
-		$('a').each((i, elem) =>{
-			console.log("currently looking at element: " + elem);
+		$("a").each((i, elem) =>{
+			console.log("currently looking at element: ", elem);
 		});
 	}
 
 	async scrape(url, path){
 		console.log("[spider.scrape] == Params: url=" + url);
 		// stores a tuple of url, content and list of found urls (content for later classification) in the database
-		var proxyUri = 'socks://127.0.0.1:' + this._tor_port;
+		var proxyUri = "socks://127.0.0.1:" + this._tor_port;
 
 		var request = {
-			method: 'GET',
+			method: "GET",
 			host: url,
 			path: path,
 			agent: new ProxyAgent(proxyUri)
@@ -68,7 +64,7 @@ var Spider = class Spider{
 			 * E.g. we do not want to store any images --> Only make a remark that specified URL
 			 * returns image data instead of html
 			 */
-			const contentType = response.headers['content-type'];
+			const contentType = response.headers["content-type"];
 
 			let body;
 
@@ -78,7 +74,7 @@ var Spider = class Spider{
 				response.consume();
 				return;
 			}
-			else if (!/\btext\/[jsonxhtml\+]{4,}\b/.test(contentType)) {
+			else if (!/\btext\/[jsonxhtml+]{4,}\b/.test(contentType)) {
 				/* For now we only store the textual html or json representation of the page.
 				 * Later on we could extend this to other mime types or even simulating a full client.
 				 * This could be done to circumvent any countermeasures from the website itself.
@@ -98,12 +94,12 @@ var Spider = class Spider{
 				);
 			}
 			else{
-				response.setEncoding('utf8');
-				let rawData = '';
-				response.on('data', (chunk) => {
+				response.setEncoding("utf8");
+				let rawData = "";
+				response.on("data", (chunk) => {
 					rawData += chunk;
 				});
-				response.on('end', () =>{
+				response.on("end", () =>{
 					// callback to async extraction methods
 					try{
 						console.log(rawData);
@@ -116,14 +112,14 @@ var Spider = class Spider{
 					}
 				});
 			}
-		}
+		};
 
-		http.get(request, onresponse).on('error', (err) => {
+		http.get(request, onresponse).on("error", (err) => {
 			console.log("http request for url [" + url + "] failed with error \"" + err.message + "\"");
 			this._db.insert_response(
 				url,
 				path,
-				'Error: http request failed',
+				"Error: http request failed",
 				false /* success_flag */
 			);
 		});
@@ -143,17 +139,3 @@ var Spider = class Spider{
 };
 
 exports.Spider = Spider;
-
-// exports.start_spider = function(){
-// 	var spider;
-// 	console.log('Test set operations')
-// 	var a = new Set([1,2,3,4]);
-// 	var b = new Set([4,6,7,8]);
-// 	console.log('a: ' + a.toString());
-// 	console.log('b: ' + b.toString());
-// 	var union = b.union(a);
-// 	console.log('union: ' + union.toString());
-// 	var difference = union.difference(b);
-// 	console.log('difference: ' + difference.toString());
-	
-// };
