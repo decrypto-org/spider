@@ -38,8 +38,7 @@ let DB = class DB {
             try{
                 client = await this._db_connection_pool.connect();
                 const res = await client.query(query);
-                client.release();
-                logger.info(res);
+                logger.info("Response for query " + query.text, res);
                 return res.rows;
             }
             catch(e){

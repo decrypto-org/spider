@@ -20,12 +20,12 @@
     "dotenv": "^5.0.1",
     "dotenv-expand": "^4.2.0",
     "dotenv-parse-variables": "^0.1.0",
-    "https-proxy-agent": "^2.1.1",
+    "https-proxy-agent": "^2.2.0",
     "nightlink": "^0.1.0",
     "pg": "^7.4.1",
     "portscanner": "^2.1.1",
     "proxy-agent": "^2.2.0",
-    "winston": "^3.0.0-rc1"
+    "winston": "^3.0.0-rc2"
   },
   "devDependencies": {
     "eslint-config-google": "^0.9.1",

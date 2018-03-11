@@ -56,7 +56,7 @@ let Spider = class Spider {
         // Load data to cheerio/jquery interface
         const $ = cheerio.load(body);
         $("a").each((i, elem) =>{
-            logger.info("currently looking at element: ", elem);
+            // logger.info("currently looking at element: ", elem);
         });
     }
 
