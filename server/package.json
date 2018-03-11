@@ -10,7 +10,7 @@
     "debug": "export DEBUG=true && node --inspect-brk --use_strict index.js"
   },
   "author": "Roman Brunner (robrunne@student.ethz.ch)",
-  "license": "GPL-3.0",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git@github.com:jogli5er/tdse-spider.git"
@@ -22,11 +22,10 @@
     "dotenv-parse-variables": "^0.1.0",
     "https-proxy-agent": "^2.1.1",
     "nightlink": "^0.1.0",
-    "node.date-time": "^1.2.2",
     "pg": "^7.4.1",
     "portscanner": "^2.1.1",
     "proxy-agent": "^2.2.0",
-    "winston": "^3.0.0-rc2"
+    "winston": "^3.0.0-rc1"
   },
   "devDependencies": {
     "flow-bin": "^0.66.0",

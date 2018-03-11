@@ -1,3 +1,5 @@
+var { logger } = require("./library/logger");
+
 const { Pool } = require("pg");
 
 
@@ -19,7 +21,7 @@ var DB = class DB{
 		});
 
 		this._db_connection_pool.on("error", (err) => {
-			console.error("unexpected error on idle client", err);
+			logger.error("unexpected error on idle client", err);
 			process.exit(-1);
 		});
 	}
@@ -32,17 +34,17 @@ var DB = class DB{
 			try{
 				client = await this._db_connection_pool.connect();
 				const res = await client.query(query);
-				console.log(res);
+				logger.info(res);
 				return res.rows;
 			}
 			catch(e){
 				current_number_of_retries ++;
 				if (current_number_of_retries >= num_retries){
-					console.error("An error occured while accessing the database. For more information, please see the stack trace");
-					console.error(e.stack);
-					console.error("============ DEBUG INFORMATION ============");
-					console.error("Query was not executed: " + query);
-					console.error("DB connection pool: " + this._db_connection_pool);
+					logger.error("An error occured while accessing the database. For more information, please see the stack trace");
+					logger.error(e.stack);
+					logger.error("============ DEBUG INFORMATION ============");
+					logger.error("Query was not executed: " + query);
+					logger.error("DB connection pool: " + this._db_connection_pool);
 				}
 			}
 			finally{
@@ -246,7 +248,7 @@ var DB = class DB{
 			base_url_id = await this.get_base_url_id(url);
 		}
 		if(!base_url_id){
-			console.error("An error occured while getting the base_url_id: Does not exist and cannot be inserted.\n\
+			logger.error("An error occured while getting the base_url_id: Does not exist and cannot be inserted.\n\
 				Please check the DB connection.");
 			return; // Return immediately, when we do not have a base url we can not proceed
 		}
@@ -270,7 +272,7 @@ var DB = class DB{
 		}
 		// Now path_id should be defined anyway. if it is not something very strange happened
 		if(!path_id){
-			console.error("An error occured while storing/updating the path. Please check the DB connection");
+			logger.error("An error occured while storing/updating the path. Please check the DB connection");
 			return;
 		}
 

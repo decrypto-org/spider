@@ -1,3 +1,4 @@
+var { logger } = require("./library/logger");
 require("./extensions/Set");
 
 const http = require("http");
@@ -9,9 +10,9 @@ const ProxyAgent = require("proxy-agent");
 var Spider = class Spider{
 	constructor(tor_port, start_urls, depth, db){
 		// Please note: only start the spider, when the tor agent is set
-		console.log("start_url: " + start_urls);
+		logger.info("start_url: " + start_urls);
 		this._start_urls = new Set(start_urls);
-		console.log("this._start_urls: " + this._start_urls);
+		logger.info("this._start_urls: " + this._start_urls);
 		this._visited_urls = new Set();
 		this._init_depth = depth;
 		this._tor_port = tor_port;
@@ -22,12 +23,12 @@ var Spider = class Spider{
 				SocksPort: tor_port
 			});
 
-			console.log("Tor up and running");
+			logger.info("Tor up and running");
 
-			tor.on("log", console.log);
-			tor.on("notice", console.log);
-			tor.on("warn", console.warn);
-			tor.on("err", console.error);
+			tor.on("log", logger.info);
+			tor.on("notice", logger.info);
+			tor.on("warn", logger.warn);
+			tor.on("err", logger.error);
 
 			this._tor_agent = tor;
 			this.start_spidering();
@@ -40,12 +41,12 @@ var Spider = class Spider{
 		// Load data to cheerio/jquery interface
 		const $ = cheerio.load(body);
 		$("a").each((i, elem) =>{
-			console.log("currently looking at element: ", elem);
+			logger.info("currently looking at element: ", elem);
 		});
 	}
 
 	async scrape(url, path){
-		console.log("[spider.scrape] == Params: url=" + url);
+		logger.info("[spider.scrape] == Params: url=" + url);
 		// stores a tuple of url, content and list of found urls (content for later classification) in the database
 		var proxyUri = "socks://127.0.0.1:" + this._tor_port;
 
@@ -57,7 +58,7 @@ var Spider = class Spider{
 		};
 
 		const onresponse = async (response) => {  // replace code below with a callback function
-			console.log(response.statusCode, response.headers);
+			logger.info(response.statusCode, response.headers);
 
 			const { statusCode } = response;
 			/* Based on the content type we can either store or forget the downloaded data
@@ -69,7 +70,7 @@ var Spider = class Spider{
 			let body;
 
 			if (statusCode != 200){
-				console.error("[spider.scrape.onresponse] Request faile.\n" +
+				logger.error("[spider.scrape.onresponse] Request faile.\n" +
 					`Status Code: ${statusCode}`);
 				response.consume();
 				return;
@@ -102,20 +103,20 @@ var Spider = class Spider{
 				response.on("end", () =>{
 					// callback to async extraction methods
 					try{
-						console.log(rawData);
+						logger.info(rawData);
 						body = rawData;
 						this._db.insert_response(url, path, body);
 						this.extract_and_store_data(url, path, body);
 					}
 					catch(e) {
-						console.error("[spider.scrape.onresponse] " + e.message);
+						logger.error("[spider.scrape.onresponse] " + e.message);
 					}
 				});
 			}
 		};
 
 		http.get(request, onresponse).on("error", (err) => {
-			console.log("http request for url [" + url + "] failed with error \"" + err.message + "\"");
+			logger.info("http request for url [" + url + "] failed with error \"" + err.message + "\"");
 			this._db.insert_response(
 				url,
 				path,
@@ -129,7 +130,7 @@ var Spider = class Spider{
 		// Check DB every x seconds if new (not yet scraped entries or entries that should be rescraped) are available
 		var iteratable_url_array = Array.from(this._start_urls);
 		for(let index in iteratable_url_array){
-			console.log("URL: " + iteratable_url_array[index]);
+			logger.info("URL: " + iteratable_url_array[index]);
 			this.scrape(iteratable_url_array[index], "/").catch(function(error) {
 				console.warn("An error occured while scraping the website with URL " + iteratable_url_array[index] +".\n\
 					This was caused by " + error.message);

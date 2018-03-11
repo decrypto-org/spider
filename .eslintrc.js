@@ -27,6 +27,12 @@ module.exports = {
             "error",
             "always"
         ],
-        "no-console": "off"
+        "no-console": "off",
+        "camelcase": [
+            "warn",
+            {
+                "properties": "always"
+            }
+        ]
     }
 };
