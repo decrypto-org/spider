@@ -28,6 +28,7 @@
     "winston": "^3.0.0-rc1"
   },
   "devDependencies": {
+    "eslint-config-google": "^0.9.1",
     "flow-bin": "^0.66.0",
     "flow-remove-types": "^1.2.3"
   }

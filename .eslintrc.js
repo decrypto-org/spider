@@ -5,16 +5,12 @@ module.exports = {
         "amd": true,
         "node": true
     },
-    "extends": "eslint:recommended",
+    "extends": ["eslint:recommended", "google"],
     "parserOptions": {
         "sourceType": "module",
         "ecmaVersion": 8
     },
     "rules": {
-        "indent": [
-            "error",
-            "tab"
-        ],
         "linebreak-style": [
             "error",
             "unix"
