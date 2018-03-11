@@ -1,5 +1,5 @@
 // Add helper functions to Set
-Set.prototype.toString = function()
-{
-	return "(" + Array.from(this).join(', ') + ")";
-}
+/* eslint-disable no-extend-native */
+Set.prototype.toString = function() {
+    return "(" + Array.from(this).join(", ") + ")";
+};

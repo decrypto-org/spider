@@ -14,4 +14,9 @@ printf "Linting server.app.spider\n"
 eslint --config .eslintrc.js --fix server/app/spider.js
 printf "Linting server.app.index\n"
 eslint --config .eslintrc.js --fix server/app/index.js
+printf "Linting server.app.library.logger\n"
+eslint --config .eslintrc.js --fix server/app/library/logger.js
+printf "Linting server.app.extensions.Set\n"
+eslint --config .eslintrc.js --fix server/app/extensions/Set.js
+eslint --config .eslintrc.js --fix server/app/extensions/Set/
 printf "Completed - Code adheres to standard\n"
