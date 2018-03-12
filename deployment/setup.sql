@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS Paths(
 	PathID bigserial NOT NULL,
 	LastScrapedTimestamp BIGINT,
 	LastSuccessfulTimestamp BIGINT,
-	ContainsData boolean,
 	Path text NOT NULL,
 	BaseUrlID int NOT NULL,
 	PRIMARY KEY (PathID),
@@ -26,10 +25,27 @@ CREATE TABLE IF NOT EXISTS Content(
 	ContentID bigserial NOT NULL,
 	ScrapeTimestamp BIGINT,
 	Content TEXT,
+	ContentType TEXT,
 	PathID int NOT NULL,
 	PRIMARY KEY (ContentID),
 	CONSTRAINT FK_Path FOREIGN KEY (PathID)
 	REFERENCES Paths(PathID)
 	ON DELETE CASCADE
 	ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Links(
+	LinkId bigserial NOT NULL,
+	SourceContentId bigserial NOT NULL,
+	DestinationContentId bigserial NOT NULL,
+	PRIMARY KEY (LinkId),
+	CONSTRAINT FK_Source FOREIGN KEY (SourceContentId)
+	REFERENCES Content(ContentID)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE,
+	CONSTRAINT FK_Destination FOREIGN KEY (DestinationContentId)
+	REFERENCES Content(ContentID)
+	ON DELETE CASCADE
+	ON UPDATE CASCADE,
+	UNIQUE(SourceContentId, DestinationContentId)
 );
