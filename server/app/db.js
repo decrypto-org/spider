@@ -1,6 +1,7 @@
 let {logger} = require("./library/logger");
 
 const {Pool} = require("pg");
+const Sequelize = require("sequelize");
 
 
 /* If we encounter an error in the connection to the database, we throw
@@ -12,6 +13,38 @@ const {Pool} = require("pg");
 
 let DB = class DB {
     constructor() {
+        // Set up sequelize. According to doku, we should only have
+        // one instance, therefor keeping the DB module in place
+        this.sequelize = new Sequelize(
+            process.env.DB_NAME,
+            process.env.DB_USER,
+            process.env.DB_PASSWORD,
+            {
+                host: process.env.DB_HOST,
+                port: process.env.DB_PORT,
+                dialect: "postgres",
+                pool: {
+                    max: process.env.DB_MAX_CONNECTIONS,
+                    min: process.env.DB_MIN_CONNECTIONS
+                },
+                operatorsAliases: false
+            });
+
+        // Test connection -- to make sure everything works before proceeding
+        this.sequelize
+            .authenticate()
+            .then( () => {
+                logger.info("Database: Connection established");
+            })
+            .catch(err => {
+                logger.error("Database: Unable to connect to database:", err);
+            });
+        
+        // Load models
+        this.baseUrlTable = this.sequelize.import(
+            process.env.TDSE_HOST_SPIDER_REPO + "/server/app/models/baseUrl"
+        );
+
         // Set up db connections pool 
         this._db_connection_pool = new Pool({
             user: process.env.DB_USER,
