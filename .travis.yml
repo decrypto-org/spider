@@ -9,11 +9,11 @@ services:
   - docker
 
 before_script:
-  - $TRAVIS_BUILD_DIR/spider/Run.sh
+  - $TRAVIS_BUILD_DIR/Run.sh
   - cd server; npm install; cd ..
   - npm i -g eslint
 
 script:
-  - $TRAVIS_BUILD_DIR/spider/Lint.sh
+  - $TRAVIS_BUILD_DIR/Lint.sh
   - cd server && npm test && cd ..
 
