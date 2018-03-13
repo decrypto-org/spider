@@ -1,7 +1,9 @@
-sudo: true
 language: node_js
 node_js:
 	- "9"
+  - "node"
+
+sudo: true
 
 services:
   - docker
