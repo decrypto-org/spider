@@ -4,7 +4,7 @@ const {DB} = require("./db");
 
 const portscanner = require("portscanner");
 
-exports.init = async function() {
+exports.init = async function(initUrls=[], depth=1) {
     // First initialize the db module
     let db = new DB();
 
@@ -28,11 +28,12 @@ exports.init = async function() {
             // in every environment)
             new Spider(
                 torPort,
-                ["msydqstlz2kzerdg.onion"] /* start_urls */,
-                1 /* depth */,
+                initUrls,
+                depth,
                 db
             );
-    });
+        }
+    );
 };
 
 process.on("exit", (code) => {

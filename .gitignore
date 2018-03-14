@@ -37,3 +37,7 @@ jspm_packages
 env
 environments
 *.env
+
+# Ignore sublime project/workspace files
+*.sublime-project
+*.sublime-workspace
