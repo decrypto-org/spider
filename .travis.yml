@@ -9,9 +9,8 @@ services:
   - docker
 
 before_script:
-  - sudo apt update --qq -y
+  - sudo apt update -qq -y
   - sudo apt install -y tor
-  - sudo apt update -y --qq
   - $TRAVIS_BUILD_DIR/Run.sh
   - cd server; npm install; cd ..
   - npm i -g eslint
