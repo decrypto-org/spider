@@ -11,9 +11,10 @@ services:
 before_script:
   - sudo apt update -qq -y
   - sudo apt install -y tor
+  - docker swarm init # We need to initialize the host as a swarm manager first
   - $TRAVIS_BUILD_DIR/Run.sh
   - cd server; npm install; cd ..
-  - npm i -g eslint
+  - npm i -g eslint eslint-config-google
 
 script:
   - $TRAVIS_BUILD_DIR/Lint.sh
