@@ -1,6 +1,6 @@
 let {logger} = require("./library/logger");
 const {Spider} = require("./spider");
-const {DB} = require("./db");
+const {DB} = require("./conductor");
 
 const portscanner = require("portscanner");
 

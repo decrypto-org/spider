@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS Paths(
 	LastScrapedTimestamp BIGINT,
 	LastSuccessfulTimestamp BIGINT,
 	Path text NOT NULL,
-	BaseUrlID int NOT NULL,
+	BaseUrlID BIGINT NOT NULL,
 	PRIMARY KEY (PathID),
 	CONSTRAINT FK_BaseUrl FOREIGN KEY (BaseUrlID)
 	REFERENCES BaseURL(BaseUrlID)
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS Content(
 	ScrapeTimestamp BIGINT,
 	Content TEXT,
 	ContentType TEXT,
-	PathID int NOT NULL,
+	PathID BIGINT NOT NULL,
 	PRIMARY KEY (ContentID),
 	CONSTRAINT FK_Path FOREIGN KEY (PathID)
 	REFERENCES Paths(PathID)
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS Content(
 
 CREATE TABLE IF NOT EXISTS Links(
 	LinkId bigserial NOT NULL,
-	SourceContentId bigserial NOT NULL,
-	DestinationContentId bigserial NOT NULL,
+	SourceContentId BIGINT NOT NULL,
+	DestinationContentId BIGINT NOT NULL,
 	PRIMARY KEY (LinkId),
 	CONSTRAINT FK_Source FOREIGN KEY (SourceContentId)
 	REFERENCES Content(ContentID)

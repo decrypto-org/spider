@@ -29,6 +29,18 @@ module.exports = {
             {
                 "properties": "always"
             }
-        ]
+        ],
+        "require-jsdoc": [
+            "error", {
+                "require": {
+                    "FunctionDeclaration": true,
+                    "MethodDefinition": true,
+                    "ClassDeclaration": true,
+                    "ArrowFunctionExpression": false,
+                    "FunctionExpression": false
+                }
+            }
+        ],
+        "valid-jsdoc": "error"
     }
 };
