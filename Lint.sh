@@ -12,8 +12,8 @@ printf "Linting server.app.conductor\n"
 eslint --config .eslintrc.js --fix server/app/conductor.js
 printf "Linting server.app.spider\n"
 eslint --config .eslintrc.js --fix server/app/spider.js
-printf "Linting server.app.downloader\n"
-eslint --config .eslintrc.js --fix server/app/downloader.js
+printf "Linting server.app.network\n"
+eslint --config .eslintrc.js --fix server/app/network.js
 printf "Linting server.app.parser\n"
 eslint --config .eslintrc.js --fix server/app/parser.js
 printf "Linting server.app.index\n"

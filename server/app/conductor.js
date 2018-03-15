@@ -1,5 +1,5 @@
 // let {Parser} = require("./parser");
-// let {Downloader} = require("./downloader");
+// let {Network} = require("./network");
 // let {logger} = require("./library/logger");
 // let models = require("./models");
 
