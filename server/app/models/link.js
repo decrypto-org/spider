@@ -1,29 +1,24 @@
-/* global models */
 module.exports = (sequelize, DataTypes) => {
     const Link = sequelize.define("link", {
         linkId: {
-            type: DataTypes.BIGINT,
-            allowNull: false,
-            unique: true,
+            type: DataTypes.UUID,
             primaryKey: true,
-            autoIncrement: true,
+            defaultValue: DataTypes.UUIDV4,
         },
     });
-    Link.belongsTo(models.Content, {
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-        foreignKey: {
-            allowNull: false,
-            name: "sourceContentId",
-        },
-    });
-    Link.belongsTo(models.Content, {
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-        foreignKey: {
-            allowNull: false,
-            name: "destinationContentId",
-        },
-    });
+    Link.associate = function(models) {
+        Link.belongsTo(models.content, {
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
+            foreignKey: {
+                allowNull: false,
+                name: "sourceContentId",
+            },
+        });
+        Link.belongsTo(models.content, {
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
+        });
+    };
     return Link;
 };

@@ -1,11 +1,18 @@
 let {logger} = require("./library/logger");
-require("./extension/Set");
 
 const axios = require("axios");
 const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
 
-let Network = class Network {
+/**
+ * This module handels all the requests to the tor network.
+ * It ensures, that we do not have too many parallel requests open
+ * as this might be detected as a DoS attack by a target.
+ * It provides functionality to download data and further initially
+ * process that data, such that it can be used for extracting and
+ * storing information.
+ */
+class Network {
     /**
      * Initialize the downloader class
      * @constructor
@@ -32,10 +39,12 @@ let Network = class Network {
      * @return {object} An initialized instance of the network.
      */
     static async build(torPort) {
-        let torAgent = await nightlink.launch({
+        logger.info("Starting Tor on port " + torPort);
+        const tor = await nightlink.launch({
             SocksPort: torPort,
         });
-        return new Network(torAgent, torPort);
+        logger.info("Tor up and running!");
+        return new Network(tor, torPort);
     }
 
     /**
@@ -150,7 +159,7 @@ let Network = class Network {
         }
         return result;
     }
-};
+}
 
 
 module.exports = Network;

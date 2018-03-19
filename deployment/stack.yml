@@ -17,7 +17,6 @@ services:
       POSTGRES_DB: $TDSE_DB_NAME
     volumes:
       - postgres-vol:/var/lib/postgresql/data
-      - $TDSE_HOST_SPIDER_REPO/deployment/setup.sql:/docker-entrypoint-initdb.d/1-setup.sql
     networks:
       backend:
         aliases:

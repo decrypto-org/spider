@@ -11,11 +11,9 @@ RUN npm install
 # Connection to the database
 EXPOSE 10864
 
-# Connection to the Tor Network
-EXPOSE 9000-9100
-
 # Node JS Debug Port
 EXPOSE 9101
 EXPOSE 5858
 
-CMD [ "npm", "start" ]
+# Currently starting the scraper manually
+CMD [ "bash" ]

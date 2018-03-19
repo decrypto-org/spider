@@ -1,4 +1,5 @@
 -- Should create the tables on DARKNET_DATA_DUMP database
+-- OBSOLETE -- USING SEQUELIZE JS -- ONLY KEPT AS REFERENCE
 
 CREATE TABLE IF NOT EXISTS BaseURL (
 	BaseUrlID bigserial NOT NULL,

@@ -1,13 +1,10 @@
 let {logger} = require("./library/logger");
-const {Spider} = require("./spider");
-const {DB} = require("./conductor");
+const Conductor = require("./conductor");
+require("./extensions/Set");
 
 const portscanner = require("portscanner");
 
 exports.init = async function(initUrls=[], depth=1) {
-    // First initialize the db module
-    let db = new DB();
-
     // Find available port to run tor on
     portscanner.findAPortNotInUse(
         8900,
@@ -26,12 +23,7 @@ exports.init = async function(initUrls=[], depth=1) {
             // We pass the DB module instance from above to make sure,
             // we are using the same object (require does not guarantee this
             // in every environment)
-            new Spider(
-                torPort,
-                initUrls,
-                depth,
-                db
-            );
+            new Conductor(initUrls, depth, torPort);
         }
     );
 };

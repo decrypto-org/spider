@@ -1,12 +1,9 @@
-/* global models */
 module.exports = (sequelize, DataTypes) => {
-    const Path = sequelize.define("paths", {
+    const Path = sequelize.define("path", {
         pathId: {
-            type: DataTypes.BIGINT,
-            allowNull: false,
-            unique: true,
+            type: DataTypes.UUID,
             primaryKey: true,
-            autoIncrement: true,
+            defaultValue: DataTypes.UUIDV4,
         },
         lastScrapedTimestamp: {
             type: DataTypes.BIGINT,
@@ -19,13 +16,11 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
     });
-    Path.hasMany(models.Content, {
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-        foreignKey: {
-            name: "pathId",
-            allowNull: false,
-        },
-    });
+    Path.associate = function(models) {
+        Path.hasMany(models.content, {
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
+        });
+    };
     return Path;
 };

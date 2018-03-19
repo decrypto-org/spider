@@ -1,13 +1,15 @@
 let {logger} = require("./library/logger");
-require("./extensions/Set");
 
 const http = require("http");
 const cheerio = require("cheerio");
 const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
 
-
-let Spider = class Spider {
+/**
+ * Spider class
+ * @deprecated
+ */
+class Spider {
     /**
      * Initializes the spider and starts spidering right away.
      * @constructor
@@ -34,10 +36,6 @@ let Spider = class Spider {
 
             logger.info("Tor up and running");
 
-            tor.on("log", logger.info);
-            tor.on("notice", logger.info);
-            tor.on("warn", logger.warn);
-            tor.on("err", logger.error);
 
             this._torAgent = tor;
             this.startSpidering();
@@ -163,6 +161,6 @@ let Spider = class Spider {
             });
         }
     }
-};
+}
 
 exports.Spider = Spider;

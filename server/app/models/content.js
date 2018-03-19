@@ -1,14 +1,12 @@
 module.exports = (sequelize, DataTypes) => {
     const Content = sequelize.define("content", {
         contentId: {
-            type: DataTypes.BIGINT,
-            allowNull: false,
-            unique: true,
-            autoIncrement: true,
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
         scrapeTimestamp: {
-            type: DataTypes.BIGING,
+            type: DataTypes.BIGINT,
             allowNull: false,
         },
         content: {

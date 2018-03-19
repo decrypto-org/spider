@@ -1,18 +1,17 @@
-/* global models */
 module.exports = (sequelize, DataTypes) => {
     const BaseUrl = sequelize.define("baseUrl", {
-        baseurlid: {
-            type: DataTypes.BIGINT,
-            autoIncrement: true,
+        baseUrlId: {
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
+            primaryKey: true,
         },
-        baseurl: DataTypes.TEXT,
+        baseUrl: DataTypes.TEXT,
     });
-    // We have to deactiv
-    BaseUrl.hasMany(models.Path, {
-        foreignKey: {
-            name: "baseUrlId",
-            allowNull: false,
-        },
-    });
+    BaseUrl.associate = function(models) {
+        BaseUrl.hasMany(models.path, {
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
+        });
+    };
     return BaseUrl;
 };
