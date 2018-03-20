@@ -5,12 +5,16 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        baseUrl: DataTypes.TEXT,
+        baseUrl: {
+            type: DataTypes.TEXT,
+            unique: true,
+        },
     });
     BaseUrl.associate = function(models) {
         BaseUrl.hasMany(models.path, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
+            unique: "compositeIndex",
         });
     };
     return BaseUrl;

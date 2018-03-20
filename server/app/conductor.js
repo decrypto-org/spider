@@ -40,7 +40,7 @@ class Conductor {
             await db.sequelize.sync();
 
             // Create a network instance
-            this.network = Network.build(torPort);
+            this.network = await Network.build(torPort);
 
             // Now inserting the start urls into the database with scrape
             // timestamp=0, so they will be scraped first (with other, not yet
@@ -54,12 +54,23 @@ class Conductor {
                     );
                     for (let matchedUrl of matchedUrls) {
                         let path = matchedUrl[5] || "/";
-                        this.insertUriIntoDB(matchedUrl[4].toLowerCase(), path, 0);
-                        break;
+                        let baseUrl = matchedUrl[4].toLowerCase();
+                        // Note: Without the await, we will get failing commits
+                        // possibly we overload the database (For large numbers
+                        // of initial urls)
+                        // Solution: Use Bulk inserts
+                        await this.insertUriIntoDB(
+                            baseUrl, /* baseUrl */
+                            path, /* path */
+                            0 /* lastScraped */
+                        ).catch((err) =>{
+                            logger.error(
+                                "An error occured while inserting " + baseUrl +
+                                "/" + path + ": " + err.toString()
+                            );
+                        });
                     }
-                    break;
                 }
-                break;
             }
             // Matched url will be a list of array, where each array has the
             // following properties:
@@ -83,29 +94,48 @@ class Conductor {
      * @param {string} path - The path of the uir to be inserted
      * @param {number} lastScraped - Contains a unix timestamp (ms), which
      *                               describes, when the uri was fetched last.
+     * @param {number} lastSuccessful - Contains a unix timestamp (ms),
+     *                                  indicating the last successful scrape.
      * @param {boolean} successful - Indicates whether the fetch was successful
      *                               [successful=true]
+     * @return {UUIDV4[]} Returns the IDs of the inserted values
+     *                           Those are always sorted as follows:
+     *                           [baseUrlId, pathId, contentId, linkId]
      */
-    async insertUriIntoDB(baseUrl, path, lastScraped, successful=true) {
-        let baseUrlEntry = db.baseUrl.build({
-            baseUrl: baseUrl,
+    async insertUriIntoDB(
+        baseUrl,
+        path,
+        lastScraped,
+        lastSuccessful=0,
+        successful=true
+    ) {
+        if (successful) {
+            lastSuccessful = lastScraped;
+        }
+        let baseUrlEntry, pathEntry;
+        [baseUrlEntry,] = await db.baseUrl.findOrCreate({
+            where: {
+                baseUrl: baseUrl,
+            },
+            defaults: {
+                baseUrl: baseUrl,
+            },
         });
-        let lastSuccessful = lastScraped;
-        let pathEntry = db.path.build({
-            lastScrapedTimestamp: lastScraped,
-            lastSuccessfulTimestamp: lastSuccessful,
-            path: path,
+        [pathEntry,] = await db.path.findOrCreate({
+            where: {
+                baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
+                path: path,
+            },
+            defaults: {
+                lastScrapedTimestamp: lastScraped,
+                lastSuccessfulTimestamp: lastSuccessful,
+                path: path,
+                baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
+            },
         });
-        baseUrlEntry.addPath(pathEntry);
-        baseUrl.save().then((baseUrlEntry) => {
-            pathEntry.baseUrlId = baseUrlEntry.baseUrlId;
-        }).catch((err) => {
-            logger.warn("An error occured while access the database!", err);
-        });
-        pathEntry.addBaseUrl(baseUrlEntry);
-        baseUrlEntry.save();
-        pathEntry.save();
+        return [baseUrlEntry.baseUrlId, pathEntry.pathId, null, null];
     }
 }
+
 
 module.exports = Conductor;
