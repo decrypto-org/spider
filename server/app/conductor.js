@@ -2,30 +2,10 @@ let Parser = require("./parser");
 let Network = require("./network");
 let {logger} = require("./library/logger");
 let db = require("./models");
-
-let EventEmitter = require("events");
+let DbEvent = require("./events/dbEventEmitter");
+let NetworkEvent = require("./events/networkEventEmitter");
 
 let Op = db.Sequelize.Op;
-
-/**
- * The DB Event Emitter emits an event with new DB Data everytime the
- * DB returned new data (e.g. URLS to be fetched) and promotes the data to
- * the listeners
- */
-class DbEvent extends EventEmitter {
-    /**
-     * Event thrown when new data is gathered from the database
-     */
-    static get NEW_DB_DATA_EVENT() {
-        return "newDbData";
-    }
-    /**
-     * Event thrown when no new data is available from the database
-     */
-    static get NO_DB_DATA_EVENT() {
-        return "noDbDataAvailable";
-    }
-}
 
 /**
  * The conductor is the one controlling the spidering
@@ -60,6 +40,7 @@ class Conductor {
 
         // Initialization of later used variables
         this.offsetForDbRequest = 0;
+        this.limitForDbRequest = 100;
 
         /**
          * Initialize the tor client, then start the spidering
@@ -90,7 +71,8 @@ class Conductor {
                         // Note: Without the await, we will get failing commits
                         // possibly we overload the database (For large numbers
                         // of initial urls)
-                        // Solution: Use Bulk inserts
+                        // Short term: not an issue, finished in about 5 min
+                        // Long term solution: Use Bulk inserts
                         await this.insertUriIntoDB(
                             baseUrl, /* baseUrl */
                             path, /* path */
@@ -132,7 +114,7 @@ class Conductor {
         // First register a listener for the network events (This way we see if
         // we should fetch new url data)$
         this.networkEvent.on(
-            this.networkEvent.NEW_CONTENT_DATA_EVENT,
+            NetworkEvent.NEW_CONTENT_DATA_EVENT,
             async (
                 baseUrl,
                 path,
@@ -149,19 +131,26 @@ class Conductor {
                     timestamp,
                     successful
                 );
-                this.insertBodyIntoDB(
+                await this.insertBodyIntoDB(
                     pathId,
                     body,
                     mimeType,
                     timestamp,
                     successful
                 );
-                this.getEntriesFromDbToNetwork();
+                let moreData = this.getEntriesFromDbToNetwork();
+                if (!moreData && this.limitForDbRequest == 100) {
+                    logger.info(
+                        "No more data available and no requests pending."
+                    );
+                    logger.info("Finishing this pass");
+                    process.exit(0);
+                }
             }
         );
 
         this.networkEvent.on(
-            this.networkEvent.READY,
+            NetworkEvent.READY,
             async (numberOfAvailableSlots) => {
 
             }
@@ -170,7 +159,19 @@ class Conductor {
         // We now initialize the process by getting the first URLs from the
         // database and sending it over to the network. For now, we start
         // with never scraped data. Later we may use a configuranle time delta
-        this.getEntriesFromDbToNetwork({offset: 10});
+        let initDataAvailable = this.getEntriesFromDbToNetwork();
+        if (!initDataAvailable) {
+            logger.info("No initial data available to start the scraped.");
+            logger.info(
+                "If you need to run on previous data, please contact" +
+                "the developer. This feature is not yet implemented."
+            );
+            logger.info(
+                "If you have initial data, please specify it on" +
+                "the command line (as a csv file)."
+            );
+            process.exit(0);
+        }
     }
 
     /**
@@ -268,6 +269,17 @@ class Conductor {
     }
 
     /**
+     * @typedef DbResponse
+     * @type {object}
+     * @property {!string} url - The base url
+     * @property {!string} path - The path of the entry
+     * @property {?string} content - If available or requested, it can contain
+     *                               the content of the entry
+     * @property {UUIDV4[]} link - A list of length 2 with two UUIDv4 within,
+     *                             which describes a link between two documents
+     */
+
+    /**
      * Retrieve entries from the database that are older or as old as the passed
      * dateTime param.
      * @param {number} dateTime -- Specify the dateTime from which the newest
@@ -288,7 +300,14 @@ class Conductor {
      *                      anything pending, we can conclude that we have
      *                      finished and exit.
      */
-    async getEntriesFromDbToNetwork({dateTime=0, limit=100, offset=0} = {}) {
+    async getEntriesFromDbToNetwork({
+        dateTime=0,
+        limit=this.limitForDbRequest,
+        offset=this.offsetForDbRequest,
+    } = {}) {
+        if (limit == 0) {
+            return false;
+        }
         let urlResult = [];
         let paths = await db.path.findAll({
             where: {
@@ -299,16 +318,26 @@ class Conductor {
             limit: limit,
             offset: offset,
         });
-        let uriResult = [];
         for (let path of paths) {
-            let baseUrl = await path.getBaseUrl();
-            uriResult.push(baseUrl.baseUrl + path.path);
+            let dbResult = {
+                "path": path.path,
+                "url": null,
+                "content": null,
+                "link": null,
+            };
+            dbResult["url"] = await path.getBaseUrl();
+            urlResult.push(dbResult);
         }
         this.dbEvent.emit(
             DbEvent.NEW_DB_DATA_EVENT,
             urlResult
         );
-        return [urlResult.length != 0, (offset + paths.length)];
+        this.offsetForDbRequest += paths.length;
+        // We do not reset the offset counter yet, even if we did not find any
+        // new data, since we do not know whether new data will arrive from the
+        // network moduel. This is left to decide to the controller.
+        let moreData = urlResult.length != 0;
+        return moreData;
     }
 }
 

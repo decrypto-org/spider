@@ -1,30 +1,11 @@
 let {logger} = require("./library/logger");
+let DbEvent = require("./events/dbEventEmitter");
+let NetworkEvent = require("./events/networkEventEmitter");
 
 const axios = require("axios");
 const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
 
-let EventEmitter = require("events");
-
-/**
- * The Network Event Emitter emits an event with new network Data everytime the
- * network returned new data (e.g. fetched urls) and promotes the data to
- * the listeners
- */
-class NetworkEvent extends EventEmitter {
-    /**
-     * Event thrown when new data is gathered from the database
-     */
-    static get NEW_CONTENT_DATA_EVENT() {
-        return "newContentData";
-    }
-    /**
-     * Event thrown when no new data is available from the database
-     */
-    static get NETWORK_READY() {
-        return "networkReady";
-    }
-}
 
 /**
  * This module handels all the requests to the tor network.
@@ -55,9 +36,14 @@ class Network {
         this.torAgent.on("notice", logger.info);
         this.torAgent.on("warn", logger.warn);
         this.torAgent.on("err", logger.error);
+        this.availableSlots = 100;
         this.dbEvent.on(
-            this.dbEvent.NEW_DB_DATA_EVENT,
-            );
+            DbEvent.NEW_DB_DATA_EVENT,
+            (urlList /** @typ{DbResponse} */) => {
+                logger.info("received new data from db");
+                this.bulkGetPages(urlList);
+            }
+        );
         logger.info("Network initialized");
     }
 
@@ -82,18 +68,41 @@ class Network {
     /**
      * Get the content for all urls in the passed url list and notify the
      * database that new data is available to be stored.
-     * @param {string[]} urlList -- A list of urls to download
+     * @param {DbResponse[]} urlList -- A list of db responses, containing the
+     *                                  urls to download.
      */
-    async bulkGetPages(urlList) {
-
+    async bulkGetPages(urlList /** @type{DbResponse} */) {
+        let eventEmitter = async (
+            handlerResponse /** @type{NetworkHandlerResponse} */
+        ) => {
+            let successful = true;
+            if (handlerResponse.statusCode != 200) {
+                successful = false;
+            }
+            this.networkEvent.emit(
+                NetworkEvent.NEW_CONTENT_DATA_EVENT,
+                handlerResponse.url,
+                handlerResponse.path,
+                handlerResponse.body || "[unsupported]",
+                handlerResponse.mimeType,
+                handlerResponse.timestamp,
+                successful
+            );
+        };
+        for (let dbResponse of urlList) {
+            this.get(dbResponse.url, dbResponse.path, eventEmitter);
+        }
     }
 
     /**
-     * @typedef HandlerResponse
+     * @typedef NetworkHandlerResponse - Only contains valid responses
      * @type {object}
+     * @property {!string} url - The url of the returned request.
+     * @property {!string} path - Th path of the returned request.
      * @property {?string} body - The body of a response.
      * @property {!number} statusCode - The HTTP status code of a response.
-     * @property {?string} mimeType - The MiME Type of a response.
+     * @property {?string} mimeType - The MIME Type of a response.
+     * @property {!number} timestamp - The timestamp when the response finished.
      */
 
     /**
@@ -114,7 +123,9 @@ class Network {
      * @param {string} url - This is the hosts url
      * @param {string} path - This is the path to the document
      * @param {requestCallback} callback - The callback handles the
-                                           the response once it returns
+     *                                     the response once it returns
+     * @return {NetworkHandlerResponse} Contains all information needed from the
+     *                                  response @type{NetworkHandlerResponse}.
      */
     async get(url, path, callback) {
         logger.info("[GET] " + url + "/" + path);
@@ -131,26 +142,37 @@ class Network {
                 error.message + "\""
             );
         });
-        /** @type {HandlerResponse}  */
-        let result = await this.responseHandler(response);
-        callback(result.body, result.statusCode, result.mimeType);
+        /** @type {NetworkHandlerResponse}  */
+        let result = await this.responseHandler(response, url, path);
+        if (response) {
+            // used to notify the db about newly available data
+            callback(response);
+        }
+        // used for single requests, where we want to wait for the content
+        // to become available
+        return result;
     }
 
     /**
      * Handle the response of a get request to a unknown resource.
      * @param {object} response - The response object from axios.get
-     * @return {HandlerResponse} result - Contains
-     *                              a) The body of the response
-     *                              b) The returned status code
-     *                              c) MIME type of the response
+     * @param {string} url - The url to which the request was made.
+     * @param {string} path - The path to which the request was made.
+     * @return {NetworkHandlerResponse} result - Contains
+     *                                           a) The body of the response
+     *                                           b) The returned status code
+     *                                           c) MIME type of the response
      */
-    async responseHandler(response) {
+    async responseHandler(response, url, path) {
         logger.info(response.statusCode, response.headers);
 
         let result = {
+            "url": url,
+            "path": path,
             "body": null,
             "statusCode": 200,
             "mimeType": null,
+            "timestamp": (new Date).getTime(),
         };
 
         let statusCode = response.status;
