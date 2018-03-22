@@ -21,6 +21,10 @@ module.exports = (sequelize, DataTypes) => {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
+        Path.belongsTo(models.baseUrl, {
+            onDelete: "CASCADE",
+            onUpdate: "CASCADE",
+        });
     };
     return Path;
 };

@@ -4,6 +4,28 @@ const axios = require("axios");
 const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
 
+let EventEmitter = require("events");
+
+/**
+ * The Network Event Emitter emits an event with new network Data everytime the
+ * network returned new data (e.g. fetched urls) and promotes the data to
+ * the listeners
+ */
+class NetworkEvent extends EventEmitter {
+    /**
+     * Event thrown when new data is gathered from the database
+     */
+    static get NEW_CONTENT_DATA_EVENT() {
+        return "newContentData";
+    }
+    /**
+     * Event thrown when no new data is available from the database
+     */
+    static get NETWORK_READY() {
+        return "networkReady";
+    }
+}
+
 /**
  * This module handels all the requests to the tor network.
  * It ensures, that we do not have too many parallel requests open
@@ -16,12 +38,16 @@ class Network {
     /**
      * Initialize the downloader class
      * @constructor
-     * @param {object} torAgent - Object that handles the connection through the
-                                  TOR network.
-     * @param {number} torPort - The proxy port for the tor network.
+     * @param {object} torAgent -- Object that handles the connection through
+     *                             the TOR network.
+     * @param {number} torPort -- The proxy port for the tor network.
+     * @param {EventEmitter} dbEvent -- We will listen on this object for new
+     *                                  not yet scraped entries from the db.
      */
-    constructor(torAgent, torPort) {
+    constructor(torAgent, torPort, dbEvent) {
         logger.info("Initialize Network");
+        this.networkEvent = new NetworkEvent();
+        this.dbEvent = dbEvent;
         this.torPort = torPort;
         this.proxyUri = "socks://127.0.0.1:" + this.torPort;
         this.torAgent = torAgent;
@@ -29,6 +55,9 @@ class Network {
         this.torAgent.on("notice", logger.info);
         this.torAgent.on("warn", logger.warn);
         this.torAgent.on("err", logger.error);
+        this.dbEvent.on(
+            this.dbEvent.NEW_DB_DATA_EVENT,
+            );
         logger.info("Network initialized");
     }
 
@@ -36,15 +65,27 @@ class Network {
      * Build a new network object.
      * @constructor
      * @param {number} torPort - The proxy port for the tor network.
+     * @param {EventEmitter} dbEvent -- We will listen on this object for new
+     *                                  not yet scraped entries from the db.
      * @return {object} An initialized instance of the network.
      */
-    static async build(torPort) {
+    static async build(torPort, dbEvent) {
         logger.info("Starting Tor on port " + torPort);
         const tor = await nightlink.launch({
             SocksPort: torPort,
         });
         logger.info("Tor up and running!");
-        return new Network(tor, torPort);
+        let network = new Network(tor, torPort, dbEvent);
+        return network.networkEvent;
+    }
+
+    /**
+     * Get the content for all urls in the passed url list and notify the
+     * database that new data is available to be stored.
+     * @param {string[]} urlList -- A list of urls to download
+     */
+    async bulkGetPages(urlList) {
+
     }
 
     /**

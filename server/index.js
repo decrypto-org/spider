@@ -35,7 +35,7 @@ if (commandLineOptions.init_urls_file &&
 } else if (commandLineOptions.init_urls_file) {
     pathToUrls = path.normalize(commandLineOptions.init_urls_file);
 } else {
-    startUrls = ["msydqstlz2kzerdg.onion"];
+    startUrls = [["msydqstlz2kzerdg.onion"]];
 }
 if (pathToUrls != "") {
     let csvData = fs.readFileSync(
