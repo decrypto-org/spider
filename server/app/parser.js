@@ -33,9 +33,20 @@ class Parser {
      * Extract all .onion URI within the string
      * @param {string} contentString - String (typically a HTML or JSON) from
      *                                 which .onion uris should be extracted.
-     * @return {string[]} A list of matched .onion urls and possible subdomains
-                          as well as the paths and possible arguments (which
-                          are counted towards the path in this case)
+     * @return {Array.<?string>} A list of matched .onion urls and possible
+                          subdomains as well as the paths and possible arguments
+                          (which are counted towards the path in this case)
+                          <ul style="list-style: none">
+                            <li> 0. Entry: The whole url
+                            <li> 1. Entry: http or https
+                            <li> 2. Entry: indicates whether http or https
+                                (by s) was used
+                            <li> 3. Entry: Would match any www.
+                            <li> 4. Entry: Base url (including possible
+                                subdomains)
+                            <li> 5. Entry: Path (including url encoded
+                                parameters)
+                          </ul>
      */
     extractOnionURI(contentString) {
         // Those are the groups that get matche, compare to above regexp

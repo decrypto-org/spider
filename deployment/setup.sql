@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS Paths(
 	LastScrapedTimestamp BIGINT,
 	LastSuccessfulTimestamp BIGINT,
 	Path text NOT NULL,
+	depth INT,
 	BaseUrlID BIGINT NOT NULL,
 	PRIMARY KEY (PathID),
 	CONSTRAINT FK_BaseUrl FOREIGN KEY (BaseUrlID)

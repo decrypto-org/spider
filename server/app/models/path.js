@@ -11,6 +11,9 @@ module.exports = (sequelize, DataTypes) => {
         lastSuccessfulTimestamp: {
             type: DataTypes.BIGINT,
         },
+        depth: {
+            type: DataTypes.INTEGER,
+        },
         path: {
             type: DataTypes.TEXT,
             allowNull: false,

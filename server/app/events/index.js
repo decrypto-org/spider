@@ -1,2 +1,0 @@
-require("./networkEventEmitter");
-require("./dbEventEmitter");
