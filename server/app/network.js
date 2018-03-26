@@ -114,17 +114,6 @@ class Network extends EventEmitter {
      */
 
     /**
-     * Handle the result of the get request.
-     *
-     * @callback get
-     * @param {string} body - If the MIME Type is supported, this contains
-     *                        the body of the response. Otherwise it
-     *                        contains a dummy string.
-     * @param {number} statusCode - HTTP status code of the response.
-     * @param {string} mimeType - A string containing the MIME Type.
-     */
-
-    /**
      * Make a get request to the specified host and path
      *
      * Eventual url parameters are currently contained within the path

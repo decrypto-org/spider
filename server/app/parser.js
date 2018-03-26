@@ -30,23 +30,27 @@ class Parser {
     }
 
     /**
+     * @typedef ParseResult
+     * @type{object}
+     * @property {string} fullUrl - The full url, no splits. Mostly useful for
+     *                              logging or display.
+     * @property {boolean} http - Indicates the usage of http in the url string.
+     * @property {boolean} secure - Indicates whether https (true) was used or
+     *                              not (false).
+     * @property {boolean} www - Indicates whether the URL contains www (true)
+     *                           or not (false).
+     * @property {string} baseUrl - The base url, including any possible http,
+     *                              https, www or subdomains.
+     * @property {string} path - The path, including any parameters or hooks.
+     */
+
+    /**
      * Extract all .onion URI within the string
      * @param {string} contentString - String (typically a HTML or JSON) from
      *                                 which .onion uris should be extracted.
-     * @return {Array.<?string>} A list of matched .onion urls and possible
+     * @return {ParseResult[]} A list of matched .onion urls and possible
                           subdomains as well as the paths and possible arguments
                           (which are counted towards the path in this case)
-                          <ul style="list-style: none">
-                            <li> 0. Entry: The whole url
-                            <li> 1. Entry: http or https
-                            <li> 2. Entry: indicates whether http or https
-                                (by s) was used
-                            <li> 3. Entry: Would match any www.
-                            <li> 4. Entry: Base url (including possible
-                                subdomains)
-                            <li> 5. Entry: Path (including url encoded
-                                parameters)
-                          </ul>
      */
     extractOnionURI(contentString) {
         // Those are the groups that get matche, compare to above regexp
@@ -61,7 +65,16 @@ class Parser {
         do {
             let m = this.onionRegexMatch.exec(contentString);
             if (m) {
-                results.push(m);
+                /** @type{ParseResult} */
+                let result = {
+                    fullUrl: m[0],
+                    http: m[1] != null,
+                    secure: m[2] != null,
+                    www: m[3] != null,
+                    baseUrl: m[4],
+                    path: m[5],
+                };
+                results.push(result);
             }
         } while (m);
         return results;

@@ -5,19 +5,27 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
             defaultValue: DataTypes.UUIDV4,
         },
+        timestamp: {
+            type: DataTypes.BIGINT,
+            allowNull: false,
+        },
     });
     Link.associate = function(models) {
-        Link.belongsTo(models.content, {
+        Link.belongsTo(models.path, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
             foreignKey: {
                 allowNull: false,
-                name: "sourceContentId",
+                name: "sourcePathId",
             },
         });
-        Link.belongsTo(models.content, {
+        Link.belongsTo(models.path, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
+            foreignKey: {
+                allowNull: false,
+                name: "destinationPathId",
+            },
         });
     };
     return Link;
