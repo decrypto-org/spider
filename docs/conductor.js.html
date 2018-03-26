@@ -44,19 +44,19 @@ class Conductor {
      * @constructor
      * @param {string[]} startUrls - List of init URL, which serve as
      *                               startpoint for the scraper
-     * @param {number} depth - Cutoff value for the number of hops we should
-     *                         take, starting from either the database or the
-     *                         startUrls.
+     * @param {number} cutOffDepth - Cutoff value for the number of hops we
+     *                               should take, starting from either the
+     *                               database or the startUrls.
      * @param {number} torPort - Port to use for Tor proxy.
      */
-    constructor(startUrls, depth, torPort) {
+    constructor(startUrls, cutOffDepth, torPort) {
         // Startup message
         logger.info("Conductor now takes over control");
         // By making a set, we make sure we do unify
         // input, in order to do no more requests than we need
         this.startUrls = startUrls;
 
-        this.depth = depth;
+        this.cutOffDepth = cutOffDepth;
 
         // Parser init
         this.parser = new Parser();
@@ -176,6 +176,13 @@ class Conductor {
                 /** @type {DbResult} */
                 let dbResult = this.cachedDbResults.shift();
 
+                // Cutoff at given value.
+                if (dbResult.depth > this.cutOffDepth &amp;&amp;
+                    this.cutOffDepth != -1) {
+                    this.network.freeUpSlot();
+                    return;
+                }
+
                 /** @type {network.NetworkHandlerResponse} */
                 let networkResponse = await this.network.get(
                     dbResult.url,
@@ -191,20 +198,37 @@ class Conductor {
                     networkResponse.timestamp,
                     successful
                 );
-                let contentObject = await this.insertBodyIntoDB(
+                await this.insertBodyIntoDB(
                     pathId,
                     networkResponse.body || "[MISSING]",
-                    networkResponse.mimeType || "[MIISING]",
+                    networkResponse.mimeType || "[MISSING]",
                     networkResponse.timestamp,
                     successful
                 );
-                // Inserting link
+                // Scrape the links to other pages, then insert them into the db
+                // if the download was successful and the MIME Type correct
+                if (networkResponse.body == null || !successful) {
+                    return;
+                }
+
+                /** @type{Parser.ParseResult} */
+                let urlsList = this.parser.extraceOnionURI();
+                for (let url of urlsList) {
+                    let [, pathId] = await this.insertUriIntoDB(
+                        url.baseUrl,
+                        url.path,
+                        0, /* last scraped */
+                        dbResult.depth + 1,
+                    );
+                    // Now we insert the link
+                    await this.insertLinkIntoDB(
+                        dbResult.pathId,
+                        pathId,
+                        networkResponse.timestamp
+                    );
+                }
             }
         );
-
-        // We now initialize the process by getting the first URLs from the
-        // database and sending it over to the network. For now, we start
-        // with never scraped data. Later we may use a configuranle time delta
     }
 
     /**
@@ -213,6 +237,8 @@ class Conductor {
      * @param {string} path - The path of the uir to be inserted
      * @param {number} lastScraped - Contains a unix timestamp (ms), which
      *                               describes, when the uri was fetched last.
+     * @param {number} depth - Indicates the search depth at which the entry is
+     *                         to be inserted.
      * @param {boolean} successful=true - Indicates whether the fetch
      *                                      was successful
      * @return {UUIDV4[]} Returns the IDs of the inserted values
@@ -223,6 +249,7 @@ class Conductor {
         baseUrl,
         path,
         lastScraped,
+        depth,
         successful=true
     ) {
         let lastSuccessful = lastScraped;
@@ -243,6 +270,7 @@ class Conductor {
                 lastScrapedTimestamp: lastScraped,
                 lastSuccessfulTimestamp: lastSuccessful,
                 path: path,
+                depth: depth,
                 baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
             },
         });
@@ -250,7 +278,7 @@ class Conductor {
         // We need to await the completion of the task here to prevent getting
         // not yet read data in the next step
         if (successful &amp;&amp; !created) {
-            await db.path.update({
+            [pathEntry] = await db.path.update({
                 lastSuccessfulTimestamp: lastSuccessful,
                 lastScrapedTimestamp: lastScraped,
             }, {
@@ -258,18 +286,50 @@ class Conductor {
                     baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
                     path: path,
                 },
+                returning: true,
+                plain: true,
             });
         } else if (!created) {
-            await db.path.update({
+            [pathEntry] = await db.path.update({
                 lastScrapedTimestamp: lastScraped,
             }, {
                 where: {
                     baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
                     path: path,
                 },
+                returning: true,
+                plain: true,
             });
         }
         return [baseUrlEntry.baseUrlId, pathEntry.pathId, null, null];
+    }
+
+    /**
+     * Inserts a new link into the DB. This helps us to gain an understanding,
+     * how the link structure is changing over time and which information is
+     * linked to each other.
+     * @param {UUIDv4} sourcePathId - The ID of the originating path of the link
+     * @param {UUIDv4} destinationPathId - The ID of the destination path of the
+     *                                     link.
+     * @param {number} timestamp - Indicator at which time the link was existent
+     *                             which does not imply that the destination was
+     *                             reachable, but only that the link was placed.
+     *                             To find out if the target was reachable,
+     *                             look for the content or path successful flags
+     * @return {object} Return a link object (compare to models.link)
+     */
+    async insertLinkIntoDB(
+        sourcePathId,
+        destinationPathId,
+        timestamp
+    ) {
+        return await db.link.create({
+            defaults: {
+                timestamp: timestamp,
+                sourcePathId: sourcePathId,
+                destinationPathId: destinationPathId,
+            },
+        });
     }
 
     /**
@@ -304,14 +364,33 @@ class Conductor {
     }
 
     /**
+     * @typedef Link
+     * @type {object}
+     * @property {!UUIDv4} sourcePathId - The ID of the path entry where the
+     *                                    link originated.
+     * @property {!UUIDv4} destinationPathId - The ID of the target path entry.
+     * @property {!number} timestamp - Indicates at which time the link was in
+     *                                 place. This does not mean, that the
+     *                                 target was reachable, it only indicates
+     *                                 the existence of a link at that given
+     *                                 point in time. To check for reachability
+     *                                 please refer to the attached content
+     *                                 entries. The contain a successful flag.
+     */
+
+    /**
      * @typedef DbResult
      * @type {object}
      * @property {!string} url - The base url
+     * @property {!UUIDv4} baseUrlId - The ID of the base url entry.
      * @property {!string} path - The path of the entry
+     * @property {!UUIDv4} pathId - The ID of the path entry.
+     * @property {!number} depth - The search depth at which this entry resides.
      * @property {?string} content - If available or requested, it can contain
      *                               the content of the entry
-     * @property {?UUIDV4[]} link - A list of length 2 with two UUIDv4 within,
-     *                             which describes a link between two documents
+     * @property {?UUIDv4} contentId - The ID of the content entry in the db.
+     * @property {?Link} link - A Link object, indicating a link between
+     *                                 two paths/sites.
      */
 
     /**
@@ -342,7 +421,7 @@ class Conductor {
         offset=this.offsetForDbRequest,
     } = {}) {
         if (limit == 0) {
-            return false;
+            return [[], false];
         }
         let dbResults = [];
         let paths = await db.path.findAll({
@@ -360,11 +439,16 @@ class Conductor {
         for (let path of paths) {
             let dbResult = {
                 "path": path.path,
+                "pathId": path.pathId,
+                "depth": path.depth,
                 "url": null,
+                "baseUrlId": null,
                 "content": null,
                 "link": null,
             };
-            dbResult["url"] = await path.getBaseUrl();
+            let baseUrl = await path.getBaseUrl();
+            dbResult["url"] = baseUrl.baseUrl;
+            dbResult["baseUrlId"] = baseUrl.baseUrlId;
             dbResults.push(dbResult);
         }
         this.offsetForDbRequest += paths.length;
@@ -394,7 +478,7 @@ module.exports = Conductor;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Mar 25 2018 11:54:58 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Mar 26 2018 11:57:19 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

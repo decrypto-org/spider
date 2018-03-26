@@ -28,7 +28,7 @@
 
 <header>
     
-        <h2><span class="attribs"><span class="type-signature"></span></span>Conductor<span class="signature">(startUrls, depth, torPort)</span><span class="type-signature"></span></h2>
+        <h2><span class="attribs"><span class="type-signature"></span></span>Conductor<span class="signature">(startUrls, cutOffDepth, torPort)</span><span class="type-signature"></span></h2>
         
             <div class="class-description">The conductor is the one controlling the spidering
 through the web. Therefor it needs to access the network
@@ -47,7 +47,7 @@ module and the models/database.</div>
     
 
     
-    <h4 class="name" id="Conductor"><span class="type-signature"></span>new Conductor<span class="signature">(startUrls, depth, torPort)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Conductor"><span class="type-signature"></span>new Conductor<span class="signature">(startUrls, cutOffDepth, torPort)</span><span class="type-signature"></span></h4>
     
 
     
@@ -115,7 +115,7 @@ module and the models/database.</div>
 
         <tr>
             
-                <td class="name"><code>depth</code></td>
+                <td class="name"><code>cutOffDepth</code></td>
             
 
             <td class="type">
@@ -131,9 +131,9 @@ module and the models/database.</div>
 
             
 
-            <td class="description last">Cutoff value for the number of hops we should
-                        take, starting from either the database or the
-                        startUrls.</td>
+            <td class="description last">Cutoff value for the number of hops we
+                              should take, starting from either the
+                              database or the startUrls.</td>
         </tr>
 
     
@@ -426,7 +426,7 @@ dateTime param.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line311">line 311</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line390">line 390</a>
     </li></ul></dd>
     
 
@@ -710,7 +710,7 @@ This function assumes that the data is already filtered and sanitized.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line260">line 260</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line320">line 320</a>
     </li></ul></dd>
     
 
@@ -766,7 +766,217 @@ This function assumes that the data is already filtered and sanitized.
     
 
     
-    <h4 class="name" id="insertUriIntoDB"><span class="type-signature">(async) </span>insertUriIntoDB<span class="signature">(baseUrl, path, lastScraped, successful)</span><span class="type-signature"> &rarr; {Array.&lt;UUIDV4>}</span></h4>
+    <h4 class="name" id="insertLinkIntoDB"><span class="type-signature">(async) </span>insertLinkIntoDB<span class="signature">(sourcePathId, destinationPathId, timestamp)</span><span class="type-signature"> &rarr; {object}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Inserts a new link into the DB. This helps us to gain an understanding,
+how the link structure is changing over time and which information is
+linked to each other.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>sourcePathId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">UUIDv4</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The ID of the originating path of the link</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>destinationPathId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">UUIDv4</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The ID of the destination path of the
+                                    link.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timestamp</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Indicator at which time the link was existent
+                            which does not imply that the destination was
+                            reachable, but only that the link was placed.
+                            To find out if the target was reachable,
+                            look for the content or path successful flags</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line293">line 293</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Return a link object (compare to models.link)
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">object</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="insertUriIntoDB"><span class="type-signature">(async) </span>insertUriIntoDB<span class="signature">(baseUrl, path, lastScraped, depth, successful)</span><span class="type-signature"> &rarr; {Array.&lt;UUIDV4>}</span></h4>
     
 
     
@@ -894,6 +1104,34 @@ This function assumes that the data is already filtered and sanitized.
 
         <tr>
             
+                <td class="name"><code>depth</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last">Indicates the search depth at which the entry is
+                        to be inserted.</td>
+        </tr>
+
+    
+
+        <tr>
+            
                 <td class="name"><code>successful</code></td>
             
 
@@ -958,7 +1196,7 @@ This function assumes that the data is already filtered and sanitized.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line194">line 194</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line220">line 220</a>
     </li></ul></dd>
     
 
@@ -1119,7 +1357,7 @@ DB and sending events to the network module to receive more data.
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Mar 25 2018 11:54:58 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Mar 26 2018 11:57:19 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>
