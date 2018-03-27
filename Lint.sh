@@ -27,4 +27,6 @@ printf "Linting models\n"
 eslint --config .eslintrc.js --fix server/app/models/**
 printf "Linting events\n"
 eslint --config .eslintrc.js --fix server/app/events/**
+printf "Linting library\n"
+eslint --config .eslintrc.js --fix server/app/library/**
 printf "Completed - Code adheres to standard\n"

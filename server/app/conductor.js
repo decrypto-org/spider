@@ -30,6 +30,8 @@ class Conductor {
 
         this.cutOffDepth = cutOffDepth;
 
+        this.torPort = torPort;
+
         // Parser init
         this.parser = new Parser();
 
@@ -38,69 +40,58 @@ class Conductor {
         this.limitForDbRequest = Network.MAX_SLOTS;
         // This array should never exceed the limitForDbRequest size
         this.cachedDbResults = [];
+    }
 
-        /**
-         * Initialize the tor client, then start the spidering
-         */
-        const run = async () => {
-            // Synchronize the db model
-            await db.sequelize.sync();
+    /**
+     * Initialize the tor client and the db, then start the spidering
+     */
+    async run() {
+        // Synchronize the db model
+        await db.sequelize.sync();
 
-            // Create a network instance
-            this.network = await Network.build(
-                torPort
-            );
+        // Create a network instance
+        this.network = await Network.build(
+            this.torPort
+        );
 
-            // Now inserting the start urls into the database with scrape
-            // timestamp=0, so they will be scraped first (with other, not yet
-            // scraped data).
-            // Note that we exect a csv. We then check every cell if it contains
-            // a .onion url, therefor we use two nested loops.
-            for (let lineOfUrls of this.startUrls) {
-                for (let stringToMatch of lineOfUrls) {
-                    let matchedUrls = this.parser.extractOnionURI(
-                        stringToMatch
-                    );
-                    for (let matchedUrl of matchedUrls) {
-                        let path = matchedUrl[5] || "/";
-                        let baseUrl = matchedUrl[4].toLowerCase();
-                        // Note: Without the await, we will get failing commits
-                        // possibly we overload the database (For large numbers
-                        // of initial urls)
-                        // Short term: not an issue, finished in about 5 min
-                        // Long term solution: Use Bulk inserts
-                        await this.insertUriIntoDB(
-                            baseUrl, /* baseUrl */
-                            path, /* path */
-                            0 /* lastScraped */
-                        ).catch((err) =>{
-                            logger.error(
-                                "An error occured while inserting " + baseUrl +
-                                "/" + path + ": " + err.toString()
-                            );
-                            logger.error(err.stack);
-                        });
-                    }
+        // Now inserting the start urls into the database with scrape
+        // timestamp=0, so they will be scraped first (with other, not yet
+        // scraped data).
+        // Note that we exect a csv. We then check every cell if it contains
+        // a .onion url, therefor we use two nested loops.
+        for (let lineOfUrls of this.startUrls) {
+            for (let stringToMatch of lineOfUrls) {
+                let matchedUrls = this.parser.extractOnionURI(
+                    stringToMatch
+                );
+                /** @type{Parser.ParseResult} */
+                for (let matchedUrl of matchedUrls) {
+                    let path = matchedUrl.path || "/";
+                    let baseUrl = matchedUrl.baseUrl.toLowerCase();
+                    // Note: Without the await, we will get failing commits
+                    // possibly we overload the database (For large numbers
+                    // of initial urls)
+                    // Short term: not an issue, finished in about 5 min
+                    // Long term solution: Use Bulk inserts
+                    await this.insertUriIntoDB(
+                        baseUrl, /* baseUrl */
+                        path, /* path */
+                        0, /* lastScraped */
+                        0 /* depth */
+                    ).catch((err) =>{
+                        logger.error(
+                            "An error occured while inserting " + baseUrl +
+                            "/" + path + ": " + err.toString()
+                        );
+                        logger.error(err.stack);
+                    });
                 }
             }
-            // Matched url will be a list of array, where each array has the
-            // following properties:
-            // group0: The whole url
-            // group1: http or https
-            // group2: indicates whether http or https (by s) was used
-            // group3: Would match any www.
-            // group4: Base url
-            // group5: Path
+        }
+        await this.runScraper();
 
-            // Now we can start the spidering
-            await this.runScraper();
-            this.network.startNetwork();
-        };
-        run().catch((ex) => {
-            logger.error(
-                "Caught exception while initializing start URLs" + ex.message
-            );
-        });
+        // Here we are sure that the handler is initialized
+        this.network.startNetwork();
     }
 
     /**
@@ -124,7 +115,7 @@ class Conductor {
             process.exit(0);
         }
 
-        this.cachedDbResults.concat(dbResults);
+        this.cachedDbResults = this.cachedDbResults.concat(dbResults);
 
         this.network.on(
             // This is called everytime a network slot is available
@@ -133,13 +124,18 @@ class Conductor {
             // reduce DB latency in the long run
             Network.NETWORK_READY,
             async () => {
+                // The network ready event indicates, that you are now permitted
+                // to make network requests. Clean up after this and call
+                // the network.freeUpSlot method, to give it back for later use.
+                logger.info("Received network ready event");
                 if (this.cachedDbResults.length == 0) {
                     let [dbResults, moreData] = await this.getEntriesFromDb();
                     this.cachedDbResults = this.cachedDbResults.concat(
                         dbResults
                     );
                     if (!moreData) {
-                        this.network.freeUpSlot();
+                        logger.info("No more new data found");
+                        this.network.freeUpSlot(true /* no new data */);
                         return;
                     }
                 }
@@ -149,17 +145,23 @@ class Conductor {
                 let dbResult = this.cachedDbResults.shift();
 
                 // Cutoff at given value.
-                if (dbResult.depth > this.cutOffDepth &&
+                if (dbResult.depth >= this.cutOffDepth &&
                     this.cutOffDepth != -1) {
-                    this.network.freeUpSlot();
+                    logger.info("Reached cutoff value. Returning early");
+                    this.network.freeUpSlot(true /* no new data */);
                     return;
                 }
 
                 /** @type {network.NetworkHandlerResponse} */
                 let networkResponse = await this.network.get(
                     dbResult.url,
-                    dbResult.path
+                    dbResult.path,
+                    dbResult.secure,
                 );
+
+                logger.info("Received network response: " + JSON.stringify(
+                    networkResponse
+                ));
 
                 let successful = networkResponse.statusCode == 200;
                 // We need to await this before proceeding to prevent getting
@@ -168,6 +170,7 @@ class Conductor {
                     networkResponse.url,
                     networkResponse.path,
                     networkResponse.timestamp,
+                    dbResult.depth,
                     successful
                 );
                 await this.insertBodyIntoDB(
@@ -180,17 +183,20 @@ class Conductor {
                 // Scrape the links to other pages, then insert them into the db
                 // if the download was successful and the MIME Type correct
                 if (networkResponse.body == null || !successful) {
+                    this.network.freeUpSlot();
                     return;
                 }
 
                 /** @type{Parser.ParseResult} */
-                let urlsList = this.parser.extraceOnionURI();
+                let urlsList = this.parser.extractOnionURI();
                 for (let url of urlsList) {
                     let [, pathId] = await this.insertUriIntoDB(
                         url.baseUrl,
                         url.path,
                         0, /* last scraped */
                         dbResult.depth + 1,
+                        true. /* successful */
+                        url.secure,
                     );
                     // Now we insert the link
                     await this.insertLinkIntoDB(
@@ -199,6 +205,7 @@ class Conductor {
                         networkResponse.timestamp
                     );
                 }
+                this.network.freeUpSlot();
             }
         );
     }
@@ -213,6 +220,7 @@ class Conductor {
      *                         to be inserted.
      * @param {boolean} successful=true - Indicates whether the fetch
      *                                      was successful
+     * @param {boolean} secure=false - Indicate whether the uri uses http(s)
      * @return {UUIDV4[]} Returns the IDs of the inserted values
      *                           Those are always sorted as follows:
      *                           [baseUrlId, pathId, contentId, linkId]
@@ -222,8 +230,10 @@ class Conductor {
         path,
         lastScraped,
         depth,
-        successful=true
+        successful=true,
+        secure=false,
     ) {
+        logger.info("Insert new entry: " + baseUrl + path);
         let lastSuccessful = lastScraped;
         let [baseUrlEntry] = await db.baseUrl.findOrCreate({
             where: {
@@ -244,13 +254,14 @@ class Conductor {
                 path: path,
                 depth: depth,
                 baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
+                secure: secure,
             },
         });
         // Add check for modification timestamp to ensure
         // We need to await the completion of the task here to prevent getting
         // not yet read data in the next step
         if (successful && !created) {
-            [pathEntry] = await db.path.update({
+            await db.path.update({
                 lastSuccessfulTimestamp: lastSuccessful,
                 lastScrapedTimestamp: lastScraped,
             }, {
@@ -262,7 +273,7 @@ class Conductor {
                 plain: true,
             });
         } else if (!created) {
-            [pathEntry] = await db.path.update({
+            await db.path.update({
                 lastScrapedTimestamp: lastScraped,
             }, {
                 where: {
@@ -295,13 +306,12 @@ class Conductor {
         destinationPathId,
         timestamp
     ) {
-        return await db.link.create({
-            defaults: {
+        let response = await db.link.create({
                 timestamp: timestamp,
                 sourcePathId: sourcePathId,
                 destinationPathId: destinationPathId,
-            },
         });
+        return response;
     }
 
     /**
@@ -324,15 +334,14 @@ class Conductor {
         timestamp,
         successful=true
     ) {
-        return await db.path.create({
-            defaults: {
+        let response = await db.content.create({
                 scrapeTimestamp: timestamp,
                 success: successful,
                 contentType: mimeType,
                 content: body,
                 pathPathId: pathId,
-            },
         });
+        return response;
     }
 
     /**
@@ -363,6 +372,7 @@ class Conductor {
      * @property {?UUIDv4} contentId - The ID of the content entry in the db.
      * @property {?Link} link - A Link object, indicating a link between
      *                                 two paths/sites.
+     * @property {boolean} secure - Indicate if http or https should be used
      */
 
     /**
@@ -413,6 +423,7 @@ class Conductor {
                 "path": path.path,
                 "pathId": path.pathId,
                 "depth": path.depth,
+                "secure": path.secure,
                 "url": null,
                 "baseUrlId": null,
                 "content": null,

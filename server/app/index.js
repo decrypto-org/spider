@@ -23,7 +23,8 @@ exports.init = async function(initUrls=[], depth=1) {
             // We pass the DB module instance from above to make sure,
             // we are using the same object (require does not guarantee this
             // in every environment)
-            new Conductor(initUrls, depth, torPort);
+            let conductor = new Conductor(initUrls, depth, torPort);
+            conductor.run();
         }
     );
 };

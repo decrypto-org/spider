@@ -18,6 +18,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.TEXT,
             allowNull: false,
         },
+        secure: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+        },
     });
     Path.associate = function(models) {
         Path.hasMany(models.content, {

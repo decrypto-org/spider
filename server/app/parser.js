@@ -67,12 +67,12 @@ class Parser {
             if (m) {
                 /** @type{ParseResult} */
                 let result = {
-                    fullUrl: m[0],
-                    http: m[1] != null,
-                    secure: m[2] != null,
-                    www: m[3] != null,
-                    baseUrl: m[4],
-                    path: m[5],
+                    "fullUrl": m[0],
+                    "http": m[1] != null,
+                    "secure": m[2] != null,
+                    "www": m[3] != null,
+                    "baseUrl": m[4],
+                    "path": m[5],
                 };
                 results.push(result);
             }
