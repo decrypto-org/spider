@@ -4,8 +4,11 @@
   "description": "Spiders through the darknet",
   "private": true,
   "main": "index.js",
+  "directories":{
+	"test": "test"
+  },
   "scripts": {
-    "test": "node test.js",
+    "test": "mocha",
     "start": "export TDSE_DB_HOST=database && node --use_strict index.js",
     "debug": "export DEBUG=true && node --inspect-brk --use_strict index.js"
   },
@@ -33,9 +36,11 @@
     "winston": "^3.0.0-rc2"
   },
   "devDependencies": {
+    "chai": "^4.1.2",
     "eslint-config-google": "^0.9.1",
     "flow-bin": "^0.66.0",
     "flow-remove-types": "^1.2.3",
-    "jsdoc": "^3.5.5"
+    "jsdoc": "^3.5.5",
+    "mocha": "^5.0.5"
   }
 }
