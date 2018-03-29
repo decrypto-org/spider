@@ -100,7 +100,7 @@ class Conductor {
      */
     async runScraper() {
         // Optimization: Cache from database, then pop of
-        let [dbResults, initDataAvailable] = await this.getEntriesFromDb();
+        let [dbResults, initDataAvailable] = await this.getEntriesFromDB();
 
         if (!initDataAvailable) {
             logger.info("No initial data available to start the scraped.");
@@ -129,7 +129,7 @@ class Conductor {
                 // the network.freeUpSlot method, to give it back for later use.
                 logger.info("Received network ready event");
                 if (this.cachedDbResults.length == 0) {
-                    let [dbResults, moreData] = await this.getEntriesFromDb();
+                    let [dbResults, moreData] = await this.getEntriesFromDB();
                     this.cachedDbResults = this.cachedDbResults.concat(
                         dbResults
                     );
@@ -388,7 +388,7 @@ class Conductor {
      * @param {number} offset=0 - Set if you have already received a certain
      *                           amount of data. This way one can gather all
      *                           entries of a certain timestamp or older.
-     * @return {Array.<DbResult|boolean>} The DbResult contains the results
+     * @return {Array.<DbResult>|boolean} The DbResult contains the results
      *                      returned by the Database.
      *                      The boolean indicates whether more data is available
      *                      as of now.
@@ -397,7 +397,7 @@ class Conductor {
      *                      anything pending, we can conclude that we have
      *                      finished and exit.
      */
-    async getEntriesFromDb({
+    async getEntriesFromDB({
         dateTime=0,
         limit=this.limitForDbRequest,
         offset=this.offsetForDbRequest,

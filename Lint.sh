@@ -29,4 +29,6 @@ printf "Linting events\n"
 eslint --config .eslintrc.js --fix server/app/events/**
 printf "Linting library\n"
 eslint --config .eslintrc.js --fix server/app/library/**
+printf "Linting tests\n"
+eslint --config .eslintrc.js --fix server/test/**
 printf "Completed - Code adheres to standard\n"

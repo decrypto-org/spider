@@ -21,3 +21,5 @@ script:
   - $TRAVIS_BUILD_DIR/Lint.sh
   - cd server && npm test && cd ..
 
+after_success:
+  - $TRAVIS_BUILD_DIR/GenerateDocs.sh

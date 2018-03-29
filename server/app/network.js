@@ -35,7 +35,7 @@ class Network extends EventEmitter {
         this.availableSlots = Network.MAX_SLOTS;
         logger.info("Network initialized");
     }
-
+   
     /**
      * This event is thrown everytime a slot is freed
      */
@@ -60,6 +60,8 @@ class Network extends EventEmitter {
      *                   contained any base64 data (true) or not (false).
      */
     static matchBase64(stringToTest) {
+        // Todo: Whitelist text (css, html)
+        // Todo: Possibly move to Parser
         /* eslint-disable max-len,no-useless-escape */
         return /\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/.test(stringToTest);
         /* eslint-enable max-len,no-useless-escape */
@@ -158,7 +160,8 @@ class Network extends EventEmitter {
             path: path,
             agent: new ProxyAgent(this.proxyUri),
         };
-        let response = await new NetworkLib(request).get().catch((error) => {
+        let response = await new NetworkLib(request)
+        .get(secure).catch((error) => {
             logger.error(
                 "HTTP GET request for url [" + url + "] failed with error\n\"" +
                 error.message + "\""

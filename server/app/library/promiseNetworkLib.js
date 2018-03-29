@@ -16,16 +16,16 @@ module.exports = class promiseNetwork {
 
     /**
      * Initiate the request specified by the settings object.
+     * @param {boolean} secure - Indicate whether to use http or https.
      * @return {Promise} Returns a promise object, resolves to a response object
      */
-    get() {
+    get(secure) {
         let lib = null;
-        lib = require("http");
-        // if (this.settingsObj.protocol.startsWith("https")) {
-        //     lib = require("https");
-        // } else {
-        //     lib = require("http");
-        // }
+        if (secure) {
+            lib = require("https");
+        } else {
+            lib = require("http");
+        }
         return new Promise((resolve, reject) => {
             let request = lib.get(this.settingsObj, (response) => {
                 resolve(response);

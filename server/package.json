@@ -4,8 +4,8 @@
   "description": "Spiders through the darknet",
   "private": true,
   "main": "index.js",
-  "directories":{
-	"test": "test"
+  "directories": {
+    "test": "test"
   },
   "scripts": {
     "test": "mocha",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "chai": "^4.1.2",
+    "chai-http": "^4.0.0",
     "eslint-config-google": "^0.9.1",
     "flow-bin": "^0.66.0",
     "flow-remove-types": "^1.2.3",
