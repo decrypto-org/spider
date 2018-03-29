@@ -41,4 +41,4 @@ services:
     volumes:
       - spider-log-vol:/log
     pid: "host"
-    command: [$tdse_server_start_command]
+    command: $tdse_server_start_command

@@ -4,18 +4,19 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-# Note: I'll add code as needed later (e.g. copy code to container)
-backup_var=${tdse_server_start_command:-""}
-tdse_server_start_command="npm start"
-if [ "$1" = "test" ]; then
+arg=${1:-}
+export tdse_server_start_command="npm start"
+if [ "$arg" = "test" ]; then
 	printf "Starting containers for testing"
-	tdse_server_start_command="bash"
-elif [ "$1" = "debug" ]; then
+	export tdse_server_start_command="/bin/bash"
+elif [ "$arg" = "debug" ]; then
 	printf "Starting containers in debug mode"
-	tdse_server_start_command="npm run debug"
+	export tdse_server_start_command="npm run debug"
 else
 	printf "Starting containers in productive mode"
 fi
 
-docker stack deploy -c deployment/stack.yml spider
-tdse_server_start_command=$backup_var
+printf "Current value of tdse_server_start_command: %s\n" "$tdse_server_start_command"
+
+{ docker stack deploy -c deployment/stack.yml spider; }
+
