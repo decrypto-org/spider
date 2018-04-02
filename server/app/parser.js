@@ -1,5 +1,8 @@
-// let {logger} = require("./library/logger");
-
+// Note: We disable the unusedvar check, since the logger is always helpful
+/* eslint-disable no-unused-vars */
+let {logger} = require("./library/logger");
+/* eslint-enable no-unused-vars */
+let cheerio = require("cheerio");
 
 /**
  * This module handels the parsing of the responses. This
@@ -21,12 +24,15 @@ class Parser {
         // and I suggest treating them as any other base url as well.
         // Should match any .onion/possibly/lot/of/path?with=some&arguments=true
         // We are matching as broad as possible.
-        /* eslint-disable max-len */
+        /* eslint-disable max-len, no-useless-escape */
         this.onionRegexMatch = new RegExp(
-            "(http(s)?://)?(www.)?([-a-zA-Z0-9@:%._+~#=]{2,256}.[oniONI]{5})/?([-a-zA-Z0-9@:%_+.~#?&//=]*)",
-            "g"
+            "(http(s)?://)?(www.)?((?:(?:[-a-zA-Z0-9@:%_+~#=][.]){0,241}[-a-zA-Z0-9=]{15,256})[.]onion(?::[0-9]{1,5})?)((?:/[-a-zA-Z0-9@:%_+.~#?&//=]*|$)?)?",
+            "gi"
         );
-        /* eslint-enable max-len */
+        this.relativeUrlRegexMatch = new RegExp(
+            /\s*href\s*=\s*(\"([/?][^"]*)\"|\'([/?][^']*)\'|[^'">\s]+)/gi
+        );
+        /* eslint-enable max-len, no-useless-escape */
     }
 
     /**
@@ -48,11 +54,18 @@ class Parser {
      * Extract all .onion URI within the string
      * @param {string} contentString - String (typically a HTML or JSON) from
      *                                 which .onion uris should be extracted.
+     * @param {DbResult} fromEntry - In order to construct the full URL from
+     *                           relative URLS, we need to pass in the current
+     *                           db entry, where the content was fetched for.
+     * @param {boolean} isHtmlString=true - Indicate if input is an html string.
+     *                                      Used for initialization and if
+     *                                      later on more mime types can be used
+     *                                      it will be extended to cover this.
      * @return {ParseResult[]} A list of matched .onion urls and possible
                           subdomains as well as the paths and possible arguments
                           (which are counted towards the path in this case)
      */
-    extractOnionURI(contentString) {
+    extractOnionURI(contentString, fromEntry={}, isHtmlString=true) {
         // Those are the groups that get matche, compare to above regexp
         // group1: The whole url
         // group2: http or https
@@ -63,8 +76,9 @@ class Parser {
         let results = [];
         let m;
         do {
-            let m = this.onionRegexMatch.exec(contentString);
+            m = this.onionRegexMatch.exec(contentString);
             if (m) {
+                //
                 /** @type{ParseResult} */
                 let result = {
                     "fullUrl": m[0],
@@ -72,7 +86,33 @@ class Parser {
                     "secure": m[2] != null,
                     "www": m[3] != null,
                     "baseUrl": m[4],
-                    "path": m[5],
+                    "path": m[5] || "",
+                };
+                results.push(result);
+            }
+            console.log(JSON.stringify(m));
+        } while (m);
+
+        if (!isHtmlString) {
+            return results;
+        }
+        let $ = cheerio.load(contentString);
+        let baseUrl = $("base").attr("href") || fromEntry.baseUrl;
+        // Groups within relativeUrlRegexMatch:
+        // group1: The full string, inclusive href
+        // group2: The url enclosed in "" or ''
+        // group3/4: The stripped URL (only one is defined)
+        do {
+            m = this.relativeUrlRegexMatch.exec(contentString);
+            if (m) {
+                let path = m[2] || m[3];
+                let result = {
+                    "fullUrl": baseUrl + m[0],
+                    "http": true, /* Only currently supported protocol */
+                    "secure": fromEntry.secure,
+                    "www": false,
+                    "baseUrl": baseUrl,
+                    "path": path,
                 };
                 results.push(result);
             }

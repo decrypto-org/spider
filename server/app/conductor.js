@@ -62,7 +62,8 @@ class Conductor {
         for (let lineOfUrls of this.startUrls) {
             for (let stringToMatch of lineOfUrls) {
                 let matchedUrls = this.parser.extractOnionURI(
-                    stringToMatch
+                    stringToMatch,
+                    "" /* baseUrl */
                 );
                 /** @type{Parser.ParseResult} */
                 for (let matchedUrl of matchedUrls) {
@@ -188,7 +189,10 @@ class Conductor {
                 }
 
                 /** @type{Parser.ParseResult} */
-                let urlsList = this.parser.extractOnionURI();
+                let urlsList = this.parser.extractOnionURI(
+                    networkResponse.body,
+                    dbResult
+                );
                 for (let url of urlsList) {
                     let [, pathId] = await this.insertUriIntoDB(
                         url.baseUrl,
@@ -260,7 +264,9 @@ class Conductor {
         // Add check for modification timestamp to ensure
         // We need to await the completion of the task here to prevent getting
         // not yet read data in the next step
-        if (successful && !created) {
+        // Check for last scraped needed to not overwrite previously scraped
+        // versions of the URL (if we find it again and write it back to the DB)
+        if (successful && !created && path.lastScrapedTimestamp > lastScraped) {
             await db.path.update({
                 lastSuccessfulTimestamp: lastSuccessful,
                 lastScrapedTimestamp: lastScraped,
@@ -272,7 +278,7 @@ class Conductor {
                 returning: true,
                 plain: true,
             });
-        } else if (!created) {
+        } else if (!created && path.lastScrapedTimestamp > lastScraped) {
             await db.path.update({
                 lastScrapedTimestamp: lastScraped,
             }, {

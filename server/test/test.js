@@ -1,33 +1,55 @@
 /* eslint-disable no-unused-vars */
 let chai = require("chai");
 let chaiHttp = require("chai-http");
-let main = require("..");
-let conductor = require("../app/conductor");
+let Conductor = require("../app/conductor");
 let network = require("../app/network");
-let parser = require("../app/parser");
+let Parser = require("../app/parser");
 let models = require("../app/models");
 let should = chai.should();
-/* eslint-enable no-unused-vars */
+let logger = require("../app/library/logger");
+let fs = require("fs");
 
 /* global describe, it */
 chai.use(chaiHttp);
 
+// Following: Often used values in the tests
+// First: For initializing the Conductor
+let startUrls = ["msydqstlz2kzerdg.onion"];
+let cutOffDepth = 0;
+// We use the default tor port for testing, since the tests will mostly
+// run on travis and there shouldn't be a tor instance running at the time
+// of those tests. Locally, one could adapt or just terminate the tor
+// instance to run the tests.
+let torPort = 9050;
+let testHtml = fs.readFileSync(
+    __dirname + "/data/hiddenWiki.html"
+).toString("utf8").replace(/\s/g, "");
+console.log(testHtml);
+let testDbResponse = {
+    "baseUrl": "testBaseUrl.onion",
+    "secure": true,
+};
 /* eslint-disable max-len */
 
+
+/* eslint-enable no-unused-vars */
+
 describe("Parser.extractOnionURI", () => {
-    it("should return a list of all found .onion urls (@type{ParseResult}");
-});
-
-describe("Conductor.run", () => {
-    it("should initialize the DB");
-    it("should initialize the netwrok");
-    it("should insert start url into the db");
-    it("should start the network");
-})
-
-describe("Conductor.runScraper", () => {
-    it("should initialize the field cachedDbResults");
-    it("should register a listener for the NETWORK_READY event");
+    let parser = new Parser();
+    it("should return a list of all found .onion urls @type{ParseResult}", (done) => {
+        // First test our simples example: one url
+        let result = parser.extractOnionURI("msydqstlz2kzerdg.onion", {}, false);
+        result.length.should.equal(1);
+        result[0].fullUrl.should.equal("msydqstlz2kzerdg.onion");
+        result[0].http.should.equal(false);
+        result[0].secure.should.equal(false);
+        result[0].www.should.equal(false);
+        result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
+        result[0].path.should.equal("");
+        result = parser.extractOnionURI(testHtml, );
+        result.length.should.equal(345, testDbResponse);
+        done();
+    });
 });
 
 describe("Conductor.insertUriIntoDB", () => {
@@ -53,32 +75,32 @@ describe("Conductor.getEntriesFromDb", () => {
 describe("Network.build", () => {
     it("should initialize the Tor module");
     it("should initialize the network modules");
-})
+});
 
 describe("Network.startNetwork", () => {
     it("should call the emitter, which should emit MAX_SLOTS many NETWORK_READY events");
-})
+});
 
 describe("Network.emitNetworkReady", () => {
     it("should emit a NETWORK_READY event as often as free slots are available");
-})
+});
 
 describe("Network.freeUpSlot", () => {
     it("should increase the availableSlots field by one");
     it("should terminate the process, if no pending requests and not new data from the DB is available");
     it("should emit a networkReady event on a freed up slot");
-})
+});
 
 describe("Network.get", () => {
     it("should make an attempt to fetch a page from specified url and path");
     it("should respect the secure flag");
     it("should return a valid @type{NetworkHandlerResponse}");
-})
+});
 
 describe("Network.responseHandler", () => {
     it("should return a @type{NetworkHandlerResponse} on any valid response");
     it("should return a @type{NetworkHandlerResponse} on any invalid response (with proper indication of failure)");
     it("should always return a @type{NetworkHandlerResponse} which contains path and url");
-})
+});
 
 /* eslint-enable max-len */

@@ -35,7 +35,7 @@ class Network extends EventEmitter {
         this.availableSlots = Network.MAX_SLOTS;
         logger.info("Network initialized");
     }
-   
+
     /**
      * This event is thrown everytime a slot is freed
      */
