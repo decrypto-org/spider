@@ -160,10 +160,6 @@ class Conductor {
                     dbResult.secure,
                 );
 
-                logger.info("Received network response: " + JSON.stringify(
-                    networkResponse
-                ));
-
                 let successful = networkResponse.statusCode == 200;
                 // We need to await this before proceeding to prevent getting
                 // already scraped entries in the next step
@@ -194,14 +190,20 @@ class Conductor {
                     dbResult
                 );
                 for (let url of urlsList) {
-                    let [, pathId] = await this.insertUriIntoDB(
-                        url.baseUrl,
-                        url.path,
-                        0, /* last scraped */
-                        dbResult.depth + 1,
-                        true. /* successful */
-                        url.secure,
-                    );
+                    try {
+                        
+                        let [, pathId] = await this.insertUriIntoDB(
+                            url.baseUrl,
+                            url.path,
+                            0, /* last scraped */
+                            dbResult.depth + 1,
+                            true. /* successful */
+                            url.secure,
+                        );
+                    } catch(e) {
+                        // statements
+                        logger.warn(e);
+                    }
                     // Now we insert the link
                     await this.insertLinkIntoDB(
                         dbResult.pathId,
@@ -266,7 +268,7 @@ class Conductor {
         // not yet read data in the next step
         // Check for last scraped needed to not overwrite previously scraped
         // versions of the URL (if we find it again and write it back to the DB)
-        if (successful && !created && path.lastScrapedTimestamp > lastScraped) {
+        if (successful && !created && pathEntry.lastScrapedTimestamp < lastScraped) {
             await db.path.update({
                 lastSuccessfulTimestamp: lastSuccessful,
                 lastScrapedTimestamp: lastScraped,
@@ -278,7 +280,7 @@ class Conductor {
                 returning: true,
                 plain: true,
             });
-        } else if (!created && path.lastScrapedTimestamp > lastScraped) {
+        } else if (!created && path.lastScrapedTimestamp < lastScraped) {
             await db.path.update({
                 lastScrapedTimestamp: lastScraped,
             }, {

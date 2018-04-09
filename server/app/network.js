@@ -1,5 +1,6 @@
 let {logger} = require("./library/logger");
 let NetworkLib = require("./library/promiseNetworkLib");
+let Parser = require("./parser");
 
 const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
@@ -33,6 +34,7 @@ class Network extends EventEmitter {
         this.torAgent.on("warn", logger.warn);
         this.torAgent.on("err", logger.error);
         this.availableSlots = Network.MAX_SLOTS;
+        this.parser = new Parser();
         logger.info("Network initialized");
     }
 
@@ -47,24 +49,11 @@ class Network extends EventEmitter {
      * Indicate the maximal number of slots available
      */
     static get MAX_SLOTS() {
-        return 2;
-    }
-
-    /**
-     * This RegEx can be used to match or test strings if they contain base64
-     * encoded data. Credits to @bgrins (GitHub)
-     * Direct Link: https://gist.github.com/bgrins/6194623
-     * @param {string} stringToTest - This string will be tested against the
-     *                                regex.
-     * @return {boolean} The return value indicates whether the passed string
-     *                   contained any base64 data (true) or not (false).
-     */
-    static matchBase64(stringToTest) {
-        // Todo: Whitelist text (css, html)
-        // Todo: Possibly move to Parser
-        /* eslint-disable max-len,no-useless-escape */
-        return /\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/.test(stringToTest);
-        /* eslint-enable max-len,no-useless-escape */
+        let max = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
+        if (isNaN(max)) {
+            return 100;  // Fallback value 
+        }
+        return max;  // Value defined by the env (user)
     }
 
     /**
@@ -198,7 +187,8 @@ class Network extends EventEmitter {
          * only make a remark that specified URL returns image data
          * instead of html
          */
-        let contentType = response.headers["content-type"];
+        let contentType = response.headers["content-type"] || 
+            "[ NO CONTENT TYPE HEADER PROVIDED ]";
 
         /* According to RFC 1341, we are safe using split(";")[0] to extract
          * only the mime type part.
@@ -219,7 +209,12 @@ class Network extends EventEmitter {
             logger.error("Request failed.\n"+
                 "Status Code: " + statusCode
             );
-            response.consume();
+            try {
+                response.consume();
+            } catch(e) {
+                // statements
+                logger.info("Tried to consume response - already closed");
+            }
             result.statusCode = statusCode;
         } else if (!/\btext\/[jsonxhtml+]{4,}\b/.test(contentType)) {
             /* For now we only store the textual html or json representation
@@ -242,13 +237,12 @@ class Network extends EventEmitter {
             return new Promise((resolve, reject) => {
                 response.on("end", () => {
                     try {
-                        logger.info(rawData);
-                        if (this.constructor.matchBase64(rawData)) {
+                        if (this.parser.matchBase64Media(rawData)) {
                             result.body = "[ CONTAINED MEDIA DATA]";
                             logger.warn("We discarded data!");
                             logger.warn(
                                 "Reason:\n" +
-                                "Ensure compliance with any law.\n" +
+                                "Ensure compliance with any laws.\n" +
                                 "Therefor we discard any data that contains" +
                                 "a) not a text string\n" +
                                 "b) any textual representation of media content"

@@ -32,7 +32,28 @@ class Parser {
         this.relativeUrlRegexMatch = new RegExp(
             /\s*href\s*=\s*(\"([/?][^"]*)\"|\'([/?][^']*)\'|[^'">\s]+)/gi
         );
+
+        this.base64Regex = new RegExp(
+            /\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/
+        );
         /* eslint-enable max-len, no-useless-escape */
+    }
+
+    /**
+     * This RegEx can be used to match or test strings if they contain base64
+     * encoded data. Credits to @bgrins (GitHub)
+     * Direct Link: https://gist.github.com/bgrins/6194623
+     * @param {string} stringToTest - This string will be tested against the
+     *                                regex.
+     * @return {boolean} The return value indicates whether the passed string
+     *                   contained any base64 data (true) or not (false).
+     */
+    matchBase64Media(stringToTest) {
+        let result = this.base64Regex.test(stringToTest);
+        if (result) {
+            logger.info("Discarding " + stringToTest);
+        }
+        return result;
     }
 
     /**
@@ -90,7 +111,6 @@ class Parser {
                 };
                 results.push(result);
             }
-            console.log(JSON.stringify(m));
         } while (m);
 
         if (!isHtmlString) {
@@ -109,7 +129,7 @@ class Parser {
                 let result = {
                     "fullUrl": baseUrl + m[0],
                     "http": true, /* Only currently supported protocol */
-                    "secure": fromEntry.secure,
+                    "secure": fromEntry.secure || false,  /* fallback */
                     "www": false,
                     "baseUrl": baseUrl,
                     "path": path,
@@ -118,7 +138,7 @@ class Parser {
             }
         } while (m);
         return results;
-    }
+    } 
 }
 
 module.exports = Parser;

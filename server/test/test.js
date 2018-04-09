@@ -24,7 +24,6 @@ let torPort = 9050;
 let testHtml = fs.readFileSync(
     __dirname + "/data/hiddenWiki.html"
 ).toString("utf8").replace(/\s/g, "");
-console.log(testHtml);
 let testDbResponse = {
     "baseUrl": "testBaseUrl.onion",
     "secure": true,
