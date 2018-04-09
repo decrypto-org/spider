@@ -1,4 +1,4 @@
-FROM robrunne/tdse_dependencies:1.0.0
+FROM robrunne/tdse-dependencies:1.0.0
 
 WORKDIR /usr/src/tdse/spider
 
@@ -15,5 +15,5 @@ EXPOSE 10864
 EXPOSE 9101
 EXPOSE 5858
 
-# Currently starting the scraper manually
-CMD [ "bash" ]
+USER node
+ENV HOME /home/node

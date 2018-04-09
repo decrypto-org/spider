@@ -30,6 +30,12 @@ services:
   server:
     image: robrunne/tdse-spider:1.0.0
     restart: always
+    environment:
+      TDSE_DB_NAME: $TDSE_DB_NAME
+      TDSE_DB_USER: $TDSE_DB_USER
+      TDSE_DB_PASSWORD: $TDSE_DB_PASSWORD
+      TDSE_DB_HOST: $TDSE_DB_HOST
+      TDSE_DB_PORT: $TDSE_DB_PORT
     networks:
       backend:
     ports:
@@ -40,5 +46,10 @@ services:
         mode: host
     volumes:
       - spider-log-vol:/log
+      - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
     pid: "host"
     command: $tdse_server_start_command
+    stdin_open: true
+    tty: true
+    depends_on:
+      - "db"
