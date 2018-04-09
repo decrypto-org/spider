@@ -51,9 +51,9 @@ class Network extends EventEmitter {
     static get MAX_SLOTS() {
         let max = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
         if (isNaN(max)) {
-            return 100;  // Fallback value 
+            return 100; // Fallback value
         }
-        return max;  // Value defined by the env (user)
+        return max; // Value defined by the env (user)
     }
 
     /**
@@ -187,7 +187,7 @@ class Network extends EventEmitter {
          * only make a remark that specified URL returns image data
          * instead of html
          */
-        let contentType = response.headers["content-type"] || 
+        let contentType = response.headers["content-type"] ||
             "[ NO CONTENT TYPE HEADER PROVIDED ]";
 
         /* According to RFC 1341, we are safe using split(";")[0] to extract
@@ -211,7 +211,7 @@ class Network extends EventEmitter {
             );
             try {
                 response.consume();
-            } catch(e) {
+            } catch (e) {
                 // statements
                 logger.info("Tried to consume response - already closed");
             }

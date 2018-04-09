@@ -129,7 +129,7 @@ class Parser {
                 let result = {
                     "fullUrl": baseUrl + m[0],
                     "http": true, /* Only currently supported protocol */
-                    "secure": fromEntry.secure || false,  /* fallback */
+                    "secure": fromEntry.secure || false, /* fallback */
                     "www": false,
                     "baseUrl": baseUrl,
                     "path": path,
@@ -138,7 +138,7 @@ class Parser {
             }
         } while (m);
         return results;
-    } 
+    }
 }
 
 module.exports = Parser;

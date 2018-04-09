@@ -190,9 +190,9 @@ class Conductor {
                     dbResult
                 );
                 for (let url of urlsList) {
+                    let pathId = "";
                     try {
-                        
-                        let [, pathId] = await this.insertUriIntoDB(
+                        [, pathId] = await this.insertUriIntoDB(
                             url.baseUrl,
                             url.path,
                             0, /* last scraped */
@@ -200,7 +200,7 @@ class Conductor {
                             true. /* successful */
                             url.secure,
                         );
-                    } catch(e) {
+                    } catch (e) {
                         // statements
                         logger.warn(e);
                     }
@@ -268,7 +268,10 @@ class Conductor {
         // not yet read data in the next step
         // Check for last scraped needed to not overwrite previously scraped
         // versions of the URL (if we find it again and write it back to the DB)
-        if (successful && !created && pathEntry.lastScrapedTimestamp < lastScraped) {
+        if (
+            successful && !created &&
+            pathEntry.lastScrapedTimestamp < lastScraped
+        ) {
             await db.path.update({
                 lastSuccessfulTimestamp: lastSuccessful,
                 lastScrapedTimestamp: lastScraped,
