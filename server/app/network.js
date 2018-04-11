@@ -143,11 +143,21 @@ class Network extends EventEmitter {
         // Here the fix, but not available on all systems:
         // http://cgit.uclibc-ng.org/cgi/cgit/uclibc-ng.git/commit/?
         // id=3c1457161e5206c2d576ab25d350a139511c096d
+        /* eslint-disable max-len */
+        let headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; rv:52.0) Gecko/20100101 Firefox/52.0",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "identity",
+            "Connection": "keep-alive",
+        };
+        /* eslint-enable max-len */
         let request = {
             method: "GET",
             hostname: url,
             path: path,
             agent: new ProxyAgent(this.proxyUri),
+            headers: headers,
         };
         let response = await new NetworkLib(request)
         .get(secure).catch((error) => {
