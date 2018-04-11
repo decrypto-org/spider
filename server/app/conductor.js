@@ -197,7 +197,7 @@ class Conductor {
                             url.path,
                             0, /* last scraped */
                             dbResult.depth + 1,
-                            true. /* successful */
+                            true, /* successful */
                             url.secure,
                         );
                     } catch (e) {

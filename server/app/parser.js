@@ -117,7 +117,11 @@ class Parser {
             return results;
         }
         let $ = cheerio.load(contentString);
-        let baseUrl = $("base").attr("href") || fromEntry.baseUrl;
+        let baseUrl = $("base").attr("href") || fromEntry.url;
+        let protocol = "http";
+        if (fromEntry.secure){
+            protocol = "https";
+        }
         // Groups within relativeUrlRegexMatch:
         // group1: The full string, inclusive href
         // group2: The url enclosed in "" or ''
@@ -127,7 +131,7 @@ class Parser {
             if (m) {
                 let path = m[2] || m[3];
                 let result = {
-                    "fullUrl": baseUrl + m[0],
+                    "fullUrl": protocol + baseUrl + "/" + path,
                     "http": true, /* Only currently supported protocol */
                     "secure": fromEntry.secure || false, /* fallback */
                     "www": false,
