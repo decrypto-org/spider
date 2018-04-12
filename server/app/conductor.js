@@ -203,6 +203,9 @@ class Conductor {
                     } catch (e) {
                         // statements
                         logger.warn(e);
+                        // Continue, since the pathId might have not been
+                        // initialized.
+                        continue;
                     }
                     // Now we insert the link
                     await this.insertLinkIntoDB(
