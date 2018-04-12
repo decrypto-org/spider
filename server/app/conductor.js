@@ -116,7 +116,9 @@ class Conductor {
             process.exit(0);
         }
 
-        this.cachedDbResults = this.cachedDbResults.concat(dbResults);
+        this.cachedDbResults = [...new Set(
+            this.cachedDbResults.concat(dbResults)
+        )];
 
         this.network.on(
             // This is called everytime a network slot is available
@@ -131,9 +133,11 @@ class Conductor {
                 logger.info("Received network ready event");
                 if (this.cachedDbResults.length == 0) {
                     let [dbResults, moreData] = await this.getEntriesFromDB();
-                    this.cachedDbResults = this.cachedDbResults.concat(
-                        dbResults
-                    );
+                    this.cachedDbResults = [...new Set(
+                        this.cachedDbResults.concat(
+                            dbResults
+                        )
+                    )];
                     if (!moreData) {
                         logger.info("No more new data found");
                         this.network.freeUpSlot(true /* no new data */);
