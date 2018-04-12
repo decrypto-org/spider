@@ -16,11 +16,11 @@ let logger = createLogger({
     ),
     transports: [
         new transports.File({
-            filename: "/log/spider.err",
+            filename: "/home/node/log/spider.err",
             level: "error",
         }),
         new transports.File({
-            filename: "/log/spider.log",
+            filename: "/home/node/log/spider.log",
         }),
     ],
 });

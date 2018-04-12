@@ -8,4 +8,5 @@ RUN apt update -y
 RUN apt install -y tor
 RUN apt install -y net-tools
 RUN apt install -y telnet
+RUN apt install -y vim
 RUN apt update -y

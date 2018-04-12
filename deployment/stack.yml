@@ -45,7 +45,7 @@ services:
         protocol: ws
         mode: host
     volumes:
-      - spider-log-vol:/log
+      - spider-log-vol:/home/node/log
       - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
     pid: "host"
     command: $tdse_server_start_command
