@@ -40,10 +40,6 @@ services:
       backend:
     ports:
       - "9000-9100:9000-9100"
-      - target: 9101
-        published: 9101
-        protocol: ws
-        mode: host
     volumes:
       - spider-log-vol:/log
       - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
