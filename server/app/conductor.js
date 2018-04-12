@@ -283,7 +283,7 @@ class Conductor {
                 returning: true,
                 plain: true,
             });
-        } else if (!created && path.lastScrapedTimestamp < lastScraped) {
+        } else if (!created && pathEntry.lastScrapedTimestamp < lastScraped) {
             await db.path.update({
                 lastScrapedTimestamp: lastScraped,
             }, {
@@ -417,6 +417,9 @@ class Conductor {
             return [[], false];
         }
         let dbResults = [];
+        // Note: Since we are using Op.lte dateTime = 0, we do
+        // not currently need an offset: the already scraped
+        // data has no 0 timestamp anymore
         let paths = await db.path.findAll({
             where: {
                 lastScrapedTimestamp: {
@@ -427,7 +430,6 @@ class Conductor {
                 ["createdAt", "ASC"],
             ],
             limit: limit,
-            offset: offset,
         });
         for (let path of paths) {
             let dbResult = {

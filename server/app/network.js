@@ -29,10 +29,8 @@ class Network extends EventEmitter {
         this.torPort = torPort;
         this.proxyUri = "socks://127.0.0.1:" + this.torPort;
         this.torAgent = torAgent;
-        this.torAgent.on("log", logger.info);
-        this.torAgent.on("notice", logger.info);
-        this.torAgent.on("warn", logger.warn);
-        this.torAgent.on("err", logger.error);
+        this.torAgent.on("warn", console.warn);
+        this.torAgent.on("err", console.error);
         this.availableSlots = Network.MAX_SLOTS;
         this.parser = new Parser();
         logger.info("Network initialized");
