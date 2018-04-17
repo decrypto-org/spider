@@ -2,9 +2,9 @@ let {logger} = require("./library/logger");
 let NetworkLib = require("./library/promiseNetworkLib");
 let Parser = require("./parser");
 
+let EventEmitter = require("events");
 const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
-let EventEmitter = require("events");
 
 
 /**
@@ -28,19 +28,57 @@ class Network extends EventEmitter {
         logger.info("Initialize Network");
         this.torPort = torPort;
         this.proxyUri = "socks://127.0.0.1:" + this.torPort;
+        this.ttl = 255100; // Max ttl for IPv4: 255s + 100 ms for processing
         this.torAgent = torAgent;
         this.torAgent.on("warn", console.warn);
         this.torAgent.on("err", console.error);
         this.availableSlots = Network.MAX_SLOTS;
+        // Naming according to the timing information the chrome dev
+        // tools provide. This means:
+        // * waiting = TTFB, in our case: The request has been sent, but we
+        //   wait for a response.
+        // * queued = There were already 6 connections to the same host,
+        //   therefor the request was placed in a queue to be downloaded
+        //   when the previous download has been finished.
+        this.waitingRequestsPerHost = {};
+        this.queuedRequestsByHost = {};
+        // The pool contains a selection of DbResults to be downloaded.
+        this.pool = [];
         this.parser = new Parser();
         logger.info("Network initialized");
     }
 
     /**
-     * This event is thrown everytime a slot is freed
+     * This event is thrown everytime a slot is freed-up
      */
-    static get NETWORK_READY() {
-        return "networkReady";
+    static get SLOT_FREED_UP() {
+        return "slotFreedUp";
+    }
+
+    /**
+     * This event is thrown everytime the downloader has finished a request.
+     * Is used to notify the client, that new data is available to process
+     */
+    static get NEW_NETWORK_DATA_AVAILABLE() {
+        return "newNetworkDataAvailable";
+    }
+
+    /**
+     * This event is thrown everytime data is added to the pool (not for every
+     * entry added but for every update of the pool)
+     */
+    static get DATA_ADDED_TO_POOL() {
+        return "newDataToDownload";
+    }
+
+    /**
+     * This event is emitted as long as the pool is below its minimum defined
+     * size. This can be used by a client to add new data to the pool.
+     * One argument should be passed, indicating how many entries are available
+     * to the pool max.
+     */
+    static get POOL_LOW() {
+        return "needNewDataToDownload";
     }
 
     /**
@@ -52,6 +90,33 @@ class Network extends EventEmitter {
             return 100; // Fallback value
         }
         return max; // Value defined by the env (user)
+    }
+
+    /**
+     * Indicate the minimal size of the pool holding pending download tasks.
+     * Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
+     */
+    static get MIN_POOL_SIZE() {
+        let minPool = parseInt(process.env.NETWORK_MIN_POOL_SIZE, 10);
+        // Note: Ordering of the if clause is important here!
+        if (isNaN(minPool) || minPool <= 0) {
+            return 1000; // Fallback value: this way we can make 10 rounds
+                          // of requests with the MAX_SLOTS default value
+        }
+        return minPool;
+    }
+
+    /**
+     * Indicate the maximal size of the pool holding pending download tasks.
+     * Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
+     */
+    static get MAX_POOL_SIZE() {
+        let maxPool = parseInt(process.env.NETWORK_MAX_POOL_SIZE, 10);
+        // Note: Ordering of the if clause is important here!
+        if (isNaN(maxPool) || maxPool <= 0) {
+            return 2000;
+        }
+        return;
     }
 
     /**
@@ -71,46 +136,153 @@ class Network extends EventEmitter {
     }
 
     /**
-     * Start emitting network ready events to indicate that slots are available.
-     * This has to be only called once per network instance.
+     * Downloads everything within the pool and everything that might be added
+     * in the future.
      */
-    startNetwork() {
-        this.emitNetworkReady();
+    async downloadAll() {
+        while (
+            this.availableSlots >= 0 ||
+            this.pool.length >= 0
+        ) {
+            let error = false;
+            let dbResult = await this.getPoolEntry().catch((err) => {
+                logger.error(err);
+                let waitingRequestsCount = 0;
+                let hosts = Object.keys(this.waitingRequestsPerHost);
+                for (let host in hosts) {
+                    if (hosts.hasOwnProperty(host)) {
+                        let list = this.waitingRequestsPerHost[host];
+                        waitingRequestsCount += list.length;
+                    }
+                }
+                if (
+                    this.availableSlots.length == this.constructor.MAX_SLOTS &&
+                    this.pool.length == 0 &&
+                    waitingRequestsCount == 0
+                ) {
+                    // No pending requests, no pool data, and all slots are free
+                    // We are finished.
+                    logger.info("Network detected that we are finished");
+                    logger.info("Exiting...");
+                    process.exit(0);
+                }
+                error = true;
+            });
+            if (error) {
+                continue;
+            }
+            // Notify the client that the pool is running low on entries
+            // to download.
+            if (this.pool.length < this.constructor.MIN_POOL_SIZE) {
+                this.emit(
+                    this.constructor.POOL_LOW,
+                    this.constructor.MAX_POOL_SIZE-this.pool.length
+                );
+            }
+            await this.getSlot().catch((err) => {
+                logger.error(err);
+                // Push the dbResult back onto the stack - it should be handled
+                // later
+                this.pool.push(dbResult);
+                error = true;
+            });
+            if (error) {
+                continue;
+            }
+            // Do not wait for the download to finish.
+            // This method should be used as a downloader pool and therefor
+            // start several downloads simultaneously
+            this.download(dbResult).catch((err) => {
+                logger.error(err);
+                this.pool.push(dbResult);
+                error = true;
+            });
+        }
     }
 
     /**
-     * Emits a network ready event. This indicates to the user, that the network
-     * library is ready to take the next task.
+     * Download a single webpage and handle the events around it.
+     * @param {DbResult} dbResult - Contains the DB result to be downloaded
      */
-    emitNetworkReady() {
-        for (let i = 0; i<this.availableSlots; this.availableSlots--) {
-            this.emit(this.constructor.NETWORK_READY);
-        }
+    async download(dbResult) {
+        let response = await this.get(
+            dbResult.url,
+            dbResult.path,
+            dbResult.secure
+        );
+        this.emit(
+            this.constructor.NEW_NETWORK_DATA_AVAILABLE,
+            response
+        );
+        this.freeUpSlot();
     }
 
     /**
-     * Free up the specified number of slots. The client is responsible to
-     * ensure that those slots are not actually in use.
-     * @param {boolean} noNewData=false - If this flag is set, the network wont
-     *                                    issue a NetworkReady event, since it
-     *                                    has no new data to operate on. This is
-     *                                    helpful to detect the end of the
-     *                                    scraping process.
+     * As soon as a entry is available from the pool, one will be returned
+     * upon request.
+     * @return {Promise} Return a DbResult entry from the pool, as soont as one
+     *                   is available.
      */
-    freeUpSlot(noNewData=false) {
-        if (this.availableSlots + 1 > this.constructor.MAX_SLOTS) {
-            throw new Error("Cannot free up non-existent slots");
-        }
-        this.availableSlots += 1;
-        if (this.availableSlots >= this.constructor.MAX_SLOTS && noNewData) {
-            // In this case every DB handler did not get new data to scrape
-            // we are therefor finished and can terminate
-            logger.info("We've completed our scrape. Bye!");
-            process.exit(0);
-        }
-        if (!noNewData) {
-            this.emitNetworkReady();
-        }
+    async getPoolEntry() {
+        return new Promise((resolve, reject) => {
+            if (this.pool.length > 0) {
+                resolve(this.pool.pop());
+            }
+            this.once(this.constructor.DATA_ADDED_TO_POOL, () => {
+                resolve(this.pool.pop());
+            });
+            setTimeout(() => {
+                reject("getPoolEntry timed out");
+            }, 4*this.ttl);
+            // 4*:
+            // spider -> remote host
+            // remote host -> spider
+            // spider -> db
+            // db -> spider
+        });
+    }
+
+    /**
+     * Reserve a slot for a request. This is necessary to ensure a maximal
+     * number of parallel requests.
+     * @return {Promise} Return nothing, but return only if a slot is available.
+     */
+    async getSlot() {
+        return new Promise((resolve, reject) => {
+            // Resolve immediately, if a slot is available
+            if (this.availableSlots > 0) {
+                this.availableSlots--;
+                resolve();
+            }
+            // Wait, if not
+            this.once(this.constructor.SLOT_FREED_UP, () => {
+                this.availableSlots--;
+                resolve();
+            });
+            setTimeout(() => {
+                reject("getSlot timed out");
+            }, 2*this.ttl);
+            // 2*
+            // spider -> remote host
+            // remote host -> spider
+        });
+    }
+
+    /**
+     * Free up a slot and notify the appropriate functions
+     */
+    freeUpSlot() {
+        this.availableSlots++;
+        this.emit(this.constructor.SLOT_FREED_UP);
+    }
+
+    /**
+     * Add new data entries to the pool and notify the appropriate functions
+     * @param {DbResult[]} newData - Contains new pool data to be downloaded
+     */
+    addDataToPool(newData) {
+        this.pool.push(...newData);
+        this.emit(this.constructor.DATA_ADDED_TO_POOL);
     }
 
     /**

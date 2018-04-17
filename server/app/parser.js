@@ -119,7 +119,7 @@ class Parser {
         let $ = cheerio.load(contentString);
         let baseUrl = $("base").attr("href") || fromEntry.url;
         let protocol = "http";
-        if (fromEntry.secure){
+        if (fromEntry.secure) {
             protocol = "https";
         }
         // Groups within relativeUrlRegexMatch:

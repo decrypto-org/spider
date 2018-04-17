@@ -5,14 +5,22 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
             defaultValue: DataTypes.UUIDV4,
         },
-        lastScrapedTimestamp: {
+        lastStartedTimestamp: {
             type: DataTypes.BIGINT,
+        },
+        lastFinishedTimestamp: {
+            type: DataTypes.BIGINT,
+        },
+        inProgress: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
         },
         lastSuccessfulTimestamp: {
             type: DataTypes.BIGINT,
         },
         depth: {
             type: DataTypes.INTEGER,
+            allowNull: false,
         },
         path: {
             type: DataTypes.TEXT,
@@ -20,6 +28,10 @@ module.exports = (sequelize, DataTypes) => {
         },
         secure: {
             type: DataTypes.BOOLEAN,
+            allowNull: false,
+        },
+        random: {
+            type: DataTypes.INTEGER,
             allowNull: false,
         },
     });
