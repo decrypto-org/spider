@@ -31,7 +31,6 @@ let Network = require("./network");
 let {logger} = require("./library/logger");
 let db = require("./models");
 
-let Op = db.Sequelize.Op;
 
 /**
  * The conductor is the one controlling the spidering
@@ -66,8 +65,9 @@ class Conductor {
         // Initialization of later used variables
         this.offsetForDbRequest = 0;
         this.limitForDbRequest = Network.MAX_SLOTS;
-        // This array should never exceed the limitForDbRequest size
-        this.cachedDbResults = [];
+        // Used to only get new data once per undershoot (but multiple times
+        // for multiple network pool undershoots)
+        this.gettingNewDataFromDb = false;
     }
 
     /**
@@ -102,11 +102,11 @@ class Conductor {
                     // of initial urls)
                     // Short term: not an issue, finished in about 5 min
                     // Long term solution: Use Bulk inserts
-                    await this.insertUriIntoDB(
+                    await db.insertUri(
                         baseUrl, /* baseUrl */
                         path, /* path */
-                        0, /* lastScraped */
-                        0 /* depth */
+                        0, /* depth */
+                        matchedUrl.secure
                     ).catch((err) =>{
                         logger.error(
                             "An error occured while inserting " + baseUrl +
@@ -117,367 +117,144 @@ class Conductor {
                 }
             }
         }
+        await this.getEntriesToDownloadPool(
+            this.network.constructor.MAX_POOL_SIZE
+        );
+        if (this.network.pool.length == 0) {
+            logger.info("No data available to scrape.");
+            logger.info("Please specify initial data (-i path/to/file.csv)");
+            process.exit(0);
+        }
         await this.runScraper();
 
         // Here we are sure that the handler is initialized
-        this.network.startNetwork();
+        this.network.downloadAll();
     }
+
+
+    /**
+     * Get entries from the DB directly to the network download pool.
+     * @param {number} limit - The number of entries to get from the DB
+     */
+    async getEntriesToDownloadPool(limit) {
+        let [dbResults, moreAvailable] = await db.getEntriesAndSetFlag(
+            0, // dateTime
+            limit,
+            this.cutOffDepth
+        );
+        if (dbResults.length == 0 &amp;&amp; !moreAvailable) {
+            return;
+        }
+        this.network.addDataToPool(dbResults);
+    }
+
+    /**
+     * If the network finished a download, insert it into the database.
+     * @param {NetworkHandlerResponse} networkResponse - The networks response
+     *                                                   already serialized
+     * @param {DbResult} dbResult - The dbResult for which the download was
+     *                              started
+     */
+    async insertNetworkResponseIntoDb(networkResponse, dbResult) {
+        let successful = networkResponse.statusCode == 200;
+        // We need to await this before proceeding to prevent getting
+        // already scraped entries in the next step
+        await db.updateUri(
+            dbResult.baseUrlId,
+            dbResult.pathId,
+            networkResponse.startTime,
+            networkResponse.endTime,
+            dbResult.secure,
+            successful
+        );
+        await db.insertBody(
+            dbResult.pathId,
+            networkResponse.body || "[MISSING]",
+            networkResponse.mimeType || "[MISSING]",
+            networkResponse.endTime,
+            successful
+        );
+        // Scrape the links to other pages, then insert them into the db
+        // if the download was successful and the MIME Type correct
+        if (networkResponse.body == null || !successful) {
+            return;
+        }
+
+        /** @type{Parser.ParseResult} */
+        let urlsList = this.parser.extractOnionURI(
+            networkResponse.body,
+            dbResult
+        );
+        for (let url of urlsList) {
+            let pathId = "";
+            try {
+                [, pathId] = await db.insertUri(
+                    url.baseUrl,
+                    url.path,
+                    dbResult.depth + 1,
+                    url.secure,
+                );
+            } catch (e) {
+                // statements
+                logger.warn(e);
+                // Continue, since the pathId might have not been
+                // initialized.
+                continue;
+            }
+            // Now we insert the link
+            await db.insertLink(
+                dbResult.pathId,
+                pathId,
+                networkResponse.endTime
+            );
+        }
+
+        // For the case we hit 0 in the network pool and
+        // this was the last request, we need to repopulate
+        // the pool here, if any data was added to the database
+        let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
+        this.getEntriesToDownloadPool(limit);
+    }
+
+    /*
+    TODO:
+    add functions for
+        * insert initial data into the db [DONE]
+        * new data from db to be downloaded add to network pool
+          on POOL_LOW event (or check everytime new network data is available)
+        * insert data into DB on NEW_NETWORK_DATA_AVAILABLE [DONE]
+        * function to randomize ordering in the db
+        * Check that all "once" listeners are reregistered after use
+        * check that all functions fire appropriate events
+        * The conductor module should only need to listen, the firing
+          should exclusively take place in the network module.
+          (Client should not be required to read up about events, but can
+          use the function interface, except for callbacks)
+    */
 
     /**
      * Controls on run of the scraper. This includes storing found urls on the
-     * DB and sending events to the network module to receive more data.
+     * DB and populating the networks pool.
      */
     async runScraper() {
-        // Optimization: Cache from database, then pop of
-        let [dbResults, initDataAvailable] = await this.getEntriesFromDB();
-
-        if (!initDataAvailable) {
-            logger.info("No initial data available to start the scraped.");
-            logger.info(
-                "If you need to run on previous data, please contact" +
-                "the developer. This feature is not yet implemented."
-            );
-            logger.info(
-                "If you have initial data, please specify it on" +
-                "the command line (as a csv file)."
-            );
-            process.exit(0);
-        }
-
-        this.cachedDbResults = this.cachedDbResults.concat(dbResults);
-
+        this.network.on(Network.POOL_LOW, async (size) => {
+            if (this.gettingNewDataFromDb) {
+                // We are already repopulating the pool - no need to go a second
+                // time.
+                return;
+            }
+            this.gettingNewDataFromDb = true;
+            await this.getEntriesToDownloadPool(size);
+            this.gettingNewDataFromDb = false;
+        });
+        // Arrow function ensures correct context
         this.network.on(
-            // This is called everytime a network slot is available
-            // ==> Go, get data, then network.get and finally reinsert it
-            // into the database. Eventually we'll do a bulk get/insert to
-            // reduce DB latency in the long run
-            Network.NETWORK_READY,
-            async () => {
-                // The network ready event indicates, that you are now permitted
-                // to make network requests. Clean up after this and call
-                // the network.freeUpSlot method, to give it back for later use.
-                logger.info("Received network ready event");
-                if (this.cachedDbResults.length == 0) {
-                    let [dbResults, moreData] = await this.getEntriesFromDB();
-                    this.cachedDbResults = this.cachedDbResults.concat(
-                        dbResults
-                    );
-                    if (!moreData) {
-                        logger.info("No more new data found");
-                        this.network.freeUpSlot(true /* no new data */);
-                        return;
-                    }
-                }
-
-                // We want to preserve order, therefor using shift
-                /** @type {DbResult} */
-                let dbResult = this.cachedDbResults.shift();
-
-                // Cutoff at given value.
-                if (dbResult.depth >= this.cutOffDepth &amp;&amp;
-                    this.cutOffDepth != -1) {
-                    logger.info("Reached cutoff value. Returning early");
-                    this.network.freeUpSlot(true /* no new data */);
-                    return;
-                }
-
-                /** @type {network.NetworkHandlerResponse} */
-                let networkResponse = await this.network.get(
-                    dbResult.url,
-                    dbResult.path,
-                    dbResult.secure,
-                );
-
-                logger.info("Received network response: " + JSON.stringify(
-                    networkResponse
-                ));
-
-                let successful = networkResponse.statusCode == 200;
-                // We need to await this before proceeding to prevent getting
-                // already scraped entries in the next step
-                let [, pathId] = await this.insertUriIntoDB(
-                    networkResponse.url,
-                    networkResponse.path,
-                    networkResponse.timestamp,
-                    dbResult.depth,
-                    successful
-                );
-                await this.insertBodyIntoDB(
-                    pathId,
-                    networkResponse.body || "[MISSING]",
-                    networkResponse.mimeType || "[MISSING]",
-                    networkResponse.timestamp,
-                    successful
-                );
-                // Scrape the links to other pages, then insert them into the db
-                // if the download was successful and the MIME Type correct
-                if (networkResponse.body == null || !successful) {
-                    this.network.freeUpSlot();
-                    return;
-                }
-
-                /** @type{Parser.ParseResult} */
-                let urlsList = this.parser.extractOnionURI(
-                    networkResponse.body,
-                    dbResult
-                );
-                for (let url of urlsList) {
-                    let [, pathId] = await this.insertUriIntoDB(
-                        url.baseUrl,
-                        url.path,
-                        0, /* last scraped */
-                        dbResult.depth + 1,
-                        true. /* successful */
-                        url.secure,
-                    );
-                    // Now we insert the link
-                    await this.insertLinkIntoDB(
-                        dbResult.pathId,
-                        pathId,
-                        networkResponse.timestamp
-                    );
-                }
-                this.network.freeUpSlot();
+            Network.NEW_NETWORK_DATA_AVAILABLE, (networkResponse, dbResult) => {
+                this.insertNetworkResponseIntoDb(networkResponse, dbResult);
             }
         );
     }
-
-    /**
-     * Insert the URI into the database
-     * @param {string} baseUrl - The base url to be inserted
-     * @param {string} path - The path of the uir to be inserted
-     * @param {number} lastScraped - Contains a unix timestamp (ms), which
-     *                               describes, when the uri was fetched last.
-     * @param {number} depth - Indicates the search depth at which the entry is
-     *                         to be inserted.
-     * @param {boolean} successful=true - Indicates whether the fetch
-     *                                      was successful
-     * @param {boolean} secure=false - Indicate whether the uri uses http(s)
-     * @return {UUIDV4[]} Returns the IDs of the inserted values
-     *                           Those are always sorted as follows:
-     *                           [baseUrlId, pathId, contentId, linkId]
-     */
-    async insertUriIntoDB(
-        baseUrl,
-        path,
-        lastScraped,
-        depth,
-        successful=true,
-        secure=false,
-    ) {
-        logger.info("Insert new entry: " + baseUrl + path);
-        let lastSuccessful = lastScraped;
-        let [baseUrlEntry] = await db.baseUrl.findOrCreate({
-            where: {
-                baseUrl: baseUrl,
-            },
-            defaults: {
-                baseUrl: baseUrl,
-            },
-        });
-        let [pathEntry, created] = await db.path.findOrCreate({
-            where: {
-                baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
-                path: path,
-            },
-            defaults: {
-                lastScrapedTimestamp: lastScraped,
-                lastSuccessfulTimestamp: lastSuccessful,
-                path: path,
-                depth: depth,
-                baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
-                secure: secure,
-            },
-        });
-        // Add check for modification timestamp to ensure
-        // We need to await the completion of the task here to prevent getting
-        // not yet read data in the next step
-        // Check for last scraped needed to not overwrite previously scraped
-        // versions of the URL (if we find it again and write it back to the DB)
-        if (successful &amp;&amp; !created &amp;&amp; path.lastScrapedTimestamp > lastScraped) {
-            await db.path.update({
-                lastSuccessfulTimestamp: lastSuccessful,
-                lastScrapedTimestamp: lastScraped,
-            }, {
-                where: {
-                    baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
-                    path: path,
-                },
-                returning: true,
-                plain: true,
-            });
-        } else if (!created &amp;&amp; path.lastScrapedTimestamp > lastScraped) {
-            await db.path.update({
-                lastScrapedTimestamp: lastScraped,
-            }, {
-                where: {
-                    baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
-                    path: path,
-                },
-                returning: true,
-                plain: true,
-            });
-        }
-        return [baseUrlEntry.baseUrlId, pathEntry.pathId, null, null];
-    }
-
-    /**
-     * Inserts a new link into the DB. This helps us to gain an understanding,
-     * how the link structure is changing over time and which information is
-     * linked to each other.
-     * @param {UUIDv4} sourcePathId - The ID of the originating path of the link
-     * @param {UUIDv4} destinationPathId - The ID of the destination path of the
-     *                                     link.
-     * @param {number} timestamp - Indicator at which time the link was existent
-     *                             which does not imply that the destination was
-     *                             reachable, but only that the link was placed.
-     *                             To find out if the target was reachable,
-     *                             look for the content or path successful flags
-     * @return {object} Return a link object (compare to models.link)
-     */
-    async insertLinkIntoDB(
-        sourcePathId,
-        destinationPathId,
-        timestamp
-    ) {
-        let response = await db.link.create({
-                timestamp: timestamp,
-                sourcePathId: sourcePathId,
-                destinationPathId: destinationPathId,
-        });
-        return response;
-    }
-
-    /**
-     * Inserts the body of a message as on content entry into the database.
-     * This function assumes that the data is already filtered and sanitized.
-     * @param {UUIDV4} pathId - ID of the corresponding path entry.
-     * @param {string} body - A JSON or HTML String containing the body.
-     * @param {string} mimeType - A string containing the indentifier for the
-     *                            mime type of the response.
-     * @param {number} timestamp - A timestamp in ms, indicating when the data
-     *                             was fetched.
-     * @param {boolean} successful=true - Indicates whether the download was
-     *                               successful or not.
-     * @return {object} Returns the created content entry.
-     */
-    async insertBodyIntoDB(
-        pathId,
-        body,
-        mimeType,
-        timestamp,
-        successful=true
-    ) {
-        let response = await db.content.create({
-                scrapeTimestamp: timestamp,
-                success: successful,
-                contentType: mimeType,
-                content: body,
-                pathPathId: pathId,
-        });
-        return response;
-    }
-
-    /**
-     * @typedef Link
-     * @type {object}
-     * @property {!UUIDv4} sourcePathId - The ID of the path entry where the
-     *                                    link originated.
-     * @property {!UUIDv4} destinationPathId - The ID of the target path entry.
-     * @property {!number} timestamp - Indicates at which time the link was in
-     *                                 place. This does not mean, that the
-     *                                 target was reachable, it only indicates
-     *                                 the existence of a link at that given
-     *                                 point in time. To check for reachability
-     *                                 please refer to the attached content
-     *                                 entries. The contain a successful flag.
-     */
-
-    /**
-     * @typedef DbResult
-     * @type {object}
-     * @property {!string} url - The base url
-     * @property {!UUIDv4} baseUrlId - The ID of the base url entry.
-     * @property {!string} path - The path of the entry
-     * @property {!UUIDv4} pathId - The ID of the path entry.
-     * @property {!number} depth - The search depth at which this entry resides.
-     * @property {?string} content - If available or requested, it can contain
-     *                               the content of the entry
-     * @property {?UUIDv4} contentId - The ID of the content entry in the db.
-     * @property {?Link} link - A Link object, indicating a link between
-     *                                 two paths/sites.
-     * @property {boolean} secure - Indicate if http or https should be used
-     */
-
-    /**
-     * Retrieve entries from the database that are older or as old as the passed
-     * dateTime param.
-     * @param {number} dateTime=0 - Specify the dateTime from which the newest
-     *                             entry should be. The default will only
-     *                             retrieve not yet scraped entries.
-     * @param {number} limit=100 - Specify how many entries the function
-     *                          should return. This is seen as an upper bound.
-     *                          If no more matching entries are available, only
-     *                          the remainder will be returned.
-     * @param {number} offset=0 - Set if you have already received a certain
-     *                           amount of data. This way one can gather all
-     *                           entries of a certain timestamp or older.
-     * @return {Array.&lt;DbResult>|boolean} The DbResult contains the results
-     *                      returned by the Database.
-     *                      The boolean indicates whether more data is available
-     *                      as of now.
-     *                      Note: this can change, when the network fetches
-     *                      new data. If both, network and DB do not have
-     *                      anything pending, we can conclude that we have
-     *                      finished and exit.
-     */
-    async getEntriesFromDB({
-        dateTime=0,
-        limit=this.limitForDbRequest,
-        offset=this.offsetForDbRequest,
-    } = {}) {
-        if (limit == 0) {
-            return [[], false];
-        }
-        let dbResults = [];
-        let paths = await db.path.findAll({
-            where: {
-                lastScrapedTimestamp: {
-                    [Op.lte]: dateTime,
-                },
-            },
-            order: [
-                ["createdAt", "ASC"],
-            ],
-            limit: limit,
-            offset: offset,
-        });
-        for (let path of paths) {
-            let dbResult = {
-                "path": path.path,
-                "pathId": path.pathId,
-                "depth": path.depth,
-                "secure": path.secure,
-                "url": null,
-                "baseUrlId": null,
-                "content": null,
-                "link": null,
-            };
-            let baseUrl = await path.getBaseUrl();
-            dbResult["url"] = baseUrl.baseUrl;
-            dbResult["baseUrlId"] = baseUrl.baseUrlId;
-            dbResults.push(dbResult);
-        }
-        this.offsetForDbRequest += paths.length;
-        // We do not reset the offset counter yet, even if we did not find any
-        // new data, since we do not know whether new data will arrive from the
-        // network moduel. This is left to decide to the controller.
-        let moreData = dbResults.length != 0;
-        return [dbResults, moreData];
-    }
 }
-
-
 module.exports = Conductor;
 </code></pre>
         </article>
@@ -495,7 +272,7 @@ module.exports = Conductor;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Apr 02 2018 23:44:11 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Wed Apr 18 2018 22:12:54 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

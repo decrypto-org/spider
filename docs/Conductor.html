@@ -197,7 +197,7 @@ module and the models/database.</div>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line13">line 13</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line12">line 12</a>
     </li></ul></dd>
     
 
@@ -251,7 +251,7 @@ module and the models/database.</div>
     
 
     
-    <h4 class="name" id="getEntriesFromDB"><span class="type-signature">(async) </span>getEntriesFromDB<span class="signature">(dateTime, limit, offset)</span><span class="type-signature"> &rarr; {Array.&lt;<a href="global.html#DbResult">DbResult</a>>|boolean}</span></h4>
+    <h4 class="name" id="getEntriesToDownloadPool"><span class="type-signature">(async) </span>getEntriesToDownloadPool<span class="signature">(limit)</span><span class="type-signature"></span></h4>
     
 
     
@@ -259,8 +259,7 @@ module and the models/database.</div>
 
 
 <div class="description">
-    Retrieve entries from the database that are older or as old as the passed
-dateTime param.
+    Get entries from the DB directly to the network download pool.
 </div>
 
 
@@ -286,45 +285,12 @@ dateTime param.
         
 
         
-        <th>Default</th>
-        
 
         <th class="last">Description</th>
     </tr>
     </thead>
 
     <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>dateTime</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    0
-                
-                </td>
-            
-
-            <td class="description last">Specify the dateTime from which the newest
-                            entry should be. The default will only
-                            retrieve not yet scraped entries.</td>
-        </tr>
-
     
 
         <tr>
@@ -344,48 +310,8 @@ dateTime param.
             
 
             
-                <td class="default">
-                
-                    100
-                
-                </td>
-            
 
-            <td class="description last">Specify how many entries the function
-                         should return. This is seen as an upper bound.
-                         If no more matching entries are available, only
-                         the remainder will be returned.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>offset</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    0
-                
-                </td>
-            
-
-            <td class="description last">Set if you have already received a certain
-                          amount of data. This way one can gather all
-                          entries of a certain timestamp or older.</td>
+            <td class="description last">The number of entries to get from the DB</td>
         </tr>
 
     
@@ -426,7 +352,7 @@ dateTime param.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line406">line 406</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line111">line 111</a>
     </li></ul></dd>
     
 
@@ -449,38 +375,6 @@ dateTime param.
 
 
 
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    The DbResult contains the results
-                     returned by the Database.
-                     The boolean indicates whether more data is available
-                     as of now.
-                     Note: this can change, when the network fetches
-                     new data. If both, network and DB do not have
-                     anything pending, we can conclude that we have
-                     finished and exit.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Array.&lt;<a href="global.html#DbResult">DbResult</a>></span>
-|
-
-<span class="param-type">boolean</span>
-
-
-    </dd>
-</dl>
-
-    
 
 
 
@@ -492,7 +386,7 @@ dateTime param.
     
 
     
-    <h4 class="name" id="insertBodyIntoDB"><span class="type-signature">(async) </span>insertBodyIntoDB<span class="signature">(pathId, body, mimeType, timestamp, successful)</span><span class="type-signature"> &rarr; {object}</span></h4>
+    <h4 class="name" id="insertNetworkResponseIntoDb"><span class="type-signature">(async) </span>insertNetworkResponseIntoDb<span class="signature">(networkResponse, dbResult)</span><span class="type-signature"></span></h4>
     
 
     
@@ -500,286 +394,7 @@ dateTime param.
 
 
 <div class="description">
-    Inserts the body of a message as on content entry into the database.
-This function assumes that the data is already filtered and sanitized.
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-        <th>Default</th>
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>pathId</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">UUIDV4</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">ID of the corresponding path entry.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>body</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">A JSON or HTML String containing the body.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>mimeType</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">A string containing the indentifier for the
-                           mime type of the response.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>timestamp</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">A timestamp in ms, indicating when the data
-                            was fetched.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>successful</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">Indicates whether the download was
-                              successful or not.</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line336">line 336</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    Returns the created content entry.
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">object</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="insertLinkIntoDB"><span class="type-signature">(async) </span>insertLinkIntoDB<span class="signature">(sourcePathId, destinationPathId, timestamp)</span><span class="type-signature"> &rarr; {object}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Inserts a new link into the DB. This helps us to gain an understanding,
-how the link structure is changing over time and which information is
-linked to each other.
+    If the network finished a download, insert it into the database.
 </div>
 
 
@@ -815,13 +430,13 @@ linked to each other.
 
         <tr>
             
-                <td class="name"><code>sourcePathId</code></td>
+                <td class="name"><code>networkResponse</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">UUIDv4</span>
+<span class="param-type"><a href="global.html#NetworkHandlerResponse">NetworkHandlerResponse</a></span>
 
 
             
@@ -831,20 +446,21 @@ linked to each other.
 
             
 
-            <td class="description last">The ID of the originating path of the link</td>
+            <td class="description last">The networks response
+                                                  already serialized</td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>destinationPathId</code></td>
+                <td class="name"><code>dbResult</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">UUIDv4</span>
+<span class="param-type"><a href="global.html#DbResult">DbResult</a></span>
 
 
             
@@ -854,35 +470,8 @@ linked to each other.
 
             
 
-            <td class="description last">The ID of the destination path of the
-                                    link.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>timestamp</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Indicator at which time the link was existent
-                            which does not imply that the destination was
-                            reachable, but only that the link was placed.
-                            To find out if the target was reachable,
-                            look for the content or path successful flags</td>
+            <td class="description last">The dbResult for which the download was
+                             started</td>
         </tr>
 
     
@@ -923,7 +512,7 @@ linked to each other.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line310">line 310</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line130">line 130</a>
     </li></ul></dd>
     
 
@@ -946,335 +535,6 @@ linked to each other.
 
 
 
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    Return a link object (compare to models.link)
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">object</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="insertUriIntoDB"><span class="type-signature">(async) </span>insertUriIntoDB<span class="signature">(baseUrl, path, lastScraped, depth, successful, secure)</span><span class="type-signature"> &rarr; {Array.&lt;UUIDV4>}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    Insert the URI into the database
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-        <th>Default</th>
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>baseUrl</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The base url to be inserted</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>path</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">The path of the uir to be inserted</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>lastScraped</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">Contains a unix timestamp (ms), which
-                              describes, when the uri was fetched last.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>depth</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                </td>
-            
-
-            <td class="description last">Indicates the search depth at which the entry is
-                        to be inserted.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>successful</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    true
-                
-                </td>
-            
-
-            <td class="description last">Indicates whether the fetch
-                                     was successful</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>secure</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-                <td class="default">
-                
-                    false
-                
-                </td>
-            
-
-            <td class="description last">Indicate whether the uri uses http(s)</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line232">line 232</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-<div class="param-desc">
-    Returns the IDs of the inserted values
-                          Those are always sorted as follows:
-                          [baseUrlId, pathId, contentId, linkId]
-</div>
-
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">Array.&lt;UUIDV4></span>
-
-
-    </dd>
-</dl>
-
-    
 
 
 
@@ -1381,7 +641,7 @@ linked to each other.
 
 <div class="description">
     Controls on run of the scraper. This includes storing found urls on the
-DB and sending events to the network module to receive more data.
+DB and populating the networks pool.
 </div>
 
 
@@ -1425,7 +685,7 @@ DB and sending events to the network module to receive more data.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line102">line 102</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line211">line 211</a>
     </li></ul></dd>
     
 
@@ -1475,7 +735,7 @@ DB and sending events to the network module to receive more data.
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Apr 02 2018 23:44:11 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Wed Apr 18 2018 22:12:54 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

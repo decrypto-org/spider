@@ -28,10 +28,11 @@
         <article>
             <pre class="prettyprint source linenums"><code>let {logger} = require("./library/logger");
 let NetworkLib = require("./library/promiseNetworkLib");
+let Parser = require("./parser");
 
+let EventEmitter = require("events");
 const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
-let EventEmitter = require("events");
 
 
 /**
@@ -55,44 +56,95 @@ class Network extends EventEmitter {
         logger.info("Initialize Network");
         this.torPort = torPort;
         this.proxyUri = "socks://127.0.0.1:" + this.torPort;
+        this.ttl = 255100; // Max ttl for IPv4: 255s + 100 ms for processing
         this.torAgent = torAgent;
-        this.torAgent.on("log", logger.info);
-        this.torAgent.on("notice", logger.info);
-        this.torAgent.on("warn", logger.warn);
-        this.torAgent.on("err", logger.error);
+        this.torAgent.on("warn", console.warn);
+        this.torAgent.on("err", console.error);
         this.availableSlots = Network.MAX_SLOTS;
+        // Naming according to the timing information the chrome dev
+        // tools provide. This means:
+        // * waiting = TTFB, in our case: The request has been sent, but we
+        //   wait for a response.
+        // * queued = There were already 6 connections to the same host,
+        //   therefor the request was placed in a queue to be downloaded
+        //   when the previous download has been finished.
+        this.waitingRequestsPerHost = {};
+        this.queuedRequestsByHost = {};
+        // The pool contains a selection of DbResults to be downloaded.
+        this.pool = [];
+        this.parser = new Parser();
         logger.info("Network initialized");
     }
 
     /**
-     * This event is thrown everytime a slot is freed
+     * This event is thrown everytime a slot is freed-up
      */
-    static get NETWORK_READY() {
-        return "networkReady";
+    static get SLOT_FREED_UP() {
+        return "slotFreedUp";
+    }
+
+    /**
+     * This event is thrown everytime the downloader has finished a request.
+     * Is used to notify the client, that new data is available to process
+     */
+    static get NEW_NETWORK_DATA_AVAILABLE() {
+        return "newNetworkDataAvailable";
+    }
+
+    /**
+     * This event is thrown everytime data is added to the pool (not for every
+     * entry added but for every update of the pool)
+     */
+    static get DATA_ADDED_TO_POOL() {
+        return "newDataToDownload";
+    }
+
+    /**
+     * This event is emitted as long as the pool is below its minimum defined
+     * size. This can be used by a client to add new data to the pool.
+     * One argument should be passed, indicating how many entries are available
+     * to the pool max.
+     */
+    static get POOL_LOW() {
+        return "needNewDataToDownload";
     }
 
     /**
      * Indicate the maximal number of slots available
      */
     static get MAX_SLOTS() {
-        return 2;
+        let max = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
+        if (isNaN(max)) {
+            return 100; // Fallback value
+        }
+        return max; // Value defined by the env (user)
     }
 
     /**
-     * This RegEx can be used to match or test strings if they contain base64
-     * encoded data. Credits to @bgrins (GitHub)
-     * Direct Link: https://gist.github.com/bgrins/6194623
-     * @param {string} stringToTest - This string will be tested against the
-     *                                regex.
-     * @return {boolean} The return value indicates whether the passed string
-     *                   contained any base64 data (true) or not (false).
+     * Indicate the minimal size of the pool holding pending download tasks.
+     * Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
      */
-    static matchBase64(stringToTest) {
-        // Todo: Whitelist text (css, html)
-        // Todo: Possibly move to Parser
-        /* eslint-disable max-len,no-useless-escape */
-        return /\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&amp;\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/.test(stringToTest);
-        /* eslint-enable max-len,no-useless-escape */
+    static get MIN_POOL_SIZE() {
+        let minPool = parseInt(process.env.NETWORK_MIN_POOL_SIZE, 10);
+        // Note: Ordering of the if clause is important here!
+        if (isNaN(minPool) || minPool &lt;= 0) {
+            return 1000; // Fallback value: this way we can make 10 rounds
+                          // of requests with the MAX_SLOTS default value
+        }
+        return minPool;
+    }
+
+    /**
+     * Indicate the maximal size of the pool holding pending download tasks.
+     * Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
+     */
+    static get MAX_POOL_SIZE() {
+        let maxPool = parseInt(process.env.NETWORK_MAX_POOL_SIZE, 10);
+        // Note: Ordering of the if clause is important here!
+        if (isNaN(maxPool) || maxPool &lt;= 0) {
+            return 2000;
+        }
+        return maxPool;
     }
 
     /**
@@ -112,46 +164,172 @@ class Network extends EventEmitter {
     }
 
     /**
-     * Start emitting network ready events to indicate that slots are available.
-     * This has to be only called once per network instance.
+     * Downloads everything within the pool and everything that might be added
+     * in the future.
      */
-    startNetwork() {
-        this.emitNetworkReady();
+    async downloadAll() {
+        while (
+            this.availableSlots >= 0 ||
+            this.pool.length >= 0
+        ) {
+            let error = false;
+            // Notify the client that the pool is running low on entries
+            // to download. (Optimization: since we do not need to wait
+            // for the download to finish, the pool will be repopulated
+            // when this download finished)
+            // Notify before in case we are already down to 0 entries
+            // in the pool -- otherwise the network module starves.
+            if (this.pool.length &lt; this.constructor.MIN_POOL_SIZE) {
+                this.emit(
+                    this.constructor.POOL_LOW,
+                    this.constructor.MAX_POOL_SIZE-this.pool.length
+                );
+            }
+            let dbResult = await this.getPoolEntry().catch((err) => {
+                logger.error(err);
+                let waitingRequestsCount = 0;
+                let hosts = Object.keys(this.waitingRequestsPerHost);
+                for (let host in hosts) {
+                    if (hosts.hasOwnProperty(host)) {
+                        let list = this.waitingRequestsPerHost[host];
+                        waitingRequestsCount += list.length;
+                    }
+                }
+                if (
+                    this.availableSlots.length == this.constructor.MAX_SLOTS &amp;&amp;
+                    this.pool.length == 0 &amp;&amp;
+                    waitingRequestsCount == 0
+                ) {
+                    // No pending requests, no pool data, and all slots are free
+                    // We are finished.
+                    logger.info("Network detected that we are finished");
+                    logger.info("Exiting...");
+                    process.exit(0);
+                }
+                // If we are not finished yet, another error must have occured
+                // we will retry later
+                // Note that this should only happen from a bug on our side
+                error = true;
+            });
+            if (error) {
+                continue;
+            }
+            await this.getSlot().catch((err) => {
+                logger.error(err);
+                // Push the dbResult back onto the stack - it should be handled
+                // later. We can do this, since an exception in the getting
+                // of the slot has nothing to do with the dbResult itself.
+                // If this would not hold, we would risk a loop
+                this.pool.push(dbResult);
+                error = true;
+            });
+            if (error) {
+                continue;
+            }
+            // Do not wait for the download to finish.
+            // This method should be used as a downloader pool and therefor
+            // start several downloads simultaneously
+            this.download(dbResult).catch((err) => {
+                logger.error(err);
+                // SHould not push back to pool here, since it may be the reason
+                // for the errourness execution.
+                // this.pool.push(dbResult);
+                logger.warn("Discarding " + JSON.stringify(dbResult));
+                // Note: Cleanup code should detect this entry as being stale
+                // and reset its state - Not the job of the network module
+                error = true;
+            });
+        }
     }
 
     /**
-     * Emits a network ready event. This indicates to the user, that the network
-     * library is ready to take the next task.
+     * Download a single webpage and handle the events around it.
+     * @param {DbResult} dbResult - Contains the DB result to be downloaded
      */
-    emitNetworkReady() {
-        for (let i = 0; i&lt;this.availableSlots; this.availableSlots--) {
-            this.emit(this.constructor.NETWORK_READY);
-        }
+    async download(dbResult) {
+        let response = await this.get(
+            dbResult.url,
+            dbResult.path,
+            dbResult.secure
+        );
+        this.emit(
+            this.constructor.NEW_NETWORK_DATA_AVAILABLE,
+            response,
+            dbResult
+        );
+        this.freeUpSlot();
     }
 
     /**
-     * Free up the specified number of slots. The client is responsible to
-     * ensure that those slots are not actually in use.
-     * @param {boolean} noNewData=false - If this flag is set, the network wont
-     *                                    issue a NetworkReady event, since it
-     *                                    has no new data to operate on. This is
-     *                                    helpful to detect the end of the
-     *                                    scraping process.
+     * As soon as a entry is available from the pool, one will be returned
+     * upon request.
+     * @return {Promise} Return a DbResult entry from the pool, as soont as one
+     *                   is available.
      */
-    freeUpSlot(noNewData=false) {
-        if (this.availableSlots + 1 > this.constructor.MAX_SLOTS) {
-            throw new Error("Cannot free up non-existent slots");
-        }
-        this.availableSlots += 1;
-        if (this.availableSlots >= this.constructor.MAX_SLOTS &amp;&amp; noNewData) {
-            // In this case every DB handler did not get new data to scrape
-            // we are therefor finished and can terminate
-            logger.info("We've completed our scrape. Bye!");
-            process.exit(0);
-        }
-        if (!noNewData) {
-            this.emitNetworkReady();
-        }
+    async getPoolEntry() {
+        return new Promise((resolve, reject) => {
+            if (this.pool.length > 0) {
+                resolve(this.pool.pop());
+                return;
+            }
+            this.once(this.constructor.DATA_ADDED_TO_POOL, () => {
+                resolve(this.pool.pop());
+                return;
+            });
+            setTimeout(() => {
+                reject("getPoolEntry timed out");
+            }, 4*this.ttl);
+            // 4*:
+            // spider -> remote host
+            // remote host -> spider
+            // spider -> db
+            // db -> spider
+        });
+    }
+
+    /**
+     * Reserve a slot for a request. This is necessary to ensure a maximal
+     * number of parallel requests.
+     * @return {Promise} Return nothing, but return only if a slot is available.
+     */
+    async getSlot() {
+        return new Promise((resolve, reject) => {
+            // Resolve immediately, if a slot is available
+            if (this.availableSlots > 0) {
+                this.availableSlots--;
+                resolve();
+                return;
+            }
+            // Wait, if not
+            this.once(this.constructor.SLOT_FREED_UP, () => {
+                this.availableSlots--;
+                resolve();
+                return;
+            });
+            setTimeout(() => {
+                reject("getSlot timed out");
+            }, 2*this.ttl);
+            // 2*
+            // spider -> remote host
+            // remote host -> spider
+        });
+    }
+
+    /**
+     * Free up a slot and notify the appropriate functions
+     */
+    freeUpSlot() {
+        this.availableSlots++;
+        this.emit(this.constructor.SLOT_FREED_UP);
+    }
+
+    /**
+     * Add new data entries to the pool and notify the appropriate functions
+     * @param {DbResult[]} newData - Contains new pool data to be downloaded
+     */
+    addDataToPool(newData) {
+        this.pool.push(...newData);
+        this.emit(this.constructor.DATA_ADDED_TO_POOL);
     }
 
     /**
@@ -162,7 +340,8 @@ class Network extends EventEmitter {
      * @property {?string} body - The body of a response.
      * @property {!number} statusCode - The HTTP status code of a response.
      * @property {?string} mimeType - The MIME Type of a response.
-     * @property {!number} timestamp - The timestamp when the response finished.
+     * @property {!number} startTime - The timestamp when the response started.
+     * @property {!number} endTime - The timestamp when the response ended.
      */
 
     /**
@@ -182,42 +361,55 @@ class Network extends EventEmitter {
         // Here the fix, but not available on all systems:
         // http://cgit.uclibc-ng.org/cgi/cgit/uclibc-ng.git/commit/?
         // id=3c1457161e5206c2d576ab25d350a139511c096d
+        /* eslint-disable max-len */
+        let headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 6.1; rv:52.0) Gecko/20100101 Firefox/52.0",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Encoding": "identity",
+            "Connection": "keep-alive",
+        };
+        /* eslint-enable max-len */
         let request = {
             method: "GET",
             hostname: url,
             path: path,
             agent: new ProxyAgent(this.proxyUri),
+            headers: headers,
         };
-        let response = await new NetworkLib(request)
-        .get(secure).catch((error) => {
-            logger.error(
-                "HTTP GET request for url [" + url + "] failed with error\n\"" +
-                error.message + "\""
-            );
-            logger.error(error.stack);
-            return {
-                "statusCode": 400,
-                "headers": {
-                    "content-type": null,
-                },
-            };
-        });
+        let startTime = (new Date).getTime();
+        let response = await new NetworkLib(request).get(secure).catch(
+            (err) => {
+                logger.error(
+                    "HTTP GET request for url " + url + " failed with err\n\"" +
+                    err.message + "\""
+                );
+                logger.error(err.stack);
+                return {
+                    "statusCode": 400,
+                    "headers": {
+                        "content-type": null,
+                    },
+                };
+            }
+        );
         /** @type {NetworkHandlerResponse}  */
-        let result = await this.responseHandler(response, url, path);
+        let result = await this.responseHandler(response, url, path, startTime);
         return result;
     }
 
     /**
      * Handle the response of a get request to a unknown resource.
      * @param {object} response - The response object from axios.get
-     * @param {string} url - The url to which the request was made.
-     * @param {string} path - The path to which the request was made.
+     * @param {string} url - The url to which the request was made
+     * @param {string} path - The path to which the request was made
+     * @param {number} startTime - Timestamp when the request was started
      * @return {NetworkHandlerResponse} result - Contains
      *                                           a) The body of the response
      *                                           b) The returned status code
      *                                           c) MIME type of the response
      */
-    async responseHandler(response, url, path) {
+    async responseHandler(response, url, path, startTime) {
         logger.info(response.statusCode, response.headers);
 
         let statusCode = response.statusCode;
@@ -226,7 +418,8 @@ class Network extends EventEmitter {
          * only make a remark that specified URL returns image data
          * instead of html
          */
-        let contentType = response.headers["content-type"];
+        let contentType = response.headers["content-type"] ||
+            "[ NO CONTENT TYPE HEADER PROVIDED ]";
 
         /* According to RFC 1341, we are safe using split(";")[0] to extract
          * only the mime type part.
@@ -240,16 +433,21 @@ class Network extends EventEmitter {
             "body": null,
             "statusCode": 200,
             "mimeType": contentType.split(";")[0],
-            "timestamp": (new Date).getTime(),
+            "startTime": startTime,
         };
 
         if (statusCode != 200) {
             logger.error("Request failed.\n"+
                 "Status Code: " + statusCode
             );
-            response.consume();
+            try {
+                response.consume();
+            } catch (e) {
+                logger.info("Tried to consume response - already closed");
+            }
             result.statusCode = statusCode;
-        } else if (!/\btext\/[jsonxhtml+]{4,}\b/.test(contentType)) {
+            result["endTime"] = (new Date).getTime();
+        } else if (!/\btext\/[jsonxhtml+]{4,}\b/i.test(contentType)) {
             /* For now we only store the textual html or json representation
              * of the page. Later on we could extend this to other mime
              * types or even simulating a full client. This could be done
@@ -261,6 +459,13 @@ class Network extends EventEmitter {
             logger.warn("Unsuported MIME Type. \n" +
                 "Only accept html and json, but received " + contentType
             );
+
+            try {
+                response.consume();
+            } catch (e) {
+                logger.info("Tried to consume response - already closed");
+            }
+            result["endTime"] = (new Date).getTime();
         } else {
             response.setEncoding("utf8");
             let rawData = "";
@@ -269,18 +474,19 @@ class Network extends EventEmitter {
             });
             return new Promise((resolve, reject) => {
                 response.on("end", () => {
+                    result["endTime"] = (new Date).getTime();
                     try {
-                        logger.info(rawData);
-                        if (this.constructor.matchBase64(rawData)) {
+                        if (this.parser.matchBase64Media(rawData)) {
                             result.body = "[ CONTAINED MEDIA DATA]";
                             logger.warn("We discarded data!");
                             logger.warn(
                                 "Reason:\n" +
-                                "Ensure compliance with any law.\n" +
+                                "Ensure compliance with any laws.\n" +
                                 "Therefor we discard any data that contains" +
                                 "a) not a text string\n" +
                                 "b) any textual representation of media content"
                             );
+                            logger.warn("Caused by " + url + path);
                         } else {
                             result.body = rawData;
                         }
@@ -319,7 +525,7 @@ module.exports = Network;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon Apr 02 2018 23:44:11 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Wed Apr 18 2018 22:12:54 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>
