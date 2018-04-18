@@ -166,13 +166,18 @@ class Network extends EventEmitter {
                     logger.info("Exiting...");
                     process.exit(0);
                 }
+                // If we are not finished yet, another error must have occured
+                // we will retry later
+                // Note that this should only happen from a bug on our side
                 error = true;
             });
             if (error) {
                 continue;
             }
             // Notify the client that the pool is running low on entries
-            // to download.
+            // to download. (Optimization: since we do not need to wait
+            // for the download to finish, the pool will be repopulated
+            // when this download finished)
             if (this.pool.length < this.constructor.MIN_POOL_SIZE) {
                 this.emit(
                     this.constructor.POOL_LOW,
@@ -182,7 +187,9 @@ class Network extends EventEmitter {
             await this.getSlot().catch((err) => {
                 logger.error(err);
                 // Push the dbResult back onto the stack - it should be handled
-                // later
+                // later. We can do this, since an exception in the getting
+                // of the slot has nothing to do with the dbResult itself.
+                // If this would not hold, we would risk a loop
                 this.pool.push(dbResult);
                 error = true;
             });
@@ -194,7 +201,12 @@ class Network extends EventEmitter {
             // start several downloads simultaneously
             this.download(dbResult).catch((err) => {
                 logger.error(err);
-                this.pool.push(dbResult);
+                // SHould not push back to pool here, since it may be the reason
+                // for the errourness execution.
+                // this.pool.push(dbResult);
+                logger.warn("Discarding " + JSON.stringify(dbResult));
+                // Note: Cleanup code should detect this entry as being stale
+                // and reset its state - Not the job of the network module
                 error = true;
             });
         }
@@ -212,7 +224,8 @@ class Network extends EventEmitter {
         );
         this.emit(
             this.constructor.NEW_NETWORK_DATA_AVAILABLE,
-            response
+            response,
+            dbResult
         );
         this.freeUpSlot();
     }
@@ -227,9 +240,11 @@ class Network extends EventEmitter {
         return new Promise((resolve, reject) => {
             if (this.pool.length > 0) {
                 resolve(this.pool.pop());
+                return;
             }
             this.once(this.constructor.DATA_ADDED_TO_POOL, () => {
                 resolve(this.pool.pop());
+                return;
             });
             setTimeout(() => {
                 reject("getPoolEntry timed out");
@@ -253,11 +268,13 @@ class Network extends EventEmitter {
             if (this.availableSlots > 0) {
                 this.availableSlots--;
                 resolve();
+                return;
             }
             // Wait, if not
             this.once(this.constructor.SLOT_FREED_UP, () => {
                 this.availableSlots--;
                 resolve();
+                return;
             });
             setTimeout(() => {
                 reject("getSlot timed out");
@@ -293,7 +310,8 @@ class Network extends EventEmitter {
      * @property {?string} body - The body of a response.
      * @property {!number} statusCode - The HTTP status code of a response.
      * @property {?string} mimeType - The MIME Type of a response.
-     * @property {!number} timestamp - The timestamp when the response finished.
+     * @property {!number} startTime - The timestamp when the response started.
+     * @property {!number} endTime - The timestamp when the response ended.
      */
 
     /**
@@ -329,36 +347,39 @@ class Network extends EventEmitter {
             agent: new ProxyAgent(this.proxyUri),
             headers: headers,
         };
-        let response = await new NetworkLib(request)
-        .get(secure).catch((error) => {
-            logger.error(
-                "HTTP GET request for url [" + url + "] failed with error\n\"" +
-                error.message + "\""
-            );
-            logger.error(error.stack);
-            return {
-                "statusCode": 400,
-                "headers": {
-                    "content-type": null,
-                },
-            };
-        });
+        let startTime = (new Date).getTime();
+        let response = await new NetworkLib(request).get(secure).catch(
+            (err) => {
+                logger.error(
+                    "HTTP GET request for url " + url + " failed with err\n\"" +
+                    err.message + "\""
+                );
+                logger.error(err.stack);
+                return {
+                    "statusCode": 400,
+                    "headers": {
+                        "content-type": null,
+                    },
+                };
+            }
+        );
         /** @type {NetworkHandlerResponse}  */
-        let result = await this.responseHandler(response, url, path);
+        let result = await this.responseHandler(response, url, path, startTime);
         return result;
     }
 
     /**
      * Handle the response of a get request to a unknown resource.
      * @param {object} response - The response object from axios.get
-     * @param {string} url - The url to which the request was made.
-     * @param {string} path - The path to which the request was made.
+     * @param {string} url - The url to which the request was made
+     * @param {string} path - The path to which the request was made
+     * @param {number} startTime - Timestamp when the request was started
      * @return {NetworkHandlerResponse} result - Contains
      *                                           a) The body of the response
      *                                           b) The returned status code
      *                                           c) MIME type of the response
      */
-    async responseHandler(response, url, path) {
+    async responseHandler(response, url, path, startTime) {
         logger.info(response.statusCode, response.headers);
 
         let statusCode = response.statusCode;
@@ -382,7 +403,7 @@ class Network extends EventEmitter {
             "body": null,
             "statusCode": 200,
             "mimeType": contentType.split(";")[0],
-            "timestamp": (new Date).getTime(),
+            "startTime": startTime,
         };
 
         if (statusCode != 200) {
@@ -392,11 +413,11 @@ class Network extends EventEmitter {
             try {
                 response.consume();
             } catch (e) {
-                // statements
                 logger.info("Tried to consume response - already closed");
             }
             result.statusCode = statusCode;
-        } else if (!/\btext\/[jsonxhtml+]{4,}\b/.test(contentType)) {
+            result["endTime"] = (new Date).getTime();
+        } else if (!/\btext\/[jsonxhtml+]{4,}\b/i.test(contentType)) {
             /* For now we only store the textual html or json representation
              * of the page. Later on we could extend this to other mime
              * types or even simulating a full client. This could be done
@@ -408,6 +429,13 @@ class Network extends EventEmitter {
             logger.warn("Unsuported MIME Type. \n" +
                 "Only accept html and json, but received " + contentType
             );
+
+            try {
+                response.consume();
+            } catch (e) {
+                logger.info("Tried to consume response - already closed");
+            }
+            result["endTime"] = (new Date).getTime();
         } else {
             response.setEncoding("utf8");
             let rawData = "";
@@ -416,6 +444,7 @@ class Network extends EventEmitter {
             });
             return new Promise((resolve, reject) => {
                 response.on("end", () => {
+                    result["endTime"] = (new Date).getTime();
                     try {
                         if (this.parser.matchBase64Media(rawData)) {
                             result.body = "[ CONTAINED MEDIA DATA]";
@@ -427,6 +456,7 @@ class Network extends EventEmitter {
                                 "a) not a text string\n" +
                                 "b) any textual representation of media content"
                             );
+                            logger.warn("Caused by " + url + path);
                         } else {
                             result.body = rawData;
                         }

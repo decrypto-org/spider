@@ -31,7 +31,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
         random: {
-            type: DataTypes.INTEGER,
+            type: DataTypes.DOUBLE,
             allowNull: false,
         },
     });

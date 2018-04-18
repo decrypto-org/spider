@@ -33,8 +33,10 @@ class Parser {
             /\s*href\s*=\s*(\"([/?][^"]*)\"|\'([/?][^']*)\'|[^'">\s]+)/gi
         );
 
+        // Note: We only keep sites that have textual data encoded, the rest
+        // will be discarded as of now.
         this.base64Regex = new RegExp(
-            /\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/
+            /\s*data:([^tex]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/i
         );
         /* eslint-enable max-len, no-useless-escape */
     }
@@ -51,7 +53,9 @@ class Parser {
     matchBase64Media(stringToTest) {
         let result = this.base64Regex.test(stringToTest);
         if (result) {
-            logger.info("Discarding " + stringToTest);
+            logger.warn(
+                "[CONTAINS MEDIA DATA] Discarding " + stringToTest.slice(0, 100)
+            );
         }
         return result;
     }

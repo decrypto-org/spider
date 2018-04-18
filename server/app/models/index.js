@@ -1,4 +1,4 @@
-let {logger} = require("./library/logger");
+let {logger} = require("../library/logger");
 
 let fs = require("fs");
 let path = require("path");
@@ -73,6 +73,7 @@ db.insertUri = async function(
             baseUrl: baseUrl,
         },
     });
+    let random = Math.random();
     let [pathEntry] = await db.path.findOrCreate({
         where: {
             baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
@@ -86,6 +87,8 @@ db.insertUri = async function(
             depth: depth,
             baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
             secure: secure,
+            random: random,
+            inProgress: false,
         },
     });
     return [baseUrlEntry.baseUrlId, pathEntry.pathId, null, null];
@@ -122,10 +125,15 @@ db.updateUri = async function(
     successful=true,
     finished=true,
 ) {
+    let inProgress = true;
+    if (finished) {
+        inProgress = false;
+    }
     let updateObj = {
         lastStartedTimestamp,
         lastFinishedTimestamp,
         secure,
+        inProgress,
     };
     let whereClause = {
         baseUrlBaseUrlId: baseUrlId,
@@ -232,7 +240,7 @@ db.insertBody = async function(
 
 /**
  * Retrieve entries from the database that are older or as old as the passed
- * dateTime param.
+ * dateTime param and set
  * @param {number} dateTime=0 - Specify the dateTime from which the newest
  *                             entry should be. The default will only
  *                             retrieve not yet scraped entries.
@@ -243,6 +251,9 @@ db.insertBody = async function(
  * @param {number} offset=0 - Set if you have already received a certain
  *                           amount of data. This way one can gather all
  *                           entries of a certain timestamp or older.
+ * @param {number} cutoffValue=1 - Set which is the deepest entry one should
+ *                                 resolve. This ensures controlled termination
+ *                                 of the scraper
  * @return {Array.<DbResult>|boolean} The DbResult contains the results
  *                      returned by the Database.
  *                      The boolean indicates whether more data is available
@@ -252,9 +263,10 @@ db.insertBody = async function(
  *                      anything pending, we can conclude that we have
  *                      finished and exit.
  */
-db.getEntries = async function({
+db.getEntriesAndSetFlag = async function({
     dateTime=0,
     limit=100,
+    cutoffValue=1,
 } = {}) {
     if (limit == 0) {
         return [[], false];
@@ -265,14 +277,25 @@ db.getEntries = async function({
     // data has no 0 timestamp anymore
     let paths = await db.path.findAll({
         where: {
-            lastScrapedTimestamp: {
+            lastStartedTimestamp: {
                 [Op.lte]: dateTime,
+            },
+            inProgress: {
+                [Op.eq]: false,
+            },
+            depth: {
+                [Op.lte]: cutoffValue,
             },
         },
         order: [
             ["random", "ASC"],
         ],
         limit: limit,
+    }).then((instances) => {
+        instances.forEach((instance) => {
+            instance.updateAttributes({inProgress: true});
+        });
+        return instances;
     });
     for (let path of paths) {
         let dbResult = {

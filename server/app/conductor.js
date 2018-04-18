@@ -37,8 +37,9 @@ class Conductor {
         // Initialization of later used variables
         this.offsetForDbRequest = 0;
         this.limitForDbRequest = Network.MAX_SLOTS;
-        // This array should never exceed the limitForDbRequest size
-        this.cachedDbResults = [];
+        // Used to only get new data once per undershoot (but multiple times
+        // for multiple network pool undershoots)
+        this.gettingNewDataFromDb = false;
     }
 
     /**
@@ -76,8 +77,8 @@ class Conductor {
                     await db.insertUri(
                         baseUrl, /* baseUrl */
                         path, /* path */
-                        0, /* lastScraped */
-                        0 /* depth */
+                        0, /* depth */
+                        matchedUrl.secure
                     ).catch((err) =>{
                         logger.error(
                             "An error occured while inserting " + baseUrl +
@@ -88,19 +89,106 @@ class Conductor {
                 }
             }
         }
+        await this.getEntriesToDownloadPool(
+            this.network.constructor.MAX_POOL_SIZE
+        );
+        if (this.network.pool.length == 0) {
+            logger.info("No data available to scrape.");
+            logger.info("Please specify initial data (-i path/to/file.csv)");
+            process.exit(0);
+        }
         await this.runScraper();
 
         // Here we are sure that the handler is initialized
-        this.network.startNetwork();
+        this.network.downloadAll();
+    }
+
+
+    /**
+     * Get entries from the DB directly to the network download pool.
+     * @param {number} limit - The number of entries to get from the DB
+     */
+    async getEntriesToDownloadPool(limit) {
+        let [dbResults, moreAvailable] = await db.getEntriesAndSetFlag(
+            0, // dateTime
+            limit,
+            this.cutOffDepth
+        );
+        if (dbResults.length == 0 && !moreAvailable) {
+            return;
+        }
+        this.network.addDataToPool(dbResults);
+    }
+
+    /**
+     * If the network finished a download, insert it into the database.
+     * @param {NetworkHandlerResponse} networkResponse - The networks response
+     *                                                   already serialized
+     * @param {DbResult} dbResult - The dbResult for which the download was
+     *                              started
+     */
+    async insertNetworkResponseIntoDb(networkResponse, dbResult) {
+        let successful = networkResponse.statusCode == 200;
+        // We need to await this before proceeding to prevent getting
+        // already scraped entries in the next step
+        await db.updateUri(
+            dbResult.baseUrlId,
+            dbResult.pathId,
+            networkResponse.startTime,
+            networkResponse.endTime,
+            dbResult.secure,
+            successful
+        );
+        await db.insertBody(
+            dbResult.pathId,
+            networkResponse.body || "[MISSING]",
+            networkResponse.mimeType || "[MISSING]",
+            networkResponse.endTime,
+            successful
+        );
+        // Scrape the links to other pages, then insert them into the db
+        // if the download was successful and the MIME Type correct
+        if (networkResponse.body == null || !successful) {
+            return;
+        }
+
+        /** @type{Parser.ParseResult} */
+        let urlsList = this.parser.extractOnionURI(
+            networkResponse.body,
+            dbResult
+        );
+        for (let url of urlsList) {
+            let pathId = "";
+            try {
+                [, pathId] = await db.insertUri(
+                    url.baseUrl,
+                    url.path,
+                    dbResult.depth + 1,
+                    url.secure,
+                );
+            } catch (e) {
+                // statements
+                logger.warn(e);
+                // Continue, since the pathId might have not been
+                // initialized.
+                continue;
+            }
+            // Now we insert the link
+            await db.insertLink(
+                dbResult.pathId,
+                pathId,
+                networkResponse.endTime
+            );
+        }
     }
 
     /*
     TODO:
     add functions for
-        * insert initial data into the db
+        * insert initial data into the db [DONE]
         * new data from db to be downloaded add to network pool
           on POOL_LOW event (or check everytime new network data is available)
-        * insert data into DB on NEW_NETWORK_DATA_AVAILABLE
+        * insert data into DB on NEW_NETWORK_DATA_AVAILABLE [DONE]
         * function to randomize ordering in the db
         * Check that all "once" listeners are reregistered after use
         * check that all functions fire appropriate events
@@ -112,129 +200,22 @@ class Conductor {
 
     /**
      * Controls on run of the scraper. This includes storing found urls on the
-     * DB and sending events to the network module to receive more data.
+     * DB and populating the networks pool.
      */
     async runScraper() {
-        // Optimization: Cache from database, then pop of
-        let [dbResults, initDataAvailable] = await db.getEntries();
-
-        if (!initDataAvailable) {
-            logger.info("No initial data available to start the scraped.");
-            logger.info(
-                "If you need to run on previous data, please contact" +
-                "the developer. This feature is not yet implemented."
-            );
-            logger.info(
-                "If you have initial data, please specify it on" +
-                "the command line (as a csv file)."
-            );
-            process.exit(0);
-        }
-
-        this.cachedDbResults = [...new Set(
-            this.cachedDbResults.concat(dbResults)
-        )];
-
-        this.network.on(
-            // This is called everytime a network slot is available
-            // ==> Go, get data, then network.get and finally reinsert it
-            // into the database. Eventually we'll do a bulk get/insert to
-            // reduce DB latency in the long run
-            Network.NETWORK_READY,
-            async () => {
-                // The network ready event indicates, that you are now permitted
-                // to make network requests. Clean up after this and call
-                // the network.freeUpSlot method, to give it back for later use.
-                logger.info("Received network ready event");
-                if (this.cachedDbResults.length == 0) {
-                    let [dbResults, moreData] = await db.getEntries();
-                    this.cachedDbResults = [...new Set(
-                        this.cachedDbResults.concat(
-                            dbResults
-                        )
-                    )];
-                    if (!moreData) {
-                        logger.info("No more new data found");
-                        this.network.freeUpSlot(true /* no new data */);
-                        return;
-                    }
-                }
-
-                // We want to preserve order, therefor using shift
-                /** @type {DbResult} */
-                let dbResult = this.cachedDbResults.shift();
-
-                // Cutoff at given value.
-                if (dbResult.depth >= this.cutOffDepth &&
-                    this.cutOffDepth != -1) {
-                    logger.info("Reached cutoff value. Returning early");
-                    this.network.freeUpSlot(true /* no new data */);
-                    return;
-                }
-
-                /** @type {network.NetworkHandlerResponse} */
-                let networkResponse = await this.network.get(
-                    dbResult.url,
-                    dbResult.path,
-                    dbResult.secure,
-                );
-
-                let successful = networkResponse.statusCode == 200;
-                // We need to await this before proceeding to prevent getting
-                // already scraped entries in the next step
-                let [, pathId] = await db.insertUri(
-                    networkResponse.url,
-                    networkResponse.path,
-                    networkResponse.timestamp,
-                    dbResult.depth,
-                    successful
-                );
-                await db.insertBody(
-                    pathId,
-                    networkResponse.body || "[MISSING]",
-                    networkResponse.mimeType || "[MISSING]",
-                    networkResponse.timestamp,
-                    successful
-                );
-                // Scrape the links to other pages, then insert them into the db
-                // if the download was successful and the MIME Type correct
-                if (networkResponse.body == null || !successful) {
-                    this.network.freeUpSlot();
-                    return;
-                }
-
-                /** @type{Parser.ParseResult} */
-                let urlsList = this.parser.extractOnionURI(
-                    networkResponse.body,
-                    dbResult
-                );
-                for (let url of urlsList) {
-                    let pathId = "";
-                    try {
-                        [, pathId] = await db.insertUri(
-                            url.baseUrl,
-                            url.path,
-                            0, /* last scraped */
-                            dbResult.depth + 1,
-                            true, /* successful */
-                            url.secure,
-                        );
-                    } catch (e) {
-                        // statements
-                        logger.warn(e);
-                        // Continue, since the pathId might have not been
-                        // initialized.
-                        continue;
-                    }
-                    // Now we insert the link
-                    await db.insertLink(
-                        dbResult.pathId,
-                        pathId,
-                        networkResponse.timestamp
-                    );
-                }
-                this.network.freeUpSlot();
+        this.network.on(Network.POOL_LOW, async (size) => {
+            if (this.gettingNewDataFromDb) {
+                // We are already repopulating the pool - no need to go a second
+                // time.
+                return;
             }
+            this.gettingNewDataFromDb = true;
+            await this.getEntriesToDownloadPool(size);
+            this.gettingNewDataFromDb = false;
+        });
+        this.network.on(
+            Network.NEW_NETWORK_DATA_AVAILABLE,
+            this.insertNetworkResponseIntoDb
         );
     }
 }
