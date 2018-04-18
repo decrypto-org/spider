@@ -30,7 +30,7 @@ class Parser {
             "gi"
         );
         this.relativeUrlRegexMatch = new RegExp(
-            /\s*href\s*=\s*(\"([/?][^"]*)\"|\'([/?][^']*)\'|[^'">\s]+)/gi
+            /\s*(href|action)\s*=\s*(\"([/][^"/][^"]*)\"|\'([/][^'/][^'])\'|[^'">\s]+)/gi
         );
 
         // Note: We only keep sites that have textual data encoded, the rest
@@ -133,9 +133,9 @@ class Parser {
         do {
             m = this.relativeUrlRegexMatch.exec(contentString);
             if (m) {
-                let path = m[2] || m[3];
+                let path = m[3] || m[4];
                 let result = {
-                    "fullUrl": protocol + baseUrl + "/" + path,
+                    "fullUrl": protocol + "://" + baseUrl + path,
                     "http": true, /* Only currently supported protocol */
                     "secure": fromEntry.secure || false, /* fallback */
                     "www": false,

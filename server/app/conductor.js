@@ -180,6 +180,12 @@ class Conductor {
                 networkResponse.endTime
             );
         }
+
+        // For the case we hit 0 in the network pool and
+        // this was the last request, we need to repopulate
+        // the pool here, if any data was added to the database
+        let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
+        this.getEntriesToDownloadPool(limit);
     }
 
     /*
@@ -213,9 +219,11 @@ class Conductor {
             await this.getEntriesToDownloadPool(size);
             this.gettingNewDataFromDb = false;
         });
+        // Arrow function ensures correct context
         this.network.on(
-            Network.NEW_NETWORK_DATA_AVAILABLE,
-            this.insertNetworkResponseIntoDb
+            Network.NEW_NETWORK_DATA_AVAILABLE, (networkResponse, dbResult) => {
+                this.insertNetworkResponseIntoDb(networkResponse, dbResult);
+            }
         );
     }
 }

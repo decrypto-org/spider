@@ -116,7 +116,7 @@ class Network extends EventEmitter {
         if (isNaN(maxPool) || maxPool <= 0) {
             return 2000;
         }
-        return;
+        return maxPool;
     }
 
     /**
@@ -145,6 +145,18 @@ class Network extends EventEmitter {
             this.pool.length >= 0
         ) {
             let error = false;
+            // Notify the client that the pool is running low on entries
+            // to download. (Optimization: since we do not need to wait
+            // for the download to finish, the pool will be repopulated
+            // when this download finished)
+            // Notify before in case we are already down to 0 entries
+            // in the pool -- otherwise the network module starves.
+            if (this.pool.length < this.constructor.MIN_POOL_SIZE) {
+                this.emit(
+                    this.constructor.POOL_LOW,
+                    this.constructor.MAX_POOL_SIZE-this.pool.length
+                );
+            }
             let dbResult = await this.getPoolEntry().catch((err) => {
                 logger.error(err);
                 let waitingRequestsCount = 0;
@@ -173,16 +185,6 @@ class Network extends EventEmitter {
             });
             if (error) {
                 continue;
-            }
-            // Notify the client that the pool is running low on entries
-            // to download. (Optimization: since we do not need to wait
-            // for the download to finish, the pool will be repopulated
-            // when this download finished)
-            if (this.pool.length < this.constructor.MIN_POOL_SIZE) {
-                this.emit(
-                    this.constructor.POOL_LOW,
-                    this.constructor.MAX_POOL_SIZE-this.pool.length
-                );
             }
             await this.getSlot().catch((err) => {
                 logger.error(err);
