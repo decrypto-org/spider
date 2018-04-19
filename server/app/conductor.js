@@ -144,7 +144,7 @@ class Conductor {
             networkResponse.body || "[MISSING]",
             networkResponse.mimeType || "[MISSING]",
             networkResponse.endTime,
-            successful
+            networkResponse.statusCode
         );
         // Scrape the links to other pages, then insert them into the db
         // if the download was successful and the MIME Type correct

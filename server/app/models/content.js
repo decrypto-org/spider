@@ -16,8 +16,8 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.TEXT,
             allowNull: false,
         },
-        success: {
-            type: DataTypes.BOOLEAN,
+        statusCode: {
+            type: DataTypes.INTEGER,
             allowNull: false,
         },
     });

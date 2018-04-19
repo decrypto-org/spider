@@ -186,8 +186,8 @@ db.insertLink = async function(
  *                            mime type of the response.
  * @param {number} timestamp - A timestamp in ms, indicating when the data
  *                             was fetched.
- * @param {boolean} successful=true - Indicates whether the download was
- *                               successful or not.
+ * @param {number} statusCode=200 - HTTP Status code returned. Indicates whether
+ *                                  the download was successful or not.
  * @return {object} Returns the created content entry.
  */
 db.insertBody = async function(
@@ -195,14 +195,14 @@ db.insertBody = async function(
     body,
     mimeType,
     timestamp,
-    successful=true
+    statusCode=200
 ) {
     let response = await db.content.create({
             scrapeTimestamp: timestamp,
-            success: successful,
             contentType: mimeType,
             content: body,
             pathPathId: pathId,
+            statusCode: statusCode,
     });
     return response;
 };
