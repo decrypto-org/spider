@@ -450,7 +450,10 @@ class Network extends EventEmitter {
             "startTime": startTime,
         };
 
-        if (statusCode != 200) {
+        // accept 30x as well as 200x --> Those are not errourness messages
+        // and might also contain new URI's to fetch. To adhere to the standard
+        // we should also implement an update on 301
+        if (statusCode < 200 || statusCode >= 400) {
             logger.error("Request failed.\n"+
                 "Status Code: " + statusCode
             );
