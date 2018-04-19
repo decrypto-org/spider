@@ -40,11 +40,12 @@ class Network extends EventEmitter {
         // * queued = There were already 6 connections to the same host,
         //   therefor the request was placed in a queue to be downloaded
         //   when the previous download has been finished.
-        this.waitingRequestsPerHost = {};
+        this.waitingRequestPerHost = {};
         this.queuedRequestsByHost = {};
         // The pool contains a selection of DbResults to be downloaded.
         this.pool = [];
         this.parser = new Parser();
+        this.setMaxListeners(this.constructor.MAX_SLOTS);
         logger.info("Network initialized");
     }
 
@@ -87,7 +88,7 @@ class Network extends EventEmitter {
     static get MAX_SLOTS() {
         let max = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
         if (isNaN(max)) {
-            return 100; // Fallback value
+            max = 100; // Fallback value
         }
         return max; // Value defined by the env (user)
     }
@@ -100,8 +101,8 @@ class Network extends EventEmitter {
         let minPool = parseInt(process.env.NETWORK_MIN_POOL_SIZE, 10);
         // Note: Ordering of the if clause is important here!
         if (isNaN(minPool) || minPool <= 0) {
-            return 1000; // Fallback value: this way we can make 10 rounds
-                          // of requests with the MAX_SLOTS default value
+            minPool = 1000; // Fallback value: this way we can make 10 rounds
+                            // of requests with the MAX_SLOTS default value
         }
         return minPool;
     }
@@ -114,7 +115,7 @@ class Network extends EventEmitter {
         let maxPool = parseInt(process.env.NETWORK_MAX_POOL_SIZE, 10);
         // Note: Ordering of the if clause is important here!
         if (isNaN(maxPool) || maxPool <= 0) {
-            return 2000;
+            maxPool = 2000;
         }
         return maxPool;
     }
@@ -159,18 +160,17 @@ class Network extends EventEmitter {
             }
             let dbResult = await this.getPoolEntry().catch((err) => {
                 logger.error(err);
-                let waitingRequestsCount = 0;
-                let hosts = Object.keys(this.waitingRequestsPerHost);
+                let waitingRequestCount = 0;
+                let hosts = Object.keys(this.waitingRequestPerHost);
                 for (let host in hosts) {
                     if (hosts.hasOwnProperty(host)) {
-                        let list = this.waitingRequestsPerHost[host];
-                        waitingRequestsCount += list.length;
+                        waitingRequestCount += this.waitingRequestPerHost[host];
                     }
                 }
                 if (
                     this.availableSlots.length == this.constructor.MAX_SLOTS &&
                     this.pool.length == 0 &&
-                    waitingRequestsCount == 0
+                    waitingRequestCount == 0
                 ) {
                     // No pending requests, no pool data, and all slots are free
                     // We are finished.
@@ -183,7 +183,28 @@ class Network extends EventEmitter {
                 // Note that this should only happen from a bug on our side
                 error = true;
             });
+            // if an error occured we will just continue with the next entry
+            // eventually we'll find one that is working
             if (error) {
+                continue;
+            }
+
+            // If there are already 6 or more connections to this host, we will
+            // stall the execution of this one and add it to the queue.
+            // Note that this is a simple JSON object and no ordering is
+            // guaranteed. Further: We do never wait on something, so the code
+            // below should be executed "atomically". Please note: Do not add
+            // any code here, that contains async call
+            if (
+                this.waitingRequestPerHost[dbResult.url] != undefined &&
+                this.waitingRequestPerHost[dbResult.url] >= 6
+            ) {
+                let queue = this.waitingRequestPerHost[dbResult.url];
+                if (queue == undefined) {
+                    queue = [];
+                }
+                queue.push(dbResult);
+                this.waitingRequestPerHost[dbResult.url] = queue;
                 continue;
             }
             await this.getSlot().catch((err) => {
@@ -219,11 +240,16 @@ class Network extends EventEmitter {
      * @param {DbResult} dbResult - Contains the DB result to be downloaded
      */
     async download(dbResult) {
+        if (this.waitingRequestPerHost[dbResult] == undefined) {
+            this.waitingRequestPerHost[dbResult] = 0;
+        }
+        this.waitingRequestPerHost[dbResult.url] += 1;
         let response = await this.get(
             dbResult.url,
             dbResult.path,
             dbResult.secure
         );
+        this.waitingRequestPerHost[dbResult.url] -= 1;
         this.emit(
             this.constructor.NEW_NETWORK_DATA_AVAILABLE,
             response,
@@ -240,6 +266,22 @@ class Network extends EventEmitter {
      */
     async getPoolEntry() {
         return new Promise((resolve, reject) => {
+            for (let host in this.queuedRequestsByHost) {
+                // We cannot yet use this entry, since either more than six
+                // requests are pending, the array was not yet initialized or
+                // does not contain any entries yet.
+                // In that case, check the next entry
+                if (
+                    (this.waitingRequestPerHost[host] >= 6 ||
+                    this.queuedRequestsByHost[host] == undefined) &&
+                    this.queuedRequestsByHost[host].length == 0
+                ) {
+                    continue;
+                }
+                let queuedRequest = this.queuedRequestsByHost[host].pop();
+                resolve(queuedRequest);
+                return;
+            }
             if (this.pool.length > 0) {
                 resolve(this.pool.pop());
                 return;

@@ -90,7 +90,7 @@ class Conductor {
             }
         }
         await this.getEntriesToDownloadPool(
-            this.network.constructor.MAX_POOL_SIZE
+            Network.MAX_POOL_SIZE
         );
         if (this.network.pool.length == 0) {
             logger.info("No data available to scrape.");
@@ -109,11 +109,12 @@ class Conductor {
      * @param {number} limit - The number of entries to get from the DB
      */
     async getEntriesToDownloadPool(limit) {
-        let [dbResults, moreAvailable] = await db.getEntriesAndSetFlag(
-            0, // dateTime
-            limit,
-            this.cutOffDepth
-        );
+        logger.info("Getting " + limit + " entries into the pool");
+        let [dbResults, moreAvailable] = await db.getEntriesAndSetFlag({
+            dateTime: 0,
+            limit: limit,
+            cutoffValue: this.cutOffDepth,
+        });
         if (dbResults.length == 0 && !moreAvailable) {
             return;
         }
