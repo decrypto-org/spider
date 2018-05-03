@@ -34,6 +34,13 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DOUBLE,
             allowNull: false,
         },
+    },
+    {
+        indexes: [
+            {
+                fields: ["depth", "random"],
+            },
+        ],
     });
     Path.associate = function(models) {
         Path.hasMany(models.content, {

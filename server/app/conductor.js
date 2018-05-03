@@ -18,9 +18,9 @@ class Conductor {
      * @param {number} cutOffDepth - Cutoff value for the number of hops we
      *                               should take, starting from either the
      *                               database or the startUrls.
-     * @param {number} torPort - Port to use for Tor proxy.
+     * @param {number} torPorts - Ports to use for Tor proxy.
      */
-    constructor(startUrls, cutOffDepth, torPort) {
+    constructor(startUrls, cutOffDepth, torPorts) {
         // Startup message
         logger.info("Conductor now takes over control");
         // By making a set, we make sure we do unify
@@ -29,7 +29,7 @@ class Conductor {
 
         this.cutOffDepth = cutOffDepth;
 
-        this.torPort = torPort;
+        this.torPorts = torPorts;
 
         // Parser init
         this.parser = new Parser();
@@ -49,9 +49,11 @@ class Conductor {
         // Synchronize the db model
         await db.sequelize.sync();
 
+        db.resetStaleEntries(0 /* timeDelta */);
+
         // Create a network instance
-        this.network = await Network.build(
-            this.torPort
+        this.network = new Network(
+            this.torPorts
         );
 
         // Now inserting the start urls into the database with scrape
@@ -109,7 +111,8 @@ class Conductor {
      * @param {number} limit - The number of entries to get from the DB
      */
     async getEntriesToDownloadPool(limit) {
-        logger.info("Getting " + limit + " entries into the pool");
+        logger.debug("Current pool size: " + this.network.pool.length);
+        logger.debug("Getting " + limit + " entries into the pool");
         let [dbResults, moreAvailable] = await db.getEntriesAndSetFlag({
             dateTime: 0,
             limit: limit,
@@ -185,25 +188,14 @@ class Conductor {
         // For the case we hit 0 in the network pool and
         // this was the last request, we need to repopulate
         // the pool here, if any data was added to the database
-        let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
-        this.getEntriesToDownloadPool(limit);
+        if (this.network.pool.length < process.env.NETWORK_MIN_POOL_SIZE &&
+            !this.gettingNewDataFromDb) {
+            let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
+            this.gettingNewDataFromDb = true;
+            await this.getEntriesToDownloadPool(limit);
+            this.gettingNewDataFromDb = false;
+        }
     }
-
-    /*
-    TODO:
-    add functions for
-        * insert initial data into the db [DONE]
-        * new data from db to be downloaded add to network pool
-          on POOL_LOW event (or check everytime new network data is available)
-        * insert data into DB on NEW_NETWORK_DATA_AVAILABLE [DONE]
-        * function to randomize ordering in the db
-        * Check that all "once" listeners are reregistered after use
-        * check that all functions fire appropriate events
-        * The conductor module should only need to listen, the firing
-          should exclusively take place in the network module.
-          (Client should not be required to read up about events, but can
-          use the function interface, except for callbacks)
-    */
 
     /**
      * Controls on run of the scraper. This includes storing found urls on the

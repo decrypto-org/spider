@@ -8,6 +8,17 @@ let basename = path.basename(__filename);
 let Op = Sequelize.Op;
 let db = {};
 
+/**
+ * Passing logger.silly directly to sequelize results in a TypeError (since
+ * the logger seems to be uninitialized at some point). This wrapper function
+ * was suggested as workaround.
+ * @param {Object} value - Contains the actual value that should be logged to
+ *                         the transports.
+ */
+function logForSequelize(value) {
+    logger.silly(value);
+}
+
 let sequelize = new Sequelize(
     process.env.DB_NAME,
     process.env.DB_USER,
@@ -19,9 +30,12 @@ let sequelize = new Sequelize(
         pool: {
             max: process.env.DB_MAX_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
+            idle: 20000,
+            acquire: 20000,
         },
         operatorsAliases: false,
-    }
+        logging: logForSequelize,
+    },
 );
 
 fs
@@ -208,6 +222,37 @@ db.insertBody = async function(
 };
 
 /**
+ * Resets the inProgress flag. The timeDelta parameter describes how high the
+ * timedelta of the lastModified flag has to be in order to be a stale entry.
+ * If set to 0, every entry gets reset (this is especially useful to
+ * restart the scraper after it was killed or crashed)
+ * @param {number} timeDelta=0 - Indicate how long an entry has to be in
+ *                               onProgress mode to be considered stale.
+ */
+db.resetStaleEntries = async function(
+    timeDelta
+) {
+    if (timeDelta != 0 && !timeDelta) {
+        timeDelta = 0;
+    }
+    let latestStaleTime = (new Date).getTime() - timeDelta;
+    await db.path.update(
+        {
+            inProgress: false,
+        },
+        {
+            where: {
+                inProgress: true,
+                updatedAt: {
+                    [Op.lte]: latestStaleTime,
+                },
+            },
+
+        },
+    );
+};
+
+/**
  * @typedef Link
  * @type {object}
  * @property {!UUIDv4} sourcePathId - The ID of the path entry where the
@@ -288,6 +333,7 @@ db.getEntriesAndSetFlag = async function({
             },
         },
         order: [
+            ["depth", "ASC"],
             ["random", "ASC"],
         ],
         limit: limit,

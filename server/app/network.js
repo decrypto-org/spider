@@ -3,7 +3,6 @@ let NetworkLib = require("./library/promiseNetworkLib");
 let Parser = require("./parser");
 
 let EventEmitter = require("events");
-const nightlink = require("nightlink");
 const ProxyAgent = require("proxy-agent");
 
 
@@ -19,20 +18,18 @@ class Network extends EventEmitter {
     /**
      * Initialize the downloader class
      * @constructor
-     * @param {object} torAgent -- Object that handles the connection through
-     *                             the TOR network.
-     * @param {number} torPort -- The proxy port for the tor network.
+     * @param {number} torPorts -- The proxy ports for the tor network.
      */
-    constructor(torAgent, torPort) {
+    constructor(torPorts) {
         super();
         logger.info("Initialize Network");
-        this.torPort = torPort;
-        this.proxyUri = "socks://127.0.0.1:" + this.torPort;
-        this.ttl = 255100; // Max ttl for IPv4: 255s + 100 ms for processing
-        this.torAgent = torAgent;
-        this.torAgent.on("warn", console.warn);
-        this.torAgent.on("err", console.error);
+        this.torPorts = torPorts;
+        this.ttl = 60100; // Max ttl for IPv4: 60s + 100 ms for processing
         this.availableSlots = Network.MAX_SLOTS;
+        this.proxyUris = [];
+        for (let i = 0; i < torPorts.length; i++) {
+            this.proxyUris.push("socks://127.0.0.1:" + this.torPorts[i]);
+        }
         // Naming according to the timing information the chrome dev
         // tools provide. This means:
         // * waiting = TTFB, in our case: The request has been sent, but we
@@ -94,6 +91,17 @@ class Network extends EventEmitter {
     }
 
     /**
+     * Indicate where the port range of the Tor instances start
+     */
+    static get BASE_PORT() {
+        let basePort = parseInt(process.env.NETWORK_BASE_SOCKS_PORT, 10);
+        if (isNaN(basePort)) {
+            basePort = 8900;
+        }
+        return basePort;
+    }
+
+    /**
      * Indicate the minimal size of the pool holding pending download tasks.
      * Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
      */
@@ -118,22 +126,6 @@ class Network extends EventEmitter {
             maxPool = 2000;
         }
         return maxPool;
-    }
-
-    /**
-     * Build a new network object.
-     * @constructor
-     * @param {number} torPort - The proxy port for the tor network.
-     * @return {object} An initialized instance of the network.
-     */
-    static async build(torPort) {
-        logger.info("Starting Tor on port " + torPort);
-        const tor = await nightlink.launch({
-            SocksPort: torPort,
-        });
-        logger.info("Tor up and running!");
-        let networkInstance = new Network(tor, torPort);
-        return networkInstance;
     }
 
     /**
@@ -343,6 +335,7 @@ class Network extends EventEmitter {
      */
     addDataToPool(newData) {
         this.pool.push(...newData);
+        logger.debug("Added data to pool. Current size: " + this.pool.size);
         this.emit(this.constructor.DATA_ADDED_TO_POOL);
     }
 
@@ -384,11 +377,12 @@ class Network extends EventEmitter {
             "Connection": "keep-alive",
         };
         /* eslint-enable max-len */
+        let agentUrl = this.proxyUris.pop();
         let request = {
             method: "GET",
             hostname: url,
             path: path,
-            agent: new ProxyAgent(this.proxyUri),
+            agent: new ProxyAgent(agentUrl),
             headers: headers,
         };
         let startTime = (new Date).getTime();
@@ -409,6 +403,7 @@ class Network extends EventEmitter {
         );
         /** @type {NetworkHandlerResponse}  */
         let result = await this.responseHandler(response, url, path, startTime);
+        this.proxyUris.push(agentUrl);
         return result;
     }
 
@@ -424,8 +419,6 @@ class Network extends EventEmitter {
      *                                           c) MIME type of the response
      */
     async responseHandler(response, url, path, startTime) {
-        logger.info(response.statusCode, response.headers);
-
         let statusCode = response.statusCode;
         /* Based on the content type we can either store or forget the
          * downloaded data. E.g. we do not want to store any images, so we
@@ -473,6 +466,7 @@ class Network extends EventEmitter {
              * scripts, using a screenshot we then could analyse the content
              * with an image classifier, compare (Fidalgo et al. 2017)
              */
+            logger.warn(url + path);
             logger.warn("Unsuported MIME Type. \n" +
                 "Only accept html and json, but received " + contentType
             );
@@ -480,7 +474,7 @@ class Network extends EventEmitter {
             try {
                 response.consume();
             } catch (e) {
-                logger.info("Tried to consume response - already closed");
+                logger.silly("Tried to consume response - already closed");
             }
             result["endTime"] = (new Date).getTime();
         } else {
@@ -513,6 +507,7 @@ class Network extends EventEmitter {
                             "An error occured whlie reading the data " +
                             e.message
                         );
+                        logger.error("Caused by " + url + path);
                         reject(e);
                     }
                 });

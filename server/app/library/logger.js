@@ -16,11 +16,14 @@ let logger = createLogger({
     ),
     transports: [
         new transports.File({
-            filename: "/home/node/log/spider.err",
+            tailable: true,
+            filename: process.env.LOG_LOCATION + "/spider.err",
             level: "error",
         }),
         new transports.File({
-            filename: "/home/node/log/spider.log",
+            tailable: true,
+            filename: process.env.LOG_LOCATION + "/spider.log",
+            level: "debug",
         }),
     ],
 });
@@ -32,7 +35,7 @@ if (process.env.DEBUG == "true") {
                 timestamp(),
                 loggerFormat
             ),
-            level: "silly",
+            level: process.env.LOG_LEVEL,
             colorize: true,
         })
     );

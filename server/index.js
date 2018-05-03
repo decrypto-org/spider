@@ -1,5 +1,3 @@
-let {logger} = require("./app/library/logger");
-
 let fs = require("fs");
 let path = require("path");
 let csvjson = require("csvjson");
@@ -12,6 +10,9 @@ let spiderEnv = dotenv.config();
 spiderEnv = variableExpansion(spiderEnv);
 /* eslint-enable no-unused-vars */
 
+// Requires the .env to be already loaded
+let {logger} = require("./app/library/logger");
+
 // Read in command line arguments (if any)
 const commandLineOptions = commandLineArgs([
     {name: "init_urls_file", alias: "i", type: String, defaultOption: true},
@@ -19,11 +20,11 @@ const commandLineOptions = commandLineArgs([
 ]);
 
 process.on("uncaughtException", (err) => {
-    console.error((err && err.stack) ? err.stack : err);
+    logger.error((err && err.stack) ? err.stack : err);
 });
 
 const main = require("./app/index");
-logger.log("info", "Loaded app/index");
+logger.info("Loaded app/index");
 
 // If the command line args specified a init file, we pass it to the spider
 let pathToUrls = "";
@@ -64,5 +65,5 @@ if (commandLineOptions.depth) {
     depth = parseInt(process.env.SEARCH_DEPTH);
 }
 
-logger.log("info", "Starting spider");
+logger.info("Starting spider");
 main.init(startUrls, depth);
