@@ -1,5 +1,3 @@
-let {logger} = require("./logger");
-let rpc = require("jrpc2");
 let net = require("net");
 
 module.exports.buildTorController = async function(socksPort) {
@@ -11,7 +9,7 @@ module.exports.buildTorController = async function(socksPort) {
             resolve(torController);
         });
     });
-}
+};
 
 /**
  * TorController gives us control access to the tor-router, who manages
@@ -24,10 +22,18 @@ module.exports.buildTorController = async function(socksPort) {
  * request, we are pretty close to what a conceptual RPC looks like.
  */
 class TorController {
-
+    /**
+     * Instantiate a TorController object and sets the basic fields;
+     * @param  {number} socksPort           The socks port to be used for the
+     *                                      SOCKSServer
+     * @param  {Object} torControllerClient The client to be used to access the
+     *                                      tor-router
+     */
     constructor(socksPort, torControllerClient) {
-        this.socksPort = socksPort; 
+        this.socksPort = socksPort;
         this.client = torControllerClient;
+        this.currentRPCId = 0;
+        this.timeout = 255000; // 255s
     }
 
     /**
@@ -35,28 +41,34 @@ class TorController {
      * @return {Promise} Resolved on successful execution on the tor-router.
      */
     async createTorPool() {
-        var createTorRequest = {
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let createTorRequest = {
             "method": "createTorPool",
             "params": [],
             "jsonrpc": "2.0",
-            "id": 1
+            "id": rpcId,
         };
         this.client.write(JSON.stringify(createTorRequest));
         return new Promise( (resolve, reject) => {
             this.client.on("data", (chunk) => {
-                var rawResponse = chunk.toString("utf8");
-                var rpcResponse = JSON.parse( rawResponse );
-                if (rpcResponse.id === 1) {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id === rpcId) {
                     resolve(rpcResponse);
                 }
             });
+            // This runs on the same server. We wait a max of 255s for timeout
+            setTimeout(() => {
+                reject("createTorPool request timed out.");
+            }, this.timeout);
         });
     }
 
     /**
      * Create a SOCKS Server which is used for the Tor instances to connect
      * to the Tor network.
-     * @param  {number} socksPort=9050 - Specify on which port the Tor instances 
+     * @param  {number} socksPort=9050 - Specify on which port the Tor instances
      *                                   should run. Overrides the port
      *                                   specified at construction time
      * @return {Promise}               Resolved on successful creation of a
@@ -64,23 +76,33 @@ class TorController {
      */
     async createSocksServer(socksPort) {
         // Set torPort to 9050 (Tor standard), if undefined
-        if (socksPort)  {
+        if (socksPort) {
             this.socksPort = socksPort;
         }
-        if (!this.socksPort){
+        if (!this.socksPort) {
             this.socksPort = 9050;
         }
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let createSocksRequest = {
+            "method": "createSOCKSServer",
+            "params": [socksPort],
+            "jsonrpc": "2.0",
+            "id": rpcId,
+        };
+        this.client.write(JSON.stringify(createSocksRequest));
         return new Promise( (resolve, reject) => {
-            this.client.invoke(
-                "createSOCKSServer",
-                [torPort],
-                (err, raw) => {
-                    if (err) {
-                        reject(new Error(err));
-                    }
-                    resolve(raw);
+            this.client.on("data", (chunk) => {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id === rpcId) {
+                    resolve(rpcResponse);
                 }
-            );
+            });
+            // This runs on the same server. We wait a max of 255s for timeout
+            setTimeout(() => {
+                reject("createSocksServer request timed out.");
+            }, this.timeout);
         });
     }
 
@@ -93,17 +115,26 @@ class TorController {
      *                                  fails, the Promise will be rejected.
      */
     async createTorInstances(numOfInstances) {
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let createTorInstancesRequest = {
+            "method": "createInstances",
+            "params": [numOfInstances],
+            "jsonrpc": "2.0",
+            "id": rpcId,
+        };
+        this.client.write(JSON.stringify(createTorInstancesRequest));
         return new Promise( (resolve, reject) => {
-            this.client.invoke(
-                "createInstances",
-                [numOfInstances],
-                (err, raw) => {
-                    if(err) {
-                        reject(new Error(err));
-                    }
-                    resolve(raw);
+            this.client.on( "data", (chunk) => {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id == rpcId) {
+                    resolve(rpcResponse);
                 }
-            );
+            });
+            setTimeout(() => {
+                reject("createTorInstances timed out.");
+            }, this.timeout);
         });
     }
 
@@ -113,17 +144,26 @@ class TorController {
      *                   on the server.
      */
     async closeTorInstances() {
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let closeTorInstancesRequest = {
+            "method": "closeInstances",
+            "params": [],
+            "jsonrpc": "2.0",
+            "id": rpcId,
+        };
+        this.client.write(JSON.stringify(closeTorInstancesRequest));
         return new Promise( (resolve, reject) => {
-            this.client.invoke(
-                "closeInstances",
-                [],
-                (err, raw) => {
-                    if(err){
-                        reject(new Error(err));
-                    }
-                    resolve(raw);
+            this.client.on( "data", (chunk) => {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id === rpcId) {
+                    resolve(rpcResponse);
                 }
-            );
+            });
+            setTimeout(() => {
+                reject("closeTorInstances request timed out.");
+            }, this.timeout);
         });
     }
 }

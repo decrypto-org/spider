@@ -3,13 +3,12 @@ let NetworkLib = require("./library/promiseNetworkLib");
 let TorController = require("./library/torController");
 let Parser = require("./parser");
 
-let http = require("http");
 let EventEmitter = require("events");
 const ProxyAgent = require("proxy-agent");
 
 /**
  * This event is thrown everytime a slot is freed-up
- */ 
+ */
 module.exports.SLOT_FREED_UP = "slotFreedUp";
 
 /**
@@ -36,8 +35,8 @@ module.exports.POOL_LOW = "needNewDataToDownload";
  * Indicate the maximal number of slots available
  */
 let _maxSlots = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
-if(isNaN(_maxSlots)){
-    max = 100;
+if (isNaN(_maxSlots)) {
+    _maxSlots = 100;
 }
 module.exports.MAX_SLOTS = _maxSlots;
 
@@ -64,34 +63,37 @@ if (isNaN(_maxPool) || _maxPool <= 0) {
 }
 module.exports.MAX_POOL_SIZE = _maxPool;
 
-module.exports.buildInstance = async function(socksPort){
+module.exports.buildInstance = async function(socksPort) {
     let torController = await TorController.buildTorController(socksPort);
-    // Since we have MAX_SLOTS simultaneous requests, we can hide ourselves
-    // even better if we use the double amount of clients. That way
-    // we only send a request on a client every 4 seconds approximately.
     await torController.createTorPool().catch((err) => {
         console.error("Error while creating Tor pool.");
         console.error(err.stack);
+        console.error(err);
         // Exit with error - we cannot work without Tor
         process.exit(1);
     });
     await torController.createSocksServer(socksPort).catch((err) => {
         console.error("Error while initiating socksServer.");
         console.error(err.stack);
+        console.error(err);
         // Exit since without socks server we cannot send requests
         // to the Tor instances;
         process.exit(1);
     });
-    await torController.createInstances(
-        2 * module.exports.MAX_SLOTS
+    // Since we found that most exit nodes can take at least 10
+    // connections, we could divide MAX_SLOTS by 10. However,
+    // to have a margin, we devide by 5.
+    await torController.createTorInstances(
+        module.exports.MAX_SLOTS / 5
     ).catch((err) => {
         console.error("Error while creating Tor instances.");
         console.error(err.stack);
+        console.error(err);
         // Cannot work if no Tor instances are running
         process.exit(1);
     });
     return new Network(socksPort, torController);
-}
+};
 
 /**
  * This module handels all the requests to the tor network.
@@ -105,7 +107,7 @@ class Network extends EventEmitter {
     /**
      * Initialize the downloader class
      * @constructor
-     * @param {number} torPorts -- The proxy ports for the tor network.
+     * @param {number} socksPort -- The proxy port for the tor network.
      * @param {Object} torController - The torController controls all the tor
      *                                 instances and can be used to instantiate,
      *                                 kill or rotate IPs of instances.
