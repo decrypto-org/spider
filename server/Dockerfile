@@ -17,3 +17,6 @@ EXPOSE 5858
 
 USER node
 ENV HOME /home/node
+
+ENV TDSE_DB_HOST=database
+ENV TDSE_TOR_HOST=frontend

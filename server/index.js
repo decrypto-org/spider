@@ -20,6 +20,7 @@ const commandLineOptions = commandLineArgs([
 ]);
 
 process.on("uncaughtException", (err) => {
+    logger.error("UNCAUGHT EXCEPTION!");
     logger.error((err && err.stack) ? err.stack : err);
 });
 

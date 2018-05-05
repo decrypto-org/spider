@@ -2,6 +2,7 @@ version: "3.2"
 
 networks:
   backend:
+  frontend:
 
 volumes:
   postgres-vol:
@@ -38,8 +39,6 @@ services:
       TDSE_DB_PORT: $TDSE_DB_PORT
     networks:
       backend:
-    ports:
-      - "9000-9100:9000-9100"
     volumes:
       - spider-log-vol:/home/node/log
       - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
@@ -49,3 +48,17 @@ services:
     tty: true
     depends_on:
       - "db"
+      - "tor"
+
+  tor:
+    image: robrunne/tor-router:1.0.0
+    restart: always
+    networks:
+      frontend:
+        aliases:
+          - tor-connection
+          - onionnet
+    ports:
+      - "9077:9077"
+      - "9050:9050"
+    pid: "host"

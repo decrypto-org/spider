@@ -3,7 +3,6 @@ let Network = require("./network");
 let {logger} = require("./library/logger");
 let db = require("./models");
 
-
 /**
  * The conductor is the one controlling the spidering
  * through the web. Therefor it needs to access the network
@@ -18,9 +17,9 @@ class Conductor {
      * @param {number} cutOffDepth - Cutoff value for the number of hops we
      *                               should take, starting from either the
      *                               database or the startUrls.
-     * @param {number} torPorts - Ports to use for Tor proxy.
+     * @param {number} torPort=9050 - Port to use for Tor controller server.
      */
-    constructor(startUrls, cutOffDepth, torPorts) {
+    constructor(startUrls, cutOffDepth, torPort) {
         // Startup message
         logger.info("Conductor now takes over control");
         // By making a set, we make sure we do unify
@@ -29,7 +28,7 @@ class Conductor {
 
         this.cutOffDepth = cutOffDepth;
 
-        this.torPorts = torPorts;
+        this.torPort = torPort || 9050;
 
         // Parser init
         this.parser = new Parser();
@@ -52,8 +51,8 @@ class Conductor {
         db.resetStaleEntries(0 /* timeDelta */);
 
         // Create a network instance
-        this.network = new Network(
-            this.torPorts
+        this.network = await Network.buildInstance(
+            this.torPort
         );
 
         // Now inserting the start urls into the database with scrape

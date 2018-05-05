@@ -9,7 +9,7 @@
   },
   "scripts": {
     "test": "mocha",
-    "start": "export TDSE_DB_HOST=database && node --use_strict index.js",
+    "start": "node --use_strict index.js",
     "debug": "export DEBUG=true && node --inspect-brk --use_strict index.js"
   },
   "author": "Roman Brunner (robrunne@student.ethz.ch)",
@@ -19,7 +19,6 @@
     "url": "git@github.com:jogli5er/tdse-spider.git"
   },
   "dependencies": {
-    "axios": "^0.18.0",
     "cheerio": "^1.0.0-rc.2",
     "command-line-args": "^5.0.2",
     "csvjson": "^5.0.0",
@@ -27,12 +26,11 @@
     "dotenv-expand": "^4.2.0",
     "dotenv-parse-variables": "^0.1.0",
     "eslint": "^4.18.2",
-    "https-proxy-agent": "^2.2.0",
-    "nightlink": "^0.1.0",
-    "pg": "^7.4.1",
+    "jrpc2": "^1.0.5",
     "portscanner": "^2.1.1",
     "proxy-agent": "^2.2.0",
     "sequelize": "^4.36.1",
+    "tor-router": "^3.2.1",
     "winston": "^3.0.0-rc2"
   },
   "devDependencies": {

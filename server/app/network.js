@@ -1,10 +1,97 @@
 let {logger} = require("./library/logger");
 let NetworkLib = require("./library/promiseNetworkLib");
+let TorController = require("./library/torController");
 let Parser = require("./parser");
 
+let http = require("http");
 let EventEmitter = require("events");
 const ProxyAgent = require("proxy-agent");
 
+/**
+ * This event is thrown everytime a slot is freed-up
+ */ 
+module.exports.SLOT_FREED_UP = "slotFreedUp";
+
+/**
+ * This event is thrown everytime the downloader has finished a request.
+ * Is used to notify the client, that new data is available to process
+ */
+module.exports.NEW_NETWORK_DATA_AVAILABLE = "newNetworkDataAvailable";
+
+/**
+ * This event is thrown everytime data is added to the pool (not for every
+ * entry added but for every update of the pool)
+ */
+module.exports.DATA_ADDED_TO_POOL = "newDataToDownload";
+
+/**
+ * This event is emitted as long as the pool is below its minimum defined
+ * size. This can be used by a client to add new data to the pool.
+ * One argument should be passed, indicating how many entries are available
+ * to the pool max.
+ */
+module.exports.POOL_LOW = "needNewDataToDownload";
+
+/**
+ * Indicate the maximal number of slots available
+ */
+let _maxSlots = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
+if(isNaN(_maxSlots)){
+    max = 100;
+}
+module.exports.MAX_SLOTS = _maxSlots;
+
+/**
+ * Indicate the minimal size of the pool holding pending download tasks.
+ * Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
+ */
+let _minPool = parseInt(process.env.NETWORK_MIN_POOL_SIZE, 10);
+// Note: Ordering of the if clause is important here!
+if (isNaN(_minPool) || _minPool <= 0) {
+    _minPool = 1000; // Fallback value: this way we can make 10 rounds
+                    // of requests with the MAX_SLOTS default value
+}
+module.exports.MIN_POOL_SIZE = _minPool;
+
+/**
+ * Indicate the maximal size of the pool holding pending download tasks.
+ * Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
+ */
+let _maxPool = parseInt(process.env.NETWORK_MAX_POOL_SIZE, 10);
+// Note: Ordering of the if clause is important here!
+if (isNaN(_maxPool) || _maxPool <= 0) {
+    _maxPool = 2000;
+}
+module.exports.MAX_POOL_SIZE = _maxPool;
+
+module.exports.buildInstance = async function(socksPort){
+    let torController = await TorController.buildTorController(socksPort);
+    // Since we have MAX_SLOTS simultaneous requests, we can hide ourselves
+    // even better if we use the double amount of clients. That way
+    // we only send a request on a client every 4 seconds approximately.
+    await torController.createTorPool().catch((err) => {
+        console.error("Error while creating Tor pool.");
+        console.error(err.stack);
+        // Exit with error - we cannot work without Tor
+        process.exit(1);
+    });
+    await torController.createSocksServer(socksPort).catch((err) => {
+        console.error("Error while initiating socksServer.");
+        console.error(err.stack);
+        // Exit since without socks server we cannot send requests
+        // to the Tor instances;
+        process.exit(1);
+    });
+    await torController.createInstances(
+        2 * module.exports.MAX_SLOTS
+    ).catch((err) => {
+        console.error("Error while creating Tor instances.");
+        console.error(err.stack);
+        // Cannot work if no Tor instances are running
+        process.exit(1);
+    });
+    return new Network(socksPort, torController);
+}
 
 /**
  * This module handels all the requests to the tor network.
@@ -19,17 +106,17 @@ class Network extends EventEmitter {
      * Initialize the downloader class
      * @constructor
      * @param {number} torPorts -- The proxy ports for the tor network.
+     * @param {Object} torController - The torController controls all the tor
+     *                                 instances and can be used to instantiate,
+     *                                 kill or rotate IPs of instances.
      */
-    constructor(torPorts) {
+    constructor(socksPort, torController) {
         super();
         logger.info("Initialize Network");
-        this.torPorts = torPorts;
+        this.socksPort = socksPort;
         this.ttl = 60100; // Max ttl for IPv4: 60s + 100 ms for processing
-        this.availableSlots = Network.MAX_SLOTS;
-        this.proxyUris = [];
-        for (let i = 0; i < torPorts.length; i++) {
-            this.proxyUris.push("socks://127.0.0.1:" + this.torPorts[i]);
-        }
+        this.availableSlots = module.exports.MAX_SLOTS;
+        this.proxyUri = "socks://127.0.0.1:" + this.socksPort;
         // Naming according to the timing information the chrome dev
         // tools provide. This means:
         // * waiting = TTFB, in our case: The request has been sent, but we
@@ -41,91 +128,10 @@ class Network extends EventEmitter {
         this.queuedRequestsByHost = {};
         // The pool contains a selection of DbResults to be downloaded.
         this.pool = [];
+        this.torController = torController;
         this.parser = new Parser();
-        this.setMaxListeners(this.constructor.MAX_SLOTS);
+        this.setMaxListeners(module.exports.MAX_SLOTS);
         logger.info("Network initialized");
-    }
-
-    /**
-     * This event is thrown everytime a slot is freed-up
-     */
-    static get SLOT_FREED_UP() {
-        return "slotFreedUp";
-    }
-
-    /**
-     * This event is thrown everytime the downloader has finished a request.
-     * Is used to notify the client, that new data is available to process
-     */
-    static get NEW_NETWORK_DATA_AVAILABLE() {
-        return "newNetworkDataAvailable";
-    }
-
-    /**
-     * This event is thrown everytime data is added to the pool (not for every
-     * entry added but for every update of the pool)
-     */
-    static get DATA_ADDED_TO_POOL() {
-        return "newDataToDownload";
-    }
-
-    /**
-     * This event is emitted as long as the pool is below its minimum defined
-     * size. This can be used by a client to add new data to the pool.
-     * One argument should be passed, indicating how many entries are available
-     * to the pool max.
-     */
-    static get POOL_LOW() {
-        return "needNewDataToDownload";
-    }
-
-    /**
-     * Indicate the maximal number of slots available
-     */
-    static get MAX_SLOTS() {
-        let max = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
-        if (isNaN(max)) {
-            max = 100; // Fallback value
-        }
-        return max; // Value defined by the env (user)
-    }
-
-    /**
-     * Indicate where the port range of the Tor instances start
-     */
-    static get BASE_PORT() {
-        let basePort = parseInt(process.env.NETWORK_BASE_SOCKS_PORT, 10);
-        if (isNaN(basePort)) {
-            basePort = 8900;
-        }
-        return basePort;
-    }
-
-    /**
-     * Indicate the minimal size of the pool holding pending download tasks.
-     * Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
-     */
-    static get MIN_POOL_SIZE() {
-        let minPool = parseInt(process.env.NETWORK_MIN_POOL_SIZE, 10);
-        // Note: Ordering of the if clause is important here!
-        if (isNaN(minPool) || minPool <= 0) {
-            minPool = 1000; // Fallback value: this way we can make 10 rounds
-                            // of requests with the MAX_SLOTS default value
-        }
-        return minPool;
-    }
-
-    /**
-     * Indicate the maximal size of the pool holding pending download tasks.
-     * Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
-     */
-    static get MAX_POOL_SIZE() {
-        let maxPool = parseInt(process.env.NETWORK_MAX_POOL_SIZE, 10);
-        // Note: Ordering of the if clause is important here!
-        if (isNaN(maxPool) || maxPool <= 0) {
-            maxPool = 2000;
-        }
-        return maxPool;
     }
 
     /**
@@ -146,8 +152,8 @@ class Network extends EventEmitter {
             // in the pool -- otherwise the network module starves.
             if (this.pool.length < this.constructor.MIN_POOL_SIZE) {
                 this.emit(
-                    this.constructor.POOL_LOW,
-                    this.constructor.MAX_POOL_SIZE-this.pool.length
+                    module.exports.POOL_LOW,
+                    module.exports.MAX_POOL_SIZE-this.pool.length
                 );
             }
             let dbResult = await this.getPoolEntry().catch((err) => {
@@ -168,7 +174,10 @@ class Network extends EventEmitter {
                     // We are finished.
                     logger.info("Network detected that we are finished");
                     logger.info("Exiting...");
-                    process.exit(0);
+                    // Clean up after ourselves
+                    this.torController.closeTorInstances().then(
+                        process.exit(0)
+                    );
                 }
                 // If we are not finished yet, another error must have occured
                 // we will retry later
@@ -232,8 +241,8 @@ class Network extends EventEmitter {
      * @param {DbResult} dbResult - Contains the DB result to be downloaded
      */
     async download(dbResult) {
-        if (this.waitingRequestPerHost[dbResult] == undefined) {
-            this.waitingRequestPerHost[dbResult] = 0;
+        if (this.waitingRequestPerHost[dbResult.url] == undefined) {
+            this.waitingRequestPerHost[dbResult.url] = 0;
         }
         this.waitingRequestPerHost[dbResult.url] += 1;
         let response = await this.get(
@@ -243,7 +252,7 @@ class Network extends EventEmitter {
         );
         this.waitingRequestPerHost[dbResult.url] -= 1;
         this.emit(
-            this.constructor.NEW_NETWORK_DATA_AVAILABLE,
+            module.exports.NEW_NETWORK_DATA_AVAILABLE,
             response,
             dbResult
         );
@@ -278,7 +287,7 @@ class Network extends EventEmitter {
                 resolve(this.pool.pop());
                 return;
             }
-            this.once(this.constructor.DATA_ADDED_TO_POOL, () => {
+            this.once(module.exports.DATA_ADDED_TO_POOL, () => {
                 resolve(this.pool.pop());
                 return;
             });
@@ -307,7 +316,7 @@ class Network extends EventEmitter {
                 return;
             }
             // Wait, if not
-            this.once(this.constructor.SLOT_FREED_UP, () => {
+            this.once(module.exports.SLOT_FREED_UP, () => {
                 this.availableSlots--;
                 resolve();
                 return;
@@ -326,7 +335,7 @@ class Network extends EventEmitter {
      */
     freeUpSlot() {
         this.availableSlots++;
-        this.emit(this.constructor.SLOT_FREED_UP);
+        this.emit(module.exports.SLOT_FREED_UP);
     }
 
     /**
@@ -336,7 +345,7 @@ class Network extends EventEmitter {
     addDataToPool(newData) {
         this.pool.push(...newData);
         logger.debug("Added data to pool. Current size: " + this.pool.size);
-        this.emit(this.constructor.DATA_ADDED_TO_POOL);
+        this.emit(module.exports.DATA_ADDED_TO_POOL);
     }
 
     /**
@@ -377,12 +386,12 @@ class Network extends EventEmitter {
             "Connection": "keep-alive",
         };
         /* eslint-enable max-len */
-        let agentUrl = this.proxyUris.pop();
+
         let request = {
             method: "GET",
             hostname: url,
             path: path,
-            agent: new ProxyAgent(agentUrl),
+            agent: new ProxyAgent(this.proxyUri),
             headers: headers,
         };
         let startTime = (new Date).getTime();
@@ -403,13 +412,12 @@ class Network extends EventEmitter {
         );
         /** @type {NetworkHandlerResponse}  */
         let result = await this.responseHandler(response, url, path, startTime);
-        this.proxyUris.push(agentUrl);
         return result;
     }
 
     /**
      * Handle the response of a get request to a unknown resource.
-     * @param {object} response - The response object from axios.get
+     * @param {object} response - The response object from NetworkLib.get
      * @param {string} url - The url to which the request was made
      * @param {string} path - The path to which the request was made
      * @param {number} startTime - Timestamp when the request was started
@@ -520,4 +528,4 @@ class Network extends EventEmitter {
 }
 
 
-module.exports = Network;
+module.exports.Network = Network;
