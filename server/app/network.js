@@ -304,7 +304,7 @@ class Network extends EventEmitter {
                 return;
             });
             setTimeout(() => {
-                logger.warn("getPoolEntry timed out")
+                logger.warn("getPoolEntry timed out");
                 reject("getPoolEntry timed out");
             }, 4*this.ttl);
             // 4*:
