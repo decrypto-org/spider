@@ -1,6 +1,6 @@
 let net = require("net");
 
-module.exports.buildTorController = async function(socksPort) {
+module.exports.buildInstance = async function(socksPort) {
     return new Promise( (resolve, reject) => {
         this.host = process.env.TOR_HOST || "localhost";
         this.torPort = process.env.TOR_CONTROL_PORT || 9077;
@@ -33,7 +33,7 @@ class TorController {
         this.socksPort = socksPort;
         this.client = torControllerClient;
         this.currentRPCId = 0;
-        this.timeout = 255000; // 255s
+        this.timeout = 60000; // 60s, Tor default
     }
 
     /**
@@ -49,9 +49,9 @@ class TorController {
             "jsonrpc": "2.0",
             "id": rpcId,
         };
-        this.client.write(JSON.stringify(createTorRequest));
         return new Promise( (resolve, reject) => {
-            this.client.on("data", (chunk) => {
+            this.client.write(JSON.stringify(createTorRequest));
+            this.client.once("data", (chunk) => {
                 let rawResponse = chunk.toString("utf8");
                 let rpcResponse = JSON.parse( rawResponse );
                 if (rpcResponse.id === rpcId) {
@@ -90,16 +90,19 @@ class TorController {
             "jsonrpc": "2.0",
             "id": rpcId,
         };
-        this.client.write(JSON.stringify(createSocksRequest));
         return new Promise( (resolve, reject) => {
-            this.client.on("data", (chunk) => {
+            this.client.write(JSON.stringify(createSocksRequest));
+            this.client.once("data", (chunk) => {
                 let rawResponse = chunk.toString("utf8");
                 let rpcResponse = JSON.parse( rawResponse );
                 if (rpcResponse.id === rpcId) {
                     resolve(rpcResponse);
                 }
             });
-            // This runs on the same server. We wait a max of 255s for timeout
+            // If there is already an instance, the tor-router crashes.
+            // So we have to make sure, that we either are always booting
+            // up the tor-router together with the spider or have to integrate
+            // a getSOCKSServer Instance into tor-router.
             setTimeout(() => {
                 reject("createSocksServer request timed out.");
             }, this.timeout);
@@ -123,9 +126,9 @@ class TorController {
             "jsonrpc": "2.0",
             "id": rpcId,
         };
-        this.client.write(JSON.stringify(createTorInstancesRequest));
         return new Promise( (resolve, reject) => {
-            this.client.on( "data", (chunk) => {
+            this.client.write(JSON.stringify(createTorInstancesRequest));
+            this.client.once( "data", (chunk) => {
                 let rawResponse = chunk.toString("utf8");
                 let rpcResponse = JSON.parse( rawResponse );
                 if (rpcResponse.id == rpcId) {
@@ -134,7 +137,7 @@ class TorController {
             });
             setTimeout(() => {
                 reject("createTorInstances timed out.");
-            }, this.timeout);
+            }, this.timeout*numOfInstances);
         });
     }
 
@@ -152,9 +155,9 @@ class TorController {
             "jsonrpc": "2.0",
             "id": rpcId,
         };
-        this.client.write(JSON.stringify(closeTorInstancesRequest));
         return new Promise( (resolve, reject) => {
-            this.client.on( "data", (chunk) => {
+            this.client.write(JSON.stringify(closeTorInstancesRequest));
+            this.client.once( "data", (chunk) => {
                 let rawResponse = chunk.toString("utf8");
                 let rpcResponse = JSON.parse( rawResponse );
                 if (rpcResponse.id === rpcId) {
