@@ -111,7 +111,8 @@ db.insertUri = async function(
 /**
  * Update the URI entry with new data. This is typically done after a network
  * request finished (successfully or not). This method won't insert any data
- * into the database, only update already existing entries.
+ * into the database, only update already existing entries. (The updated entry
+ * is naturally the one just downloaded, so only one at a time will be updated)
  * @param {UUIDv4} baseUrlId - The ID of the baseUrl entry to be updated
  * @param {UUIDv4} pathId - The ID of the path entry to be updated
  * @param {number} lastStartedTimestamp - Contains the timestamp of the start of
