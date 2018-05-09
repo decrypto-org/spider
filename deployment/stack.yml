@@ -44,21 +44,19 @@ services:
       - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
     pid: "host"
     command: $tdse_server_start_command
-    stdin_open: true
-    tty: true
     depends_on:
       - "db"
-      # - "tor"
+      - "tor"
 
-  # tor:
-  #   image: robrunne/tor-proxy:1.0.0
-  #   restart: always
-  #   networks:
-  #     frontend:
-  #       aliases:
-  #         - tor-connection
-  #         - onionnet
-  #   ports:
-  #     - "9077:9077"
-  #     - "9050:9050"
-  #   pid: "host"
+  tor:
+    image: robrunne/tor-proxy:1.0.0
+    restart: always
+    networks:
+      frontend:
+        aliases:
+          - tor-connection
+          - onionnet
+    ports:
+      - "9077:9077"
+      - "9050:9050"
+    pid: "host"
