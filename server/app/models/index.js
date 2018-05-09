@@ -1,5 +1,5 @@
-let {logger} = require("../library/logger");
-
+let Logger = require("../library/logger");
+let logger = Logger.logger;
 let fs = require("fs");
 let path = require("path");
 let Sequelize = require("sequelize");
@@ -15,9 +15,10 @@ let db = {};
  * @param {Object} value - Contains the actual value that should be logged to
  *                         the transports.
  */
-function logForSequelize(value) {
-    logger.silly(value);
-}
+// Commented out, since this used more heap space than it should
+// function logForSequelize(value) {
+//     dbLogger.db_silly(value);
+// }
 
 let sequelize = new Sequelize(
     process.env.DB_NAME,
@@ -30,11 +31,10 @@ let sequelize = new Sequelize(
         pool: {
             max: process.env.DB_MAX_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
-            idle: 20000,
-            acquire: 20000,
+            idle: 60000,
+            acquire: 60000,
         },
         operatorsAliases: false,
-        logging: logForSequelize,
     },
 );
 

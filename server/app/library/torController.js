@@ -1,6 +1,6 @@
 let net = require("net");
 
-module.exports.buildInstance = async function(socksPort) {
+module.exports.buildInstance = async function(socksPort, timeout) {
     return new Promise( (resolve, reject) => {
         this.host = process.env.TOR_HOST || "localhost";
         this.torPort = process.env.TOR_CONTROL_PORT || 9077;
@@ -8,6 +8,9 @@ module.exports.buildInstance = async function(socksPort) {
             let torController = new TorController(socksPort, client);
             resolve(torController);
         });
+        setTimeout(function() {
+            reject("TorController.buildInstance timed out");
+        }, timeout);
     });
 };
 

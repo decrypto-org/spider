@@ -35,7 +35,7 @@ module.exports.POOL_LOW = "needNewDataToDownload";
  */
 let _maxSlots = parseInt(process.env.NETWORK_MAX_CONNECTIONS, 10);
 if (isNaN(_maxSlots)) {
-    _maxSlots = 100;
+    _maxSlots = 50;
 }
 module.exports.MAX_SLOTS = _maxSlots;
 
@@ -63,7 +63,10 @@ if (isNaN(_maxPool) || _maxPool <= 0) {
 module.exports.MAX_POOL_SIZE = _maxPool;
 
 module.exports.buildInstance = async function(socksPort) {
-    let torController = await TorController.buildInstance(socksPort);
+    let torController = await TorController.buildInstance(
+        socksPort,
+        60000 /* timeout - please adapt according to the needed steps */
+    );
     // await torController.createTorPool().catch((err) => {
     //     console.error("Error while creating Tor pool.");
     //     console.error(err.stack);
@@ -112,12 +115,8 @@ class Network extends EventEmitter {
         super();
         logger.info("Initialize Network");
         this.socksPort = socksPort;
-        this.networkMultiplier = 5;
-        this.ttl = 60100 * this.networkMultiplier;
-        // Max ttl for IPv4: 60s + 100 ms for processing
-        // Since we run 5 times as many requests per node, we allow up to five
-        // times the actual ttl.
-        this.availableSlots = module.exports.MAX_SLOTS * this.networkMultiplier;
+        this.ttl = 60100; // Max ttl for Tor: 60s + 100 ms for processing
+        this.availableSlots = module.exports.MAX_SLOTS;
         this.proxyUri = "socks://127.0.0.1:" + this.socksPort;
         // Naming according to the timing information the chrome dev
         // tools provide. This means:
@@ -128,6 +127,7 @@ class Network extends EventEmitter {
         //   when the previous download has been finished.
         this.waitingRequestPerHost = {};
         this.queuedRequestsByHost = {};
+        this.maxSimultaneousRequestsPerHost = 4;
         // The pool contains a selection of DbResults to be downloaded.
         this.pool = [];
         this.torController = torController;
@@ -200,7 +200,8 @@ class Network extends EventEmitter {
             // any code here, that contains async call
             if (
                 this.waitingRequestPerHost[dbResult.url] != undefined &&
-                this.waitingRequestPerHost[dbResult.url] >= 6
+                this.waitingRequestPerHost[dbResult.url]
+                >= this.maxSimultaneousRequestsPerHost
             ) {
                 let queue = this.queuedRequestsByHost[dbResult.url];
                 if (!queue) {
@@ -441,7 +442,11 @@ class Network extends EventEmitter {
             }
         );
         /** @type {NetworkHandlerResponse}  */
-        let result = await this.responseHandler(response, url, path, startTime);
+        let result = await this.responseHandler(response, url, path, startTime)
+            .catch((err) => {
+                logger.error(err.error);
+                return err.result;
+            });
         return result;
     }
 
@@ -596,6 +601,15 @@ class Network extends EventEmitter {
                         reject(e);
                     }
                 });
+                let ttl = this.ttl;
+                setTimeout(function() {
+                    result["endTime"] = (new Date).getTime();
+                    result.statusCode = 500;
+                    reject({
+                        "error": "responseHandler response timed out",
+                        "result": result,
+                    });
+                }, ttl);
             });
         }
         return new Promise((resolve, reject) => {

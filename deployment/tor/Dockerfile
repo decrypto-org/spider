@@ -22,4 +22,4 @@ ENV HOME /home/tor
 ENTRYPOINT [ "tor-router" ]
 # If the control port is set to something else than 9077,
 # please also update the .env file
-CMD [ "-j", "0", "-c", "9077"]
+CMD [ "-j", "100", "-c", "9077", "-s", "9000"]
