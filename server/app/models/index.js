@@ -350,6 +350,7 @@ db.getEntries = async function({
         instances.forEach((instance) => {
             instance.updateAttributes({inProgress: true});
         });
+        return instances;
     });
     for (let path of paths) {
         let dbResult = {
