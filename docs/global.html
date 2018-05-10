@@ -94,6 +94,515 @@
     
 
     
+        <h3 class="subsection-title">Members</h3>
+
+        
+            
+<h4 class="name" id="_maxPool"><span class="type-signature"></span>_maxPool<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Indicate the maximal size of the pool holding pending download tasks.
+Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line59">line 59</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="_maxSlots"><span class="type-signature"></span>_maxSlots<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Indicate the maximal number of slots available
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line37">line 37</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="_minPool"><span class="type-signature"></span>_minPool<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Indicate the minimal size of the pool holding pending download tasks.
+Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line47">line 47</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="DATA_ADDED_TO_POOL"><span class="type-signature"></span>DATA_ADDED_TO_POOL<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    This event is thrown everytime data is added to the pool (not for every
+entry added but for every update of the pool)
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line24">line 24</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="NEW_NETWORK_DATA_AVAILABLE"><span class="type-signature"></span>NEW_NETWORK_DATA_AVAILABLE<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    This event is thrown everytime the downloader has finished a request.
+Is used to notify the client, that new data is available to process
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line18">line 18</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="POOL_LOW"><span class="type-signature"></span>POOL_LOW<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    This event is emitted as long as the pool is below its minimum defined
+size. This can be used by a client to add new data to the pool.
+One argument should be passed, indicating how many entries are available
+to the pool max.
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line32">line 32</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="sequelize"><span class="type-signature"></span>sequelize<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    Passing logger.silly directly to sequelize results in a TypeError (since
+the logger seems to be uninitialized at some point). This wrapper function
+was suggested as workaround.
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line23">line 23</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="SLOT_FREED_UP"><span class="type-signature"></span>SLOT_FREED_UP<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    This event is thrown everytime a slot is freed-up
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line12">line 12</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+    
 
     
 
@@ -452,7 +961,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line225">line 225</a>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line271">line 271</a>
     </li></ul></dd>
     
 
@@ -625,7 +1134,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line210">line 210</a>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line256">line 256</a>
     </li></ul></dd>
     
 
@@ -931,7 +1440,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line349">line 349</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line370">line 370</a>
     </li></ul></dd>
     
 
@@ -1190,13 +1699,13 @@
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="module.exports.html">exports</a></li><li><a href="Network.html">Network</a></li><li><a href="Network.build.html">build</a></li><li><a href="Parser.html">Parser</a></li></ul><h3><a href="global.html">Global</a></h3>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#DATA_ADDED_TO_POOL">DATA_ADDED_TO_POOL</a></li><li><a href="global.html#NEW_NETWORK_DATA_AVAILABLE">NEW_NETWORK_DATA_AVAILABLE</a></li><li><a href="global.html#POOL_LOW">POOL_LOW</a></li><li><a href="global.html#sequelize">sequelize</a></li><li><a href="global.html#SLOT_FREED_UP">SLOT_FREED_UP</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu Apr 19 2018 13:47:18 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu May 10 2018 14:44:05 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

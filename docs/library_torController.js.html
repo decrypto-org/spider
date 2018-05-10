@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: library/torController.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: library/torController.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>let net = require("net");
+let {logger} = require("./logger");
+
+module.exports.buildInstance = async function(socksPort, timeout) {
+    return new Promise( (resolve, reject) => {
+        let host = process.env.TOR_HOST || "localhost";
+        logger.info("TorController.buildInstance Host: " + host);
+        let torPort = process.env.TOR_CONTROL_PORT || 9077;
+        logger.info("TorController.buildInstance Port: " + torPort);
+        let client = net.createConnection(torPort, host, () => {
+            let torController = new TorController(socksPort, client);
+            resolve(torController);
+        });
+        setTimeout(function() {
+            reject("TorController.buildInstance timed out");
+        }, timeout);
+    });
+};
+
+/**
+ * TorController gives us control access to the tor-router, who manages
+ * the Tor instance for us. We use this to create, destroy or update instances
+ * in order to mitigate issues with overloads.
+ * TorController is a wrapper class, which exposes the tor-routers
+ * RPCs as local methods. The used rpc lib typically uses callbacks,
+ * which is not conceptually equivalent to a RPC. However, we wrapped those
+ * calls and the methods now return a Promise. If one calls await for every
+ * request, we are pretty close to what a conceptual RPC looks like.
+ */
+class TorController {
+    /**
+     * Instantiate a TorController object and sets the basic fields;
+     * @param  {number} socksPort           The socks port to be used for the
+     *                                      SOCKSServer
+     * @param  {Object} torControllerClient The client to be used to access the
+     *                                      tor-router
+     */
+    constructor(socksPort, torControllerClient) {
+        this.socksPort = socksPort;
+        this.client = torControllerClient;
+        this.currentRPCId = 0;
+        this.timeout = 60000; // 60s, Tor default
+    }
+
+    /**
+     * Create a Tor pool. This initializes the pool itself.
+     * @return {Promise} Resolved on successful execution on the tor-router.
+     */
+    async createTorPool() {
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let createTorRequest = {
+            "method": "createTorPool",
+            "params": [],
+            "jsonrpc": "2.0",
+            "id": rpcId,
+        };
+        return new Promise( (resolve, reject) => {
+            this.client.write(JSON.stringify(createTorRequest));
+            this.client.once("data", (chunk) => {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id === rpcId) {
+                    resolve(rpcResponse);
+                }
+            });
+            // This runs on the same server. We wait a max of 255s for timeout
+            setTimeout(() => {
+                reject("createTorPool request timed out.");
+            }, this.timeout);
+        });
+    }
+
+    /**
+     * Create a SOCKS Server which is used for the Tor instances to connect
+     * to the Tor network.
+     * @param  {number} socksPort=9050 - Specify on which port the Tor instances
+     *                                   should run. Overrides the port
+     *                                   specified at construction time
+     * @return {Promise}               Resolved on successful creation of a
+     *                                 SOCKS Server.
+     */
+    async createSocksServer(socksPort) {
+        // Set torPort to 9050 (Tor standard), if undefined
+        if (socksPort) {
+            this.socksPort = socksPort;
+        }
+        if (!this.socksPort) {
+            this.socksPort = 9050;
+        }
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let createSocksRequest = {
+            "method": "createSOCKSServer",
+            "params": [socksPort],
+            "jsonrpc": "2.0",
+            "id": rpcId,
+        };
+        return new Promise( (resolve, reject) => {
+            this.client.write(JSON.stringify(createSocksRequest));
+            this.client.once("data", (chunk) => {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id === rpcId) {
+                    resolve(rpcResponse);
+                }
+            });
+            // If there is already an instance, the tor-router crashes.
+            // So we have to make sure, that we either are always booting
+            // up the tor-router together with the spider or have to integrate
+            // a getSOCKSServer Instance into tor-router.
+            setTimeout(() => {
+                reject("createSocksServer request timed out.");
+            }, this.timeout);
+        });
+    }
+
+    /**
+     * Create the specified number of Tor instances on the tor-router.
+     * @param  {number} numOfInstances - The number of instances to create
+     * @return {Promise}                The returned promise is resolved on
+     *                                  a successful execution of the command
+     *                                  on the control server. If the command
+     *                                  fails, the Promise will be rejected.
+     */
+    async createTorInstances(numOfInstances) {
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let createTorInstancesRequest = {
+            "method": "createInstances",
+            "params": [numOfInstances],
+            "jsonrpc": "2.0",
+            "id": rpcId,
+        };
+        return new Promise( (resolve, reject) => {
+            this.client.write(JSON.stringify(createTorInstancesRequest));
+            this.client.once( "data", (chunk) => {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id == rpcId) {
+                    resolve(rpcResponse);
+                }
+            });
+            setTimeout(() => {
+                reject("createTorInstances timed out.");
+            }, this.timeout*numOfInstances);
+        });
+    }
+
+    /**
+     * Close all available Tor instances.
+     * @return {Promise} Resolved on successful execution of the close command
+     *                   on the server.
+     */
+    async closeTorInstances() {
+        let rpcId = this.currentRPCId;
+        this.currentRPCId += 1;
+        let closeTorInstancesRequest = {
+            "method": "closeInstances",
+            "params": [],
+            "jsonrpc": "2.0",
+            "id": rpcId,
+        };
+        return new Promise( (resolve, reject) => {
+            this.client.write(JSON.stringify(closeTorInstancesRequest));
+            this.client.once( "data", (chunk) => {
+                let rawResponse = chunk.toString("utf8");
+                let rpcResponse = JSON.parse( rawResponse );
+                if (rpcResponse.id === rpcId) {
+                    resolve(rpcResponse);
+                }
+            });
+            setTimeout(() => {
+                reject("closeTorInstances request timed out.");
+            }, this.timeout);
+        });
+    }
+}
+
+module.exports.TorController = TorController;
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#DATA_ADDED_TO_POOL">DATA_ADDED_TO_POOL</a></li><li><a href="global.html#NEW_NETWORK_DATA_AVAILABLE">NEW_NETWORK_DATA_AVAILABLE</a></li><li><a href="global.html#POOL_LOW">POOL_LOW</a></li><li><a href="global.html#sequelize">sequelize</a></li><li><a href="global.html#SLOT_FREED_UP">SLOT_FREED_UP</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu May 10 2018 14:44:05 GMT+0200 (CEST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

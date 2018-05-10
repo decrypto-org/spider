@@ -28,7 +28,7 @@
 
 <header>
     
-        <h2><span class="attribs"><span class="type-signature"></span></span>Network<span class="signature">(torAgent, torPort)</span><span class="type-signature"></span></h2>
+        <h2><span class="attribs"><span class="type-signature"></span></span>Network<span class="signature">(socksPort, torController)</span><span class="type-signature"></span></h2>
         
             <div class="class-description">This module handels all the requests to the tor network.
 It ensures, that we do not have too many parallel requests open
@@ -50,7 +50,7 @@ storing information.</div>
     
 
     
-    <h4 class="name" id="Network"><span class="type-signature"></span>new Network<span class="signature">(torAgent, torPort)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Network"><span class="type-signature"></span>new Network<span class="signature">(socksPort, torController)</span><span class="type-signature"></span></h4>
     
 
     
@@ -94,31 +94,7 @@ storing information.</div>
 
         <tr>
             
-                <td class="name"><code>torAgent</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">object</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">- Object that handles the connection through
-                            the TOR network.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>torPort</code></td>
+                <td class="name"><code>socksPort</code></td>
             
 
             <td class="type">
@@ -135,6 +111,31 @@ storing information.</div>
             
 
             <td class="description last">- The proxy port for the tor network.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>torController</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The torController controls all the tor
+                                instances and can be used to instantiate,
+                                kill or rotate IPs of instances.</td>
         </tr>
 
     
@@ -175,7 +176,7 @@ storing information.</div>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line18">line 18</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line106">line 106</a>
     </li></ul></dd>
     
 
@@ -211,465 +212,13 @@ storing information.</div>
     
 
     
-        <h3 class="subsection-title">Classes</h3>
 
-        <dl>
-            <dt><a href="Network.build.html">build</a></dt>
-            <dd></dd>
-        </dl>
     
 
     
 
     
 
-    
-
-    
-        <h3 class="subsection-title">Members</h3>
-
-        
-            
-<h4 class="name" id=".DATA_ADDED_TO_POOL"><span class="type-signature">(static) </span>DATA_ADDED_TO_POOL<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is thrown everytime data is added to the pool (not for every
-entry added but for every update of the pool)
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line71">line 71</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id=".MAX_POOL_SIZE"><span class="type-signature">(static) </span>MAX_POOL_SIZE<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    Indicate the maximal size of the pool holding pending download tasks.
-Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line114">line 114</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id=".MAX_SLOTS"><span class="type-signature">(static) </span>MAX_SLOTS<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    Indicate the maximal number of slots available
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line88">line 88</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id=".MIN_POOL_SIZE"><span class="type-signature">(static) </span>MIN_POOL_SIZE<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    Indicate the minimal size of the pool holding pending download tasks.
-Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line100">line 100</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id=".NEW_NETWORK_DATA_AVAILABLE"><span class="type-signature">(static) </span>NEW_NETWORK_DATA_AVAILABLE<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is thrown everytime the downloader has finished a request.
-Is used to notify the client, that new data is available to process
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line63">line 63</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id=".POOL_LOW"><span class="type-signature">(static) </span>POOL_LOW<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is emitted as long as the pool is below its minimum defined
-size. This can be used by a client to add new data to the pool.
-One argument should be passed, indicating how many entries are available
-to the pool max.
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line81">line 81</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id=".SLOT_FREED_UP"><span class="type-signature">(static) </span>SLOT_FREED_UP<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is thrown everytime a slot is freed-up
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line55">line 55</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
     
 
     
@@ -782,7 +331,7 @@ to the pool max.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line344">line 344</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line364">line 364</a>
     </li></ul></dd>
     
 
@@ -917,7 +466,7 @@ to the pool max.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line242">line 242</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line247">line 247</a>
     </li></ul></dd>
     
 
@@ -1004,7 +553,7 @@ in the future.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line143">line 143</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line144">line 144</a>
     </li></ul></dd>
     
 
@@ -1090,7 +639,7 @@ in the future.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line335">line 335</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line355">line 355</a>
     </li></ul></dd>
     
 
@@ -1273,7 +822,7 @@ Eventual url parameters are currently contained within the path
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line371">line 371</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line392">line 392</a>
     </li></ul></dd>
     
 
@@ -1313,6 +862,209 @@ Eventual url parameters are currently contained within the path
     <dd>
         
 <span class="param-type"><a href="global.html#NetworkHandlerResponse">NetworkHandlerResponse</a></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="getAsync"><span class="type-signature">(async) </span>getAsync<span class="signature">(settingsObj, secure, ttl)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Initiate the request specified by the settings object.
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>settingsObj</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Settings object according to nodejs docu.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>secure</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Indicate whether to use http or https.</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>ttl</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Maximum time in ms that a request is allowed to live</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line464">line 464</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Returns a promise object, resolves to a response object
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Promise</span>
 
 
     </dd>
@@ -1383,7 +1135,7 @@ upon request.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line267">line 267</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line279">line 279</a>
     </li></ul></dd>
     
 
@@ -1493,7 +1245,7 @@ number of parallel requests.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line309">line 309</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line328">line 328</a>
     </li></ul></dd>
     
 
@@ -1609,7 +1361,7 @@ number of parallel requests.
 
             
 
-            <td class="description last">The response object from axios.get</td>
+            <td class="description last">The response object from getAsync</td>
         </tr>
 
     
@@ -1719,7 +1471,7 @@ number of parallel requests.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line426">line 426</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line508">line 508</a>
     </li></ul></dd>
     
 
@@ -1788,13 +1540,13 @@ number of parallel requests.
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="module.exports.html">exports</a></li><li><a href="Network.html">Network</a></li><li><a href="Network.build.html">build</a></li><li><a href="Parser.html">Parser</a></li></ul><h3><a href="global.html">Global</a></h3>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#DATA_ADDED_TO_POOL">DATA_ADDED_TO_POOL</a></li><li><a href="global.html#NEW_NETWORK_DATA_AVAILABLE">NEW_NETWORK_DATA_AVAILABLE</a></li><li><a href="global.html#POOL_LOW">POOL_LOW</a></li><li><a href="global.html#sequelize">sequelize</a></li><li><a href="global.html#SLOT_FREED_UP">SLOT_FREED_UP</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu Apr 19 2018 13:47:18 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu May 10 2018 14:44:05 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

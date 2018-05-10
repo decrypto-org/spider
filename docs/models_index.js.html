@@ -26,8 +26,8 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>let {logger} = require("../library/logger");
-
+            <pre class="prettyprint source linenums"><code>let Logger = require("../library/logger");
+let logger = Logger.logger;
 let fs = require("fs");
 let path = require("path");
 let Sequelize = require("sequelize");
@@ -35,6 +35,18 @@ let basename = path.basename(__filename);
 
 let Op = Sequelize.Op;
 let db = {};
+
+/**
+ * Passing logger.silly directly to sequelize results in a TypeError (since
+ * the logger seems to be uninitialized at some point). This wrapper function
+ * was suggested as workaround.
+ * @param {Object} value - Contains the actual value that should be logged to
+ *                         the transports.
+ */
+// Commented out, since this used more heap space than it should
+// function logForSequelize(value) {
+//     dbLogger.db_silly(value);
+// }
 
 let sequelize = new Sequelize(
     process.env.DB_NAME,
@@ -47,9 +59,11 @@ let sequelize = new Sequelize(
         pool: {
             max: process.env.DB_MAX_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
+            idle: 60000,
+            acquire: 60000,
         },
         operatorsAliases: false,
-    }
+    },
 );
 
 fs
@@ -125,7 +139,8 @@ db.insertUri = async function(
 /**
  * Update the URI entry with new data. This is typically done after a network
  * request finished (successfully or not). This method won't insert any data
- * into the database, only update already existing entries.
+ * into the database, only update already existing entries. (The updated entry
+ * is naturally the one just downloaded, so only one at a time will be updated)
  * @param {UUIDv4} baseUrlId - The ID of the baseUrl entry to be updated
  * @param {UUIDv4} pathId - The ID of the path entry to be updated
  * @param {number} lastStartedTimestamp - Contains the timestamp of the start of
@@ -236,6 +251,37 @@ db.insertBody = async function(
 };
 
 /**
+ * Resets the inProgress flag. The timeDelta parameter describes how high the
+ * timedelta of the lastModified flag has to be in order to be a stale entry.
+ * If set to 0, every entry gets reset (this is especially useful to
+ * restart the scraper after it was killed or crashed)
+ * @param {number} timeDelta=0 - Indicate how long an entry has to be in
+ *                               onProgress mode to be considered stale.
+ */
+db.resetStaleEntries = async function(
+    timeDelta
+) {
+    if (timeDelta != 0 &amp;&amp; !timeDelta) {
+        timeDelta = 0;
+    }
+    let latestStaleTime = (new Date).getTime() - timeDelta;
+    await db.path.update(
+        {
+            inProgress: false,
+        },
+        {
+            where: {
+                inProgress: true,
+                updatedAt: {
+                    [Op.lte]: latestStaleTime,
+                },
+            },
+
+        },
+    );
+};
+
+/**
  * @typedef Link
  * @type {object}
  * @property {!UUIDv4} sourcePathId - The ID of the path entry where the
@@ -268,20 +314,24 @@ db.insertBody = async function(
 
 /**
  * Retrieve entries from the database that are older or as old as the passed
- * dateTime param and set
+ * dateTime param
  * @param {number} dateTime=0 - Specify the dateTime from which the newest
  *                             entry should be. The default will only
  *                             retrieve not yet scraped entries.
  * @param {number} limit=100 - Specify how many entries the function
  *                          should return. This is seen as an upper bound.
  *                          If no more matching entries are available, only
- *                          the remainder will be returned.
+ *                          the remainder will be returned
  * @param {number} offset=0 - Set if you have already received a certain
  *                           amount of data. This way one can gather all
- *                           entries of a certain timestamp or older.
+ *                           entries of a certain timestamp or older
  * @param {number} cutoffValue=1 - Set which is the deepest entry one should
  *                                 resolve. This ensures controlled termination
  *                                 of the scraper
+ * @param {Array.&lt;UUIDv4>} excludedHosts=[] In order to not fill the memory up
+ *                                          with entries that cannot yet be
+ *                                          downloaded, one can pass an array
+ *                                          of baseUrlIds that should be ignored
  * @return {Array.&lt;DbResult>|boolean} The DbResult contains the results
  *                      returned by the Database.
  *                      The boolean indicates whether more data is available
@@ -291,10 +341,11 @@ db.insertBody = async function(
  *                      anything pending, we can conclude that we have
  *                      finished and exit.
  */
-db.getEntriesAndSetFlag = async function({
+db.getEntries = async function({
     dateTime=0,
     limit=100,
     cutoffValue=1,
+    excludedHosts=[],
 } = {}) {
     if (limit == 0) {
         return [[], false];
@@ -314,16 +365,15 @@ db.getEntriesAndSetFlag = async function({
             depth: {
                 [Op.lte]: cutoffValue,
             },
+            baseUrlBaseUrlId: {
+                [Op.notIn]: excludedHosts,
+            },
         },
         order: [
+            ["depth", "ASC"],
             ["random", "ASC"],
         ],
         limit: limit,
-    }).then((instances) => {
-        instances.forEach((instance) => {
-            instance.updateAttributes({inProgress: true});
-        });
-        return instances;
     });
     for (let path of paths) {
         let dbResult = {
@@ -349,6 +399,25 @@ db.getEntriesAndSetFlag = async function({
     return [dbResults, moreData];
 };
 
+/**
+ * Sets the inProgress flag of the specified dbResult to the passed flag.
+ * @param {DbResult} dbResult The dbResult for which the flag should be set
+ * @param  {boolean} inProgress Pass the value to which the flag should be set
+ */
+db.setInProgressFlag = async function(dbResult, inProgress) {
+    await db.path.update(
+        {
+            inProgress,
+        },
+        {
+
+            where: {
+                baseUrlBaseUrlId: dbResult.baseUrlId,
+            },
+        }
+    );
+};
+
 module.exports = db;
 </code></pre>
         </article>
@@ -360,13 +429,13 @@ module.exports = db;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="module.exports.html">exports</a></li><li><a href="Network.html">Network</a></li><li><a href="Network.build.html">build</a></li><li><a href="Parser.html">Parser</a></li></ul><h3><a href="global.html">Global</a></h3>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#DATA_ADDED_TO_POOL">DATA_ADDED_TO_POOL</a></li><li><a href="global.html#NEW_NETWORK_DATA_AVAILABLE">NEW_NETWORK_DATA_AVAILABLE</a></li><li><a href="global.html#POOL_LOW">POOL_LOW</a></li><li><a href="global.html#sequelize">sequelize</a></li><li><a href="global.html#SLOT_FREED_UP">SLOT_FREED_UP</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu Apr 19 2018 13:47:18 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu May 10 2018 14:44:05 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

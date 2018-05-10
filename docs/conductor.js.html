@@ -31,7 +31,6 @@ let Network = require("./network");
 let {logger} = require("./library/logger");
 let db = require("./models");
 
-
 /**
  * The conductor is the one controlling the spidering
  * through the web. Therefor it needs to access the network
@@ -46,7 +45,7 @@ class Conductor {
      * @param {number} cutOffDepth - Cutoff value for the number of hops we
      *                               should take, starting from either the
      *                               database or the startUrls.
-     * @param {number} torPort - Port to use for Tor proxy.
+     * @param {number} torPort=9050 - Port to use for Tor controller server.
      */
     constructor(startUrls, cutOffDepth, torPort) {
         // Startup message
@@ -57,7 +56,7 @@ class Conductor {
 
         this.cutOffDepth = cutOffDepth;
 
-        this.torPort = torPort;
+        this.torPort = torPort || 9050;
 
         // Parser init
         this.parser = new Parser();
@@ -77,8 +76,10 @@ class Conductor {
         // Synchronize the db model
         await db.sequelize.sync();
 
+        db.resetStaleEntries(0 /* timeDelta */);
+
         // Create a network instance
-        this.network = await Network.build(
+        this.network = await Network.buildInstance(
             this.torPort
         );
 
@@ -137,11 +138,17 @@ class Conductor {
      * @param {number} limit - The number of entries to get from the DB
      */
     async getEntriesToDownloadPool(limit) {
-        logger.info("Getting " + limit + " entries into the pool");
-        let [dbResults, moreAvailable] = await db.getEntriesAndSetFlag({
+        logger.debug("Current pool size: " + this.network.pool.length);
+        logger.debug("Getting " + limit + " entries into the pool");
+        let excludeKeyObj = Object.filter(
+            this.network.waitingRequestPerHost,
+            (pending) => pending >= this.network.maxSimultaneousRequestsPerHost
+        );
+        let [dbResults, moreAvailable] = await db.getEntries({
             dateTime: 0,
             limit: limit,
             cutoffValue: this.cutOffDepth,
+            excludedHosts: Object.keys(excludeKeyObj),
         });
         if (dbResults.length == 0 &amp;&amp; !moreAvailable) {
             return;
@@ -213,25 +220,14 @@ class Conductor {
         // For the case we hit 0 in the network pool and
         // this was the last request, we need to repopulate
         // the pool here, if any data was added to the database
-        let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
-        this.getEntriesToDownloadPool(limit);
+        if (this.network.pool.length &lt; process.env.NETWORK_MIN_POOL_SIZE &amp;&amp;
+            !this.gettingNewDataFromDb) {
+            let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
+            this.gettingNewDataFromDb = true;
+            await this.getEntriesToDownloadPool(limit);
+            this.gettingNewDataFromDb = false;
+        }
     }
-
-    /*
-    TODO:
-    add functions for
-        * insert initial data into the db [DONE]
-        * new data from db to be downloaded add to network pool
-          on POOL_LOW event (or check everytime new network data is available)
-        * insert data into DB on NEW_NETWORK_DATA_AVAILABLE [DONE]
-        * function to randomize ordering in the db
-        * Check that all "once" listeners are reregistered after use
-        * check that all functions fire appropriate events
-        * The conductor module should only need to listen, the firing
-          should exclusively take place in the network module.
-          (Client should not be required to read up about events, but can
-          use the function interface, except for callbacks)
-    */
 
     /**
      * Controls on run of the scraper. This includes storing found urls on the
@@ -267,13 +263,13 @@ module.exports = Conductor;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="module.exports.html">exports</a></li><li><a href="Network.html">Network</a></li><li><a href="Network.build.html">build</a></li><li><a href="Parser.html">Parser</a></li></ul><h3><a href="global.html">Global</a></h3>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#DATA_ADDED_TO_POOL">DATA_ADDED_TO_POOL</a></li><li><a href="global.html#NEW_NETWORK_DATA_AVAILABLE">NEW_NETWORK_DATA_AVAILABLE</a></li><li><a href="global.html#POOL_LOW">POOL_LOW</a></li><li><a href="global.html#sequelize">sequelize</a></li><li><a href="global.html#SLOT_FREED_UP">SLOT_FREED_UP</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu Apr 19 2018 13:47:18 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Thu May 10 2018 14:44:05 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>
