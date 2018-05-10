@@ -20,13 +20,8 @@ services:
       - postgres-vol:/var/lib/postgresql/data
     networks:
       backend:
-        aliases:
-          - database
-          - db
-          - postgres
     ports:
       - "5432:5432"
-    pid: "host"
 
   server:
     image: robrunne/tdse-spider:1.0.0
@@ -35,28 +30,38 @@ services:
       TDSE_DB_NAME: $TDSE_DB_NAME
       TDSE_DB_USER: $TDSE_DB_USER
       TDSE_DB_PASSWORD: $TDSE_DB_PASSWORD
-      TDSE_DB_HOST: $TDSE_DB_HOST
+      TDSE_DB_HOST: spider_db_1
       TDSE_DB_PORT: $TDSE_DB_PORT
+      TDSE_TOR_HOST: spider_tor_1
+      TDSE_TOR_PORT: 9000
+      TDSE_LOG_LOCATION: /home/node/log
     networks:
       backend:
+        aliases:
+          - database
+          - db
+          - postgres
+      frontend:
+        aliases:
+          - tor
+          - onionnet
     volumes:
       - spider-log-vol:/home/node/log
       - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
-    pid: "host"
     command: $tdse_server_start_command
+    stdin_open: true
+    tty: true
     depends_on:
       - "db"
       - "tor"
+    ports:
+      - "65000-65100:65000-65100"
 
   tor:
     image: robrunne/tor-proxy:1.0.0
     restart: always
     networks:
       frontend:
-        aliases:
-          - tor-connection
-          - onionnet
     ports:
       - "9077:9077"
-      - "9050:9050"
-    pid: "host"
+      - "9000:9000"

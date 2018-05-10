@@ -23,6 +23,8 @@ eslint --config .eslintrc.js --fix server/app/library/logger.js
 printf "Linting server.app.extensions.Set\n"
 eslint --config .eslintrc.js --fix server/app/extensions/Set.js
 eslint --config .eslintrc.js --fix server/app/extensions/Set/
+printf "Linting server.app.extensions.Object\n"
+eslint --config .eslintrc.js --fix server/app/extensions/Object.js
 printf "Linting models\n"
 eslint --config .eslintrc.js --fix server/app/models/**
 printf "Linting events\n"
