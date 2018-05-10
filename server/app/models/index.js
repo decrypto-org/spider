@@ -346,6 +346,10 @@ db.getEntries = async function({
             ["random", "ASC"],
         ],
         limit: limit,
+    }).then( (instances) => {
+        instances.forEach((instance) => {
+            instance.updateAttributes({inProgress: true});
+        });
     });
     for (let path of paths) {
         let dbResult = {

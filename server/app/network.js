@@ -249,13 +249,11 @@ class Network extends EventEmitter {
             this.waitingRequestPerHost[dbResult.baseUrlId] = 0;
         }
         this.waitingRequestPerHost[dbResult.baseUrlId] += 1;
-        await db.setInProgressFlag(dbResult, true /* inProgress */);
         let response = await this.get(
             dbResult.url,
             dbResult.path,
             dbResult.secure
         );
-        await db.setInProgressFlag(dbResult, false /* inProgress */);
         this.waitingRequestPerHost[dbResult.baseUrlId] -= 1;
         if (this.waitingRequestPerHost[dbResult.baseUrlId] == 0) {
             // We need to delete this, otherwise we store in memory
