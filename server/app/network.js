@@ -1,7 +1,6 @@
 let {logger} = require("./library/logger");
 let TorController = require("./library/torController");
 let Parser = require("./parser");
-let db = require("./models");
 
 let EventEmitter = require("events");
 const ProxyAgent = require("proxy-agent");

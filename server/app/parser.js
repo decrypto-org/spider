@@ -26,7 +26,7 @@ class Parser {
         // We are matching as broad as possible.
         /* eslint-disable max-len, no-useless-escape */
         this.onionRegexMatch = new RegExp(
-            "(http(s)?://)?(www.)?((?:(?:[-a-zA-Z0-9@:%_+~#=][.]){0,241}[-a-zA-Z0-9=]{15,256})[.]onion(?::[0-9]{1,5})?)((?:/[-a-zA-Z0-9@:%_+.~#?&//=]*|$)?)?",
+            "(http(s)?://)?(www.)?((?:(?:[-a-zA-Z0-9@:%_+~#=][.]){0,241}[-a-zA-Z0-9=]{15,256})[.]onion(:[0-9]{1,5})?)((?:/[-a-zA-Z0-9@:%_+.~#?&//=]*|$)?)?",
             "gi"
         );
         this.relativeUrlRegexMatch = new RegExp(
@@ -97,7 +97,9 @@ class Parser {
         // group3: indicates whether http or https (by s) was used
         // group4: Would match any www.
         // group5: Base url
-        // group6: Path
+        // group6: The port. Will be ignored, since we only make http(s)
+        // requests. The used libraries (http(s).get) automatically append port
+        // group7: Path
         let results = [];
         let m;
         do {
@@ -111,7 +113,7 @@ class Parser {
                     "secure": m[2] != null,
                     "www": m[3] != null,
                     "baseUrl": m[4],
-                    "path": m[5] || "",
+                    "path": m[9] || "",
                 };
                 results.push(result);
             }
