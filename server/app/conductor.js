@@ -112,10 +112,15 @@ class Conductor {
     async getEntriesToDownloadPool(limit) {
         logger.debug("Current pool size: " + this.network.pool.length);
         logger.debug("Getting " + limit + " entries into the pool");
-        let [dbResults, moreAvailable] = await db.getEntriesAndSetFlag({
+        let excludeKeyObj = Object.filter(
+            this.network.waitingRequestPerHost,
+            (pending) => pending >= this.network.maxSimultaneousRequestsPerHost
+        );
+        let [dbResults, moreAvailable] = await db.getEntries({
             dateTime: 0,
             limit: limit,
             cutoffValue: this.cutOffDepth,
+            excludedHosts: Object.keys(excludeKeyObj),
         });
         if (dbResults.length == 0 && !moreAvailable) {
             return;

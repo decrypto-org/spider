@@ -4,6 +4,7 @@ let portscanner = require("portscanner");
 // let cluster = require("cluster");
 // let numCPUs = require("os").cpus().length;
 require("./extensions/Set");
+require("./extensions/Object");
 
 exports.init = async function(initUrls=[], depth=1) {
     // if (cluster.isMaster) {

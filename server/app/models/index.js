@@ -286,20 +286,24 @@ db.resetStaleEntries = async function(
 
 /**
  * Retrieve entries from the database that are older or as old as the passed
- * dateTime param and set
+ * dateTime param
  * @param {number} dateTime=0 - Specify the dateTime from which the newest
  *                             entry should be. The default will only
  *                             retrieve not yet scraped entries.
  * @param {number} limit=100 - Specify how many entries the function
  *                          should return. This is seen as an upper bound.
  *                          If no more matching entries are available, only
- *                          the remainder will be returned.
+ *                          the remainder will be returned
  * @param {number} offset=0 - Set if you have already received a certain
  *                           amount of data. This way one can gather all
- *                           entries of a certain timestamp or older.
+ *                           entries of a certain timestamp or older
  * @param {number} cutoffValue=1 - Set which is the deepest entry one should
  *                                 resolve. This ensures controlled termination
  *                                 of the scraper
+ * @param {Array.<UUIDv4>} excludedHosts=[] In order to not fill the memory up
+ *                                          with entries that cannot yet be
+ *                                          downloaded, one can pass an array
+ *                                          of baseUrlIds that should be ignored
  * @return {Array.<DbResult>|boolean} The DbResult contains the results
  *                      returned by the Database.
  *                      The boolean indicates whether more data is available
@@ -309,10 +313,11 @@ db.resetStaleEntries = async function(
  *                      anything pending, we can conclude that we have
  *                      finished and exit.
  */
-db.getEntriesAndSetFlag = async function({
+db.getEntries = async function({
     dateTime=0,
     limit=100,
     cutoffValue=1,
+    excludedHosts=[],
 } = {}) {
     if (limit == 0) {
         return [[], false];
@@ -332,17 +337,15 @@ db.getEntriesAndSetFlag = async function({
             depth: {
                 [Op.lte]: cutoffValue,
             },
+            baseUrlBaseUrlId: {
+                [Op.notIn]: excludedHosts,
+            },
         },
         order: [
             ["depth", "ASC"],
             ["random", "ASC"],
         ],
         limit: limit,
-    }).then((instances) => {
-        instances.forEach((instance) => {
-            instance.updateAttributes({inProgress: true});
-        });
-        return instances;
     });
     for (let path of paths) {
         let dbResult = {
@@ -366,6 +369,25 @@ db.getEntriesAndSetFlag = async function({
     // network moduel. This is left to decide to the controller.
     let moreData = dbResults.length != 0;
     return [dbResults, moreData];
+};
+
+/**
+ * Sets the inProgress flag of the specified dbResult to the passed flag.
+ * @param {DbResult} dbResult The dbResult for which the flag should be set
+ * @param  {boolean} inProgress Pass the value to which the flag should be set
+ */
+db.setInProgressFlag = async function(dbResult, inProgress) {
+    await db.path.update(
+        {
+            inProgress,
+        },
+        {
+
+            where: {
+                baseUrlBaseUrlId: dbResult.baseUrlId,
+            },
+        }
+    );
 };
 
 module.exports = db;

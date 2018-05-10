@@ -1,6 +1,7 @@
 let {logger} = require("./library/logger");
 let TorController = require("./library/torController");
 let Parser = require("./parser");
+let db = require("./models");
 
 let EventEmitter = require("events");
 const ProxyAgent = require("proxy-agent");
@@ -199,16 +200,16 @@ class Network extends EventEmitter {
             // below should be executed "atomically". Please note: Do not add
             // any code here, that contains async call
             if (
-                this.waitingRequestPerHost[dbResult.url] != undefined &&
-                this.waitingRequestPerHost[dbResult.url]
+                this.waitingRequestPerHost[dbResult.baseUrlId] != undefined &&
+                this.waitingRequestPerHost[dbResult.baseUrlId]
                 >= this.maxSimultaneousRequestsPerHost
             ) {
-                let queue = this.queuedRequestsByHost[dbResult.url];
+                let queue = this.queuedRequestsByHost[dbResult.baseUrlId];
                 if (!queue) {
                     queue = [];
                 }
                 queue.push(dbResult);
-                this.queuedRequestsByHost[dbResult.url] = queue;
+                this.queuedRequestsByHost[dbResult.baseUrlId] = queue;
                 continue;
             }
             await this.getSlot().catch((err) => {
@@ -244,17 +245,19 @@ class Network extends EventEmitter {
      * @param {DbResult} dbResult - Contains the DB result to be downloaded
      */
     async download(dbResult) {
-        if (this.waitingRequestPerHost[dbResult.url] == undefined) {
-            this.waitingRequestPerHost[dbResult.url] = 0;
+        if (this.waitingRequestPerHost[dbResult.baseUrlId] == undefined) {
+            this.waitingRequestPerHost[dbResult.baseUrlId] = 0;
         }
-        this.waitingRequestPerHost[dbResult.url] += 1;
+        this.waitingRequestPerHost[dbResult.baseUrlId] += 1;
+        await db.setInProgressFlag(dbResult, true /* inProgress */);
         let response = await this.get(
             dbResult.url,
             dbResult.path,
             dbResult.secure
         );
-        this.waitingRequestPerHost[dbResult.url] -= 1;
-        if (this.waitingRequestPerHost[dbResult.url] == 0) {
+        await db.setInProgressFlag(dbResult, false /* inProgress */);
+        this.waitingRequestPerHost[dbResult.baseUrlId] -= 1;
+        if (this.waitingRequestPerHost[dbResult.baseUrlId] == 0) {
             // We need to delete this, otherwise we store in memory
             // all the scraped Hosts -- OOM is an issue here
             delete this.waitingRequestPerHost[dbResult.url];
@@ -281,7 +284,8 @@ class Network extends EventEmitter {
                 // does not contain any entries yet.
                 // In that case, check the next entry
                 if (
-                    (this.waitingRequestPerHost[host] >= 6 ||
+                    (this.waitingRequestPerHost[host]
+                    >= this.maxSimultaneousRequestsPerHost ||
                     this.queuedRequestsByHost[host] == undefined) ||
                     this.queuedRequestsByHost[host].length == 0
                 ) {

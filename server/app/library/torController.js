@@ -1,10 +1,13 @@
 let net = require("net");
+let {logger} = require("./logger");
 
 module.exports.buildInstance = async function(socksPort, timeout) {
     return new Promise( (resolve, reject) => {
-        this.host = process.env.TOR_HOST || "localhost";
-        this.torPort = process.env.TOR_CONTROL_PORT || 9077;
-        let client = net.createConnection(this.torPort, this.host, () => {
+        let host = process.env.TOR_HOST || "localhost";
+        logger.info("TorController.buildInstance Host: " + host);
+        let torPort = process.env.TOR_CONTROL_PORT || 9077;
+        logger.info("TorController.buildInstance Port: " + torPort);
+        let client = net.createConnection(torPort, host, () => {
             let torController = new TorController(socksPort, client);
             resolve(torController);
         });
