@@ -117,7 +117,8 @@ class Network extends EventEmitter {
         this.socksPort = socksPort;
         this.ttl = 60100; // Max ttl for Tor: 60s + 100 ms for processing
         this.availableSlots = module.exports.MAX_SLOTS;
-        this.proxyUri = "socks://127.0.0.1:" + this.socksPort;
+        this.proxyUri = "socks://" + process.env.TOR_HOST
+                        + ":" + this.socksPort;
         // Naming according to the timing information the chrome dev
         // tools provide. This means:
         // * waiting = TTFB, in our case: The request has been sent, but we
