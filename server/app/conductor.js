@@ -12,19 +12,14 @@ class Conductor {
     /**
      * Initialize the conductor and start the scrape
      * @constructor
-     * @param {string[]} startUrls - List of init URL, which serve as
-     *                               startpoint for the scraper
      * @param {number} cutOffDepth - Cutoff value for the number of hops we
      *                               should take, starting from either the
      *                               database or the startUrls.
      * @param {number} torPort=9050 - Port to use for Tor controller server.
      */
-    constructor(startUrls, cutOffDepth, torPort) {
+    constructor(cutOffDepth, torPort) {
         // Startup message
         logger.info("Conductor now takes over control");
-        // By making a set, we make sure we do unify
-        // input, in order to do no more requests than we need
-        this.startUrls = startUrls;
 
         this.cutOffDepth = cutOffDepth;
 
@@ -43,8 +38,10 @@ class Conductor {
 
     /**
      * Initialize the tor client and the db, then start the spidering
+     * @param {string[]} startUrls - List of init URL, which serve as
+     *                               startpoint for the scraper
      */
-    async run() {
+    async run(startUrls) {
         // Synchronize the db model
         await db.sequelize.sync();
 
@@ -60,35 +57,36 @@ class Conductor {
         // scraped data).
         // Note that we exect a csv. We then check every cell if it contains
         // a .onion url, therefor we use two nested loops.
-        for (let lineOfUrls of this.startUrls) {
-            for (let stringToMatch of lineOfUrls) {
-                let matchedUrls = this.parser.extractOnionURI(
-                    stringToMatch,
+        let startUrlsNormalized = [];
+        for (let lineOfUrls of startUrls) {
+            for (let rawUrl of lineOfUrls) {
+                let parsedUrl = this.parser.extractOnionURI(
+                    rawUrl,
                     "" /* baseUrl */
                 );
-                /** @type{Parser.ParseResult} */
-                for (let matchedUrl of matchedUrls) {
-                    let path = matchedUrl.path || "/";
-                    let baseUrl = matchedUrl.baseUrl.toLowerCase();
-                    // Note: Without the await, we will get failing commits
-                    // possibly we overload the database (For large numbers
-                    // of initial urls)
-                    // Short term: not an issue, finished in about 5 min
-                    // Long term solution: Use Bulk inserts
-                    await db.insertUri(
-                        baseUrl, /* baseUrl */
-                        path, /* path */
-                        0, /* depth */
-                        matchedUrl.secure
-                    ).catch((err) =>{
-                        logger.error(
-                            "An error occured while inserting " + baseUrl +
-                            "/" + path + ": " + err.toString()
-                        );
-                        logger.error(err.stack);
-                    });
-                }
+                startUrlsNormalized.push(...parsedUrl);
             }
+        }
+        for (let matchedUrl of startUrlsNormalized) {
+            let path = matchedUrl.path || "/";
+            let baseUrl = matchedUrl.baseUrl.toLowerCase();
+            // Note: Without the await, we will get failing commits
+            // possibly we overload the database (For large numbers
+            // of initial urls)
+            // Short term: not an issue, finished in about 5 min
+            // Long term solution: Use Bulk inserts
+            await db.insertUri(
+                baseUrl, /* baseUrl */
+                path, /* path */
+                0, /* depth */
+                matchedUrl.secure
+            ).catch((err) =>{
+                logger.error(
+                    "An error occured while inserting " + baseUrl +
+                    "/" + path + ": " + err.toString()
+                );
+                logger.error(err.stack);
+            });
         }
         await this.getEntriesToDownloadPool(
             Network.MAX_POOL_SIZE
@@ -127,7 +125,20 @@ class Conductor {
         }
         this.network.addDataToPool(dbResults);
     }
-
+    /**
+     * @typedef Link
+     * @type {object}
+     * @property {UUIDv4} sourcePathId - The ID of the originating path of the
+     *                                   link
+     * @property {UUIDv4} destinationPathId - The ID of the destination path of
+     *                                        the link
+     * @property {number} timestamp - Indicator at which time the link was
+     *                                existent which does not imply that the
+     *                                destination was reachable, but only that
+     *                                the link was placed. To find out if the
+     *                                target was reachable, look for the content
+     *                                or paths successful flags
+     */
     /**
      * If the network finished a download, insert it into the database.
      * @param {NetworkHandlerResponse} networkResponse - The networks response
@@ -165,6 +176,8 @@ class Conductor {
             networkResponse.body,
             dbResult
         );
+        /** @type {Array.<Link>} Can be directyl bulkCreated */
+        let linkList = [];
         for (let url of urlsList) {
             let pathId = "";
             try {
@@ -181,13 +194,14 @@ class Conductor {
                 // initialized.
                 continue;
             }
-            // Now we insert the link
-            await db.insertLink(
-                dbResult.pathId,
-                pathId,
-                networkResponse.endTime
-            );
+            linkList.push({
+                sourcePathId: dbResult.pathId,
+                destinationPathId: pathId,
+                timestamp: networkResponse.endTime,
+            });
         }
+
+        await db.link.bulkCreate(linkList);
 
         // For the case we hit 0 in the network pool and
         // this was the last request, we need to repopulate

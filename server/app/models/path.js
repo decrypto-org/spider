@@ -38,7 +38,10 @@ module.exports = (sequelize, DataTypes) => {
     {
         indexes: [
             {
-                fields: ["depth", "random"],
+                fields: [
+                    {attribute: "depth", order: "ASC"},
+                    {attribute: "random", order: "ASC"}
+                ],
             },
         ],
     });

@@ -166,33 +166,6 @@ db.updateUri = async function(
 };
 
 /**
- * Inserts a new link into the DB. This helps us to gain an understanding,
- * how the link structure is changing over time and which information is
- * linked to each other.
- * @param {UUIDv4} sourcePathId - The ID of the originating path of the link
- * @param {UUIDv4} destinationPathId - The ID of the destination path of the
- *                                     link.
- * @param {number} timestamp - Indicator at which time the link was existent
- *                             which does not imply that the destination was
- *                             reachable, but only that the link was placed.
- *                             To find out if the target was reachable,
- *                             look for the content or path successful flags
- * @return {object} Return a link object (compare to models.link)
- */
-db.insertLink = async function(
-    sourcePathId,
-    destinationPathId,
-    timestamp
-) {
-    let response = await db.link.create({
-            timestamp: timestamp,
-            sourcePathId: sourcePathId,
-            destinationPathId: destinationPathId,
-    });
-    return response;
-};
-
-/**
  * Inserts the body of a message as on content entry into the database.
  * This function assumes that the data is already filtered and sanitized.
  * @param {UUIDV4} pathId - ID of the corresponding path entry.
@@ -346,12 +319,26 @@ db.getEntries = async function({
             ["random", "ASC"],
         ],
         limit: limit,
-    }).then( (instances) => {
-        instances.forEach((instance) => {
-            instance.updateAttributes({inProgress: true});
-        });
-        return instances;
+        include: [db.baseUrl],
     });
+
+    // collect pathIds for the update
+    let pathIds = paths.map((path) => path.pathId);
+
+    // Do a update with the same conditions as the get.
+    // This should never lead to issues, since only one
+    // getter is always run at the same time.
+    await db.path.update(
+        {inProgress: true},
+        {
+            where: {
+                pathId: {
+                    [Op.in]: pathIds,
+                },
+            },
+        },
+    );
+
     for (let path of paths) {
         let dbResult = {
             "path": path.path,
@@ -363,9 +350,8 @@ db.getEntries = async function({
             "content": null,
             "link": null,
         };
-        let baseUrl = await path.getBaseUrl();
-        dbResult["url"] = baseUrl.baseUrl;
-        dbResult["baseUrlId"] = baseUrl.baseUrlId;
+        dbResult["url"] = path.baseUrl.baseUrl;
+        dbResult["baseUrlId"] = path.baseUrl.baseUrlId;
         dbResults.push(dbResult);
     }
     this.offsetForDbRequest += paths.length;
