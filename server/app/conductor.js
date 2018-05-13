@@ -67,6 +67,9 @@ class Conductor {
                 startUrlsNormalized.push(...parsedUrl);
             }
         }
+        // Using managed transaction to not have to roll back or commit manually
+        // compare
+        let transaction = await db.sequelize.transaction({autocommit: false});
         for (let matchedUrl of startUrlsNormalized) {
             let path = matchedUrl.path || "/";
             let baseUrl = matchedUrl.baseUrl.toLowerCase();
@@ -79,7 +82,8 @@ class Conductor {
                 baseUrl, /* baseUrl */
                 path, /* path */
                 0, /* depth */
-                matchedUrl.secure
+                matchedUrl.secure,
+                transaction
             ).catch((err) =>{
                 logger.error(
                     "An error occured while inserting " + baseUrl +
@@ -88,6 +92,18 @@ class Conductor {
                 logger.error(err.stack);
             });
         }
+
+        await transaction.commit().then(() => {
+            logger.info("Initial urls were commited to the DB");
+        }).catch((err) => {
+            logger.error(
+                "An error occured while inserting initial data"
+            );
+            logger.error(err.message);
+            logger.err(err.stack);
+        });
+
+
         await this.getEntriesToDownloadPool(
             Network.MAX_POOL_SIZE
         );
@@ -178,6 +194,9 @@ class Conductor {
         );
         /** @type {Array.<Link>} Can be directyl bulkCreated */
         let linkList = [];
+        let transaction = await db.sequelize.transaction(
+            {autocommit: false}
+        );
         for (let url of urlsList) {
             let pathId = "";
             try {
@@ -186,6 +205,7 @@ class Conductor {
                     url.path,
                     dbResult.depth + 1,
                     url.secure,
+                    transaction
                 );
             } catch (e) {
                 // statements
@@ -200,6 +220,20 @@ class Conductor {
                 timestamp: networkResponse.endTime,
             });
         }
+
+        await transaction.commit().then(() => {
+            logger.info(
+                "Commit executed, paths for "
+                + dbResult.url + dbResult.path
+                + " inserted");
+        }).catch((err) => {
+            logger.error(
+                "An error occured while inserting new paths from"
+                + dbResult.url + dbResult.path
+            );
+            logger.error(err.message);
+            logger.err(err.stack);
+        });
 
         await db.link.bulkCreate(linkList);
 

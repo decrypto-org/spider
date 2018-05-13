@@ -3,6 +3,7 @@ let logger = Logger.logger;
 let fs = require("fs");
 let path = require("path");
 let Sequelize = require("sequelize");
+let uuidv4 = require("uuid/v4");
 let basename = path.basename(__filename);
 
 let Op = Sequelize.Op;
@@ -17,6 +18,7 @@ let db = {};
  */
 function logForSequelize(value) {
     // Ignore DB log for now - this only logs the sql queries that were made
+    console.log(value);
     return;
 }
 
@@ -32,10 +34,10 @@ let sequelize = new Sequelize(
             max: process.env.DB_MAX_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
             idle: 60000,
-            acquire: 60000,
+            acquire: 120000,
         },
         operatorsAliases: false,
-        logging: logForSequelize
+        logging: logForSequelize,
     },
 );
 
@@ -69,15 +71,23 @@ db.Sequelize = Sequelize;
  * @param {number} depth - Indicates the search depth at which the entry is
  *                         to be inserted.
  * @param {boolean} secure=false - Indicate whether the uri uses http(s)
+ * @param {Sequelize.transaction} transaction=undefined - The transaction to be
+ *                                                      used for this insert.
+ *                                                      This ensures higher
+ *                                                      writing performance,
+ *                                                      since only one commit
+ *                                                      will be executed for
+ *                                                      a bunch of insertions
  * @return {UUIDV4[]} Returns the IDs of the inserted values
  *                           Those are always sorted as follows:
- *                           [baseUrlId, pathId, contentId, linkId]
+ *                           [baseUrlId, pathId]
  */
 db.insertUri = async function(
     baseUrl,
     path,
     depth,
     secure=false,
+    transaction=undefined
 ) {
     logger.info("Insert new entry: " + baseUrl + path);
     let [baseUrlEntry] = await db.baseUrl.findOrCreate({
@@ -87,6 +97,7 @@ db.insertUri = async function(
         defaults: {
             baseUrl: baseUrl,
         },
+        transaction: transaction,
     });
     let random = Math.random();
     let [pathEntry] = await db.path.findOrCreate({
@@ -105,8 +116,93 @@ db.insertUri = async function(
             random: random,
             inProgress: false,
         },
+        transaction: transaction,
     });
-    return [baseUrlEntry.baseUrlId, pathEntry.pathId, null, null];
+    return [baseUrlEntry.baseUrlId, pathEntry.pathId];
+};
+
+/**
+ * @typedef {URIDefinition}
+ * @type {Object}
+ * @property {!string} baseUrl The baseUrl of the URI
+ * @property {!string} path The path part of the URI
+ * @property {!number} depth The search depth at which this entry was found
+ * @property {!boolean} secure Indicates whether a secure connection should
+ *                             be used or not
+ */
+/**
+ * Insert a bulk of uris into the baseUrls and paths table.
+ * In order to achieve the same result as with findOrCreate, we create a unique
+ * index on (path, baseUrlId) in paths and a unique index on baseUrl in
+ * baseUrls. We then first try to insert the batch of baseUrls into the
+ * database. We add a "ON CONFLICT DO NOTHING" to every request, so we only get
+ * the successful entries in the return value. We then calculate the remainder
+ * (unsuccessful inserts) and get them by findAll.
+ * This way we retrieve all the baseUrlIds needed to insert the paths.
+ * For the paths we just try to insert them, again with the ON CONFLICT DO
+ * NOTHING set. We do not have to worry about the not inserted paths, since
+ * they are already present.
+ * @param  {Array.<URIDefinition>} uriDefinitions - All the URIs that should be
+ *                                                  inserted if not yet existent
+ */
+db.bulkInsertUri = async function(
+    uriDefinitions
+) {
+    /* eslint-disable no-multi-str */
+    // First: create SQL request for bulkCreate ON CONFLICT DO NOTHING
+    // This is not yet implemented in sequelize, so we write our own version
+    // here. Feedback is currently stale, so not hoping that it will be resolved
+    // soon
+    // We need to generate the uuid on our own, but we can make use of automatic
+    // insertion of updatedAt/createdAt times
+    // We cannot have duplicates in our insertion list, so we have to filter
+    // those
+
+    // Filter to remove duplicates
+    uriDefinitions = uriDefinitions.filter((uriDefinition, index, self) => {
+        index === self.findIndex((secondaryUriDefinition) => {
+            secondaryUriDefinition.baseUrl === uriDefinition.baseUrl &&
+            secondaryUriDefinition.path === uriDefinition.path;
+        });
+    });
+    // Now lets build those requests:
+    let baseUrlRequestString = "\
+        INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\")\
+        VALUES\
+    ";
+    // let pathRequestString = "\
+    //     INSERT INTO \"paths\"\
+    //     (\"pathId\",\
+    //      \"lastStartedTimestamp\",\
+    //      \"lastFinishedTimestamp\",\
+    //      \"inProgress\",\
+    //      \"lastSuccessfulTimestamp\",\
+    //      \"depth\",\
+    //      \"path\",\
+    //      \"secure\",\
+    //      \"random\",\
+    //      \"baseUrlBaseUrlId\"\
+    //     )\
+    //     VALUES\
+    // ";
+    // First we have to build the baseUrl insertion, since for the path
+    // we need to know the actual baseUrlIds
+    for (let uriDefinition of uriDefinitions) {
+        if (!uriDefinitions.hasOwnProperty(uriDefinition)) {
+            continue;
+        }
+        let newBaseUrlId = uuidv4();
+        let value = "(\"" + newBaseUrlId + "\","
+        + "\"" + uriDefinition.baseUrl + "\")\
+        ";
+        baseUrlRequestString += value;
+    }
+    baseUrlRequestString += "ON CONFLICT (\"baseUrl\")\
+    DO UPDATE SET \"numberOfHits\" = \"baseUrls\".\"numberOfHits\" + 1\
+    RETURNING (\"baseUrlId\", \"baseUrl\")";
+    await db.sequelize.query(baseUrlRequestString);
+    // let baseUrlReturnValue = await db.sequelize.query(baseUrlRequestString);
+    /* eslint-enable no-multi-str */
 };
 
 /**
