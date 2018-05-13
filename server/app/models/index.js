@@ -15,10 +15,10 @@ let db = {};
  * @param {Object} value - Contains the actual value that should be logged to
  *                         the transports.
  */
-// Commented out, since this used more heap space than it should
-// function logForSequelize(value) {
-//     dbLogger.db_silly(value);
-// }
+function logForSequelize(value) {
+    // Ignore DB log for now - this only logs the sql queries that were made
+    return;
+}
 
 let sequelize = new Sequelize(
     process.env.DB_NAME,
@@ -35,6 +35,7 @@ let sequelize = new Sequelize(
             acquire: 60000,
         },
         operatorsAliases: false,
+        logging: logForSequelize
     },
 );
 
