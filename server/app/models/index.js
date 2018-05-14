@@ -4,7 +4,6 @@ let fs = require("fs");
 let path = require("path");
 let Sequelize = require("sequelize");
 let uuidv4 = require("uuid/v4");
-let escaper = require("pg-escape");
 let basename = path.basename(__filename);
 
 let Op = Sequelize.Op;
@@ -163,6 +162,11 @@ db.bulkInsertUri = async function(
     // Filter to remove duplicates
     uriDefinitions = uriDefinitions.filter((uriDefinition, index, self) => {
         let auxiliaryIndex = self.findIndex((secondaryUriDefinition) => {
+            if (!uriDefinition.path) {
+                // in some cases path is null/undefined. Since we do not allow
+                // NULL in the DB, we must set it here to ""
+                uriDefinition.path = "";
+            }
             return secondaryUriDefinition.baseUrl === uriDefinition.baseUrl &&
             secondaryUriDefinition.path === uriDefinition.path;
         });
@@ -202,10 +206,15 @@ db.bulkInsertUri = async function(
     }
     // Counter variable to detect when we are at the last element of the set.
     let c = 0;
+    let replacementsForBaseUrlRequest = [];
     for (let currentBaseUrl of baseUrlSet.values()) {
         let newBaseUrlId = uuidv4();
-        let value = "('" + newBaseUrlId + "', "
-        + "'" + escaper.string(currentBaseUrl) + "')";
+        if (!currentBaseUrl) {
+            continue; // If baseUrl was empty, we just ignore this case
+        }
+        let value = "(?, ?)";
+        replacementsForBaseUrlRequest.push(newBaseUrlId);
+        replacementsForBaseUrlRequest.push(currentBaseUrl);
         if (c == baseUrlSet.size - 1) {
             value += "\n";
         } else {
@@ -226,24 +235,37 @@ db.bulkInsertUri = async function(
      *                               itself contains objects, indexed by column
      *                               name.
      */
-    let baseUrlReturnValue = await db.sequelize.query(baseUrlRequestString);
+    let baseUrlReturnValue = await db.sequelize.query(
+        baseUrlRequestString,
+        {replacements: replacementsForBaseUrlRequest}
+    );
     baseUrlReturnValue = baseUrlReturnValue[0];
+
     let baseUrlIdByBaseUrl = {};
     for (let i = 0; i < baseUrlReturnValue.length; i++) {
         let baseUrlEntry = baseUrlReturnValue[i];
         baseUrlIdByBaseUrl[baseUrlEntry.baseUrl] = baseUrlEntry.baseUrlId;
     }
+
+    let replacementsForPathRequest = [];
     for (let i = 0; i < uriDefinitions.length; i++) {
         let newPathId = uuidv4();
         let random = Math.random();
         let uriDefinition = uriDefinitions[i];
-        let value = "('" + newPathId
-            + "', 0, 0, FALSE, 0, "
-            + uriDefinition.depth + ", '"
-            + escaper.string(uriDefinition.path) + "', "
-            + uriDefinition.secure + ", "
-            + random + ", '"
-            + baseUrlIdByBaseUrl[uriDefinition.baseUrl] + "')";
+        let path = uriDefinition.path;
+        if (!path) {
+            // If the path was empty we reset it to empty
+            path = "";
+        }
+        let value = "( ?, 0, 0, FALSE, 0, ?, ?, ?, ?, ?)";
+        replacementsForPathRequest.push(...[
+            newPathId,
+            uriDefinition.depth,
+            path,
+            uriDefinition.secure,
+            random,
+            baseUrlIdByBaseUrl[uriDefinition.baseUrl],
+        ]);
         if (i == uriDefinitions.length - 1) {
             value += "\n";
         } else {
@@ -254,7 +276,10 @@ db.bulkInsertUri = async function(
     pathRequestString += "ON CONFLICT (\"baseUrlBaseUrlId\", \"path\")\n\
     DO UPDATE SET \"numberOfHits\" = \"paths\".\"numberOfHits\" + 1\n\
     RETURNING \"pathId\"";
-    let pathsReturnValue = await db.sequelize.query(pathRequestString);
+    let pathsReturnValue = await db.sequelize.query(
+        pathRequestString,
+        {replacements: replacementsForPathRequest}
+    );
     pathsReturnValue = pathsReturnValue[0];
     return pathsReturnValue.map((pathIdObj) => {
         return pathIdObj.pathId;
@@ -339,7 +364,6 @@ db.insertBody = async function(
     timestamp,
     statusCode=200
 ) {
-    body = escaper.string(body);
     let response = await db.content.create({
             scrapeTimestamp: timestamp,
             contentType: mimeType,
