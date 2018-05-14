@@ -67,9 +67,8 @@ class Conductor {
                 startUrlsNormalized.push(...parsedUrl);
             }
         }
-        // Using managed transaction to not have to roll back or commit manually
-        // compare
-        let transaction = await db.sequelize.transaction({autocommit: false});
+
+        let uriList = [];
         for (let matchedUrl of startUrlsNormalized) {
             let path = matchedUrl.path || "/";
             let baseUrl = matchedUrl.baseUrl.toLowerCase();
@@ -78,31 +77,15 @@ class Conductor {
             // of initial urls)
             // Short term: not an issue, finished in about 5 min
             // Long term solution: Use Bulk inserts
-            await db.insertUri(
-                baseUrl, /* baseUrl */
-                path, /* path */
-                0, /* depth */
-                matchedUrl.secure,
-                transaction
-            ).catch((err) =>{
-                logger.error(
-                    "An error occured while inserting " + baseUrl +
-                    "/" + path + ": " + err.toString()
-                );
-                logger.error(err.stack);
+            uriList.push({
+                baseUrl: baseUrl,
+                path: path,
+                depth: 0,
+                secure: matchedUrl.secure
             });
         }
 
-        await transaction.commit().then(() => {
-            logger.info("Initial urls were commited to the DB");
-        }).catch((err) => {
-            logger.error(
-                "An error occured while inserting initial data"
-            );
-            logger.error(err.message);
-            logger.err(err.stack);
-        });
-
+        await db.bulkInsertUri(uriList);
 
         await this.getEntriesToDownloadPool(
             Network.MAX_POOL_SIZE
@@ -184,9 +167,10 @@ class Conductor {
         let uriList = [];
 
         for (let url of urlsList) {
+            let path = url.path || "/";
             uriList.push({
                 baseUrl: url.baseUrl,
-                path: url.path,
+                path: path,
                 depth: dbResult.depth + 1,
                 secure: url.secure,
             });
