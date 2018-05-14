@@ -6,7 +6,7 @@ let portscanner = require("portscanner");
 require("./extensions/Set");
 require("./extensions/Object");
 
-exports.init = async function(initUrls=[], depth=1) {
+exports.init = async function(initUrls=[], depth=1, attach=false) {
     // if (cluster.isMaster) {
     //     logger.info("Master is living - forking");
 
@@ -34,7 +34,7 @@ exports.init = async function(initUrls=[], depth=1) {
             process.exit(1);
         }
         let conductor = new Conductor(depth, 9000);
-        conductor.run(initUrls);
+        conductor.run(initUrls, attach);
     });
 };
 

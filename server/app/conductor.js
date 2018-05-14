@@ -40,12 +40,19 @@ class Conductor {
      * Initialize the tor client and the db, then start the spidering
      * @param {string[]} startUrls - List of init URL, which serve as
      *                               startpoint for the scraper
+     * @param {boolean} attach - True if we attach to a database on which
+     *                           already a spider is running. If this is the
+     *                           case we do not want to reset inProgress flags,
+     *                           since this might leads to undesired behaviour
+     *                           (Two spider downloading the same page)
      */
-    async run(startUrls) {
+    async run(startUrls, attach) {
         // Synchronize the db model
         await db.sequelize.sync();
 
-        db.resetStaleEntries(0 /* timeDelta */);
+        if (!attach) {
+            db.resetStaleEntries(0 /* timeDelta */);
+        }
 
         // Create a network instance
         this.network = await Network.buildInstance(
@@ -81,7 +88,7 @@ class Conductor {
                 baseUrl: baseUrl,
                 path: path,
                 depth: 0,
-                secure: matchedUrl.secure
+                secure: matchedUrl.secure,
             });
         }
 

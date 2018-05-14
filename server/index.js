@@ -17,6 +17,7 @@ let {logger} = require("./app/library/logger");
 const commandLineOptions = commandLineArgs([
     {name: "init_urls_file", alias: "i", type: String, defaultOption: true},
     {name: "depth", alias: "d", type: Number},
+    {name: "attach", alias: "a", type: Boolean},
 ]);
 
 process.on("uncaughtException", (err) => {
@@ -65,6 +66,12 @@ if (commandLineOptions.depth) {
 } else if (process.env.SEARCH_DEPTH != "") {
     depth = parseInt(process.env.SEARCH_DEPTH);
 }
+let attach = false;
+if (commandLineOptions.attach != undefined) {
+    attach = commandLineOptions.attach;
+} else if (process.env.ATTACH != "") {
+    attach = process.env.ATTACH === "true";
+}
 
 logger.info("Starting spider");
-main.init(startUrls, depth);
+main.init(startUrls, depth, attach);
