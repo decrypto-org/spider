@@ -141,20 +141,7 @@ class Conductor {
         }
         this.network.addDataToPool(dbResults);
     }
-    /**
-     * @typedef Link
-     * @type {object}
-     * @property {UUIDv4} sourcePathId - The ID of the originating path of the
-     *                                   link
-     * @property {UUIDv4} destinationPathId - The ID of the destination path of
-     *                                        the link
-     * @property {number} timestamp - Indicator at which time the link was
-     *                                existent which does not imply that the
-     *                                destination was reachable, but only that
-     *                                the link was placed. To find out if the
-     *                                target was reachable, look for the content
-     *                                or paths successful flags
-     */
+
     /**
      * If the network finished a download, insert it into the database.
      * @param {NetworkHandlerResponse} networkResponse - The networks response
@@ -194,46 +181,27 @@ class Conductor {
         );
         /** @type {Array.<Link>} Can be directyl bulkCreated */
         let linkList = [];
-        let transaction = await db.sequelize.transaction(
-            {autocommit: false}
-        );
+        let uriList = [];
+
         for (let url of urlsList) {
-            let pathId = "";
-            try {
-                [, pathId] = await db.insertUri(
-                    url.baseUrl,
-                    url.path,
-                    dbResult.depth + 1,
-                    url.secure,
-                    transaction
-                );
-            } catch (e) {
-                // statements
-                logger.warn(e);
-                // Continue, since the pathId might have not been
-                // initialized.
-                continue;
-            }
+            uriList.push({
+                baseUrl: url.baseUrl,
+                path: url.path,
+                depth: dbResult.depth + 1,
+                secure: url.secure,
+            });
+        }
+
+        let pathIds = await db.bulkInsertUri(uriList);
+
+        for (let i = 0; i < pathIds.length; i++) {
+            let pathId = pathIds[i];
             linkList.push({
                 sourcePathId: dbResult.pathId,
                 destinationPathId: pathId,
                 timestamp: networkResponse.endTime,
             });
         }
-
-        await transaction.commit().then(() => {
-            logger.info(
-                "Commit executed, paths for "
-                + dbResult.url + dbResult.path
-                + " inserted");
-        }).catch((err) => {
-            logger.error(
-                "An error occured while inserting new paths from"
-                + dbResult.url + dbResult.path
-            );
-            logger.error(err.message);
-            logger.err(err.stack);
-        });
 
         await db.link.bulkCreate(linkList);
 

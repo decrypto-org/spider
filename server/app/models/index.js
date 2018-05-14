@@ -4,6 +4,7 @@ let fs = require("fs");
 let path = require("path");
 let Sequelize = require("sequelize");
 let uuidv4 = require("uuid/v4");
+let escaper = require("pg-escape");
 let basename = path.basename(__filename);
 
 let Op = Sequelize.Op;
@@ -33,8 +34,8 @@ let sequelize = new Sequelize(
         pool: {
             max: process.env.DB_MAX_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
-            idle: 60000,
-            acquire: 120000,
+            idle: 20000,
+            acquire: 60000,
         },
         operatorsAliases: false,
         logging: logForSequelize,
@@ -144,6 +145,7 @@ db.insertUri = async function(
  * they are already present.
  * @param  {Array.<URIDefinition>} uriDefinitions - All the URIs that should be
  *                                                  inserted if not yet existent
+ * @return {Array.<UUIDv4>} Return the touched pathIds
  */
 db.bulkInsertUri = async function(
     uriDefinitions
@@ -160,48 +162,103 @@ db.bulkInsertUri = async function(
 
     // Filter to remove duplicates
     uriDefinitions = uriDefinitions.filter((uriDefinition, index, self) => {
-        index === self.findIndex((secondaryUriDefinition) => {
-            secondaryUriDefinition.baseUrl === uriDefinition.baseUrl &&
+        let auxiliaryIndex = self.findIndex((secondaryUriDefinition) => {
+            return secondaryUriDefinition.baseUrl === uriDefinition.baseUrl &&
             secondaryUriDefinition.path === uriDefinition.path;
         });
+        return index == auxiliaryIndex;
     });
+    if (uriDefinitions.length == 0) {
+        return {};
+    }
     // Now lets build those requests:
     let baseUrlRequestString = "\
-        INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\")\
-        VALUES\
+    INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\")\n\
+        VALUES\n\
     ";
-    // let pathRequestString = "\
-    //     INSERT INTO \"paths\"\
-    //     (\"pathId\",\
-    //      \"lastStartedTimestamp\",\
-    //      \"lastFinishedTimestamp\",\
-    //      \"inProgress\",\
-    //      \"lastSuccessfulTimestamp\",\
-    //      \"depth\",\
-    //      \"path\",\
-    //      \"secure\",\
-    //      \"random\",\
-    //      \"baseUrlBaseUrlId\"\
-    //     )\
-    //     VALUES\
-    // ";
+    let pathRequestString = "INSERT INTO \"paths\"\n\
+        (\"pathId\",\n\
+         \"lastStartedTimestamp\",\n\
+         \"lastFinishedTimestamp\",\n\
+         \"inProgress\",\n\
+         \"lastSuccessfulTimestamp\",\n\
+         \"depth\",\n\
+         \"path\",\n\
+         \"secure\",\n\
+         \"random\",\n\
+         \"baseUrlBaseUrlId\"\n\
+        )\
+        VALUES\n\
+    ";
     // First we have to build the baseUrl insertion, since for the path
     // we need to know the actual baseUrlIds
-    for (let uriDefinition of uriDefinitions) {
-        if (!uriDefinitions.hasOwnProperty(uriDefinition)) {
+    let baseUrlSet = new Set();
+    for (let i = 0; i < uriDefinitions.length; i++) {
+        let uriDefinition = uriDefinitions[i];
+        if (baseUrlSet.has(uriDefinition.baseUrl)) {
             continue;
         }
+        baseUrlSet.add(uriDefinition.baseUrl);
+    }
+    // Counter variable to detect when we are at the last element of the set.
+    let c = 0;
+    for (let currentBaseUrl of baseUrlSet.values()) {
         let newBaseUrlId = uuidv4();
-        let value = "(\"" + newBaseUrlId + "\","
-        + "\"" + uriDefinition.baseUrl + "\")\
-        ";
+        let value = "('" + newBaseUrlId + "', "
+        + "'" + escaper.string(currentBaseUrl) + "')";
+        if (c == baseUrlSet.size - 1) {
+            value += "\n";
+        } else {
+            value += ",\n";
+        }
+        c++;
         baseUrlRequestString += value;
     }
-    baseUrlRequestString += "ON CONFLICT (\"baseUrl\")\
-    DO UPDATE SET \"numberOfHits\" = \"baseUrls\".\"numberOfHits\" + 1\
-    RETURNING (\"baseUrlId\", \"baseUrl\")";
-    await db.sequelize.query(baseUrlRequestString);
-    // let baseUrlReturnValue = await db.sequelize.query(baseUrlRequestString);
+    baseUrlRequestString += "ON CONFLICT (\"baseUrl\")\n\
+    DO UPDATE SET \"numberOfHits\" = \"baseUrls\".\"numberOfHits\" + 1\n\
+    RETURNING \"baseUrlId\", \"baseUrl\"";
+    /** @type {Array.<Array|number>} baseUrlReturnValue contains two entries,
+     *                               one Array and a number, indicating the
+     *                               number of affected rows. Since we
+     *                               constructed the query such that all inputs
+     *                               are affecte, the size of the return array
+     *                               and the number should be equal. The array
+     *                               itself contains objects, indexed by column
+     *                               name.
+     */
+    let baseUrlReturnValue = await db.sequelize.query(baseUrlRequestString);
+    baseUrlReturnValue = baseUrlReturnValue[0];
+    let baseUrlIdByBaseUrl = {};
+    for (let i = 0; i < baseUrlReturnValue.length; i++) {
+        let baseUrlEntry = baseUrlReturnValue[i];
+        baseUrlIdByBaseUrl[baseUrlEntry.baseUrl] = baseUrlEntry.baseUrlId;
+    }
+    for (let i = 0; i < uriDefinitions.length; i++) {
+        let newPathId = uuidv4();
+        let random = Math.random();
+        let uriDefinition = uriDefinitions[i];
+        let value = "('" + newPathId
+            + "', 0, 0, FALSE, 0, "
+            + uriDefinition.depth + ", '"
+            + escaper.string(uriDefinition.path) + "', "
+            + uriDefinition.secure + ", "
+            + random + ", '"
+            + baseUrlIdByBaseUrl[uriDefinition.baseUrl] + "')";
+        if (i == uriDefinitions.length - 1) {
+            value += "\n";
+        } else {
+            value += ",\n";
+        }
+        pathRequestString += value;
+    }
+    pathRequestString += "ON CONFLICT (\"baseUrlBaseUrlId\", \"path\")\n\
+    DO UPDATE SET \"numberOfHits\" = \"paths\".\"numberOfHits\" + 1\n\
+    RETURNING \"pathId\"";
+    let pathsReturnValue = await db.sequelize.query(pathRequestString);
+    pathsReturnValue = pathsReturnValue[0];
+    return pathsReturnValue.map((pathIdObj) => {
+        return pathIdObj.pathId;
+    });
     /* eslint-enable no-multi-str */
 };
 
@@ -282,6 +339,7 @@ db.insertBody = async function(
     timestamp,
     statusCode=200
 ) {
+    body = escaper.string(body);
     let response = await db.content.create({
             scrapeTimestamp: timestamp,
             contentType: mimeType,
@@ -335,7 +393,7 @@ db.resetStaleEntries = async function(
  *                                 the existence of a link at that given
  *                                 point in time. To check for reachability
  *                                 please refer to the attached content
- *                                 entries. The contain a successful flag.
+ *                                 entries. They contain a successful flag.
  */
 
 /**
