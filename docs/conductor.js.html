@@ -68,12 +68,19 @@ class Conductor {
      * Initialize the tor client and the db, then start the spidering
      * @param {string[]} startUrls - List of init URL, which serve as
      *                               startpoint for the scraper
+     * @param {boolean} attach - True if we attach to a database on which
+     *                           already a spider is running. If this is the
+     *                           case we do not want to reset inProgress flags,
+     *                           since this might leads to undesired behaviour
+     *                           (Two spider downloading the same page)
      */
-    async run(startUrls) {
+    async run(startUrls, attach) {
         // Synchronize the db model
         await db.sequelize.sync();
 
-        db.resetStaleEntries(0 /* timeDelta */);
+        if (!attach) {
+            await db.resetStaleEntries(0 /* timeDelta */);
+        }
 
         // Create a network instance
         this.network = await Network.buildInstance(
@@ -95,9 +102,8 @@ class Conductor {
                 startUrlsNormalized.push(...parsedUrl);
             }
         }
-        // Using managed transaction to not have to roll back or commit manually
-        // compare
-        let transaction = await db.sequelize.transaction({autocommit: false});
+
+        let uriList = [];
         for (let matchedUrl of startUrlsNormalized) {
             let path = matchedUrl.path || "/";
             let baseUrl = matchedUrl.baseUrl.toLowerCase();
@@ -106,31 +112,16 @@ class Conductor {
             // of initial urls)
             // Short term: not an issue, finished in about 5 min
             // Long term solution: Use Bulk inserts
-            await db.insertUri(
-                baseUrl, /* baseUrl */
-                path, /* path */
-                0, /* depth */
-                matchedUrl.secure,
-                transaction
-            ).catch((err) =>{
-                logger.error(
-                    "An error occured while inserting " + baseUrl +
-                    "/" + path + ": " + err.toString()
-                );
-                logger.error(err.stack);
+            uriList.push({
+                baseUrl: baseUrl,
+                subdomain: "",
+                path: path,
+                depth: 0,
+                secure: matchedUrl.secure,
             });
         }
 
-        await transaction.commit().then(() => {
-            logger.info("Initial urls were commited to the DB");
-        }).catch((err) => {
-            logger.error(
-                "An error occured while inserting initial data"
-            );
-            logger.error(err.message);
-            logger.err(err.stack);
-        });
-
+        await db.bulkInsertUri(uriList);
 
         await this.getEntriesToDownloadPool(
             Network.MAX_POOL_SIZE
@@ -169,20 +160,7 @@ class Conductor {
         }
         this.network.addDataToPool(dbResults);
     }
-    /**
-     * @typedef Link
-     * @type {object}
-     * @property {UUIDv4} sourcePathId - The ID of the originating path of the
-     *                                   link
-     * @property {UUIDv4} destinationPathId - The ID of the destination path of
-     *                                        the link
-     * @property {number} timestamp - Indicator at which time the link was
-     *                                existent which does not imply that the
-     *                                destination was reachable, but only that
-     *                                the link was placed. To find out if the
-     *                                target was reachable, look for the content
-     *                                or paths successful flags
-     */
+
     /**
      * If the network finished a download, insert it into the database.
      * @param {NetworkHandlerResponse} networkResponse - The networks response
@@ -222,46 +200,30 @@ class Conductor {
         );
         /** @type {Array.&lt;Link>} Can be directyl bulkCreated */
         let linkList = [];
-        let transaction = await db.sequelize.transaction(
-            {autocommit: false}
-        );
+        /** @type {Array.&lt;URIDefinition>} URIDefinitions for bulkInsert */
+        let uriList = [];
+
         for (let url of urlsList) {
-            let pathId = "";
-            try {
-                [, pathId] = await db.insertUri(
-                    url.baseUrl,
-                    url.path,
-                    dbResult.depth + 1,
-                    url.secure,
-                    transaction
-                );
-            } catch (e) {
-                // statements
-                logger.warn(e);
-                // Continue, since the pathId might have not been
-                // initialized.
-                continue;
-            }
+            let path = url.path || "/";
+            uriList.push({
+                baseUrl: url.baseUrl,
+                subdomain: url.subdomain,
+                path: path,
+                depth: dbResult.depth + 1,
+                secure: url.secure,
+            });
+        }
+
+        let pathIds = await db.bulkInsertUri(uriList);
+
+        for (let i = 0; i &lt; pathIds.length; i++) {
+            let pathId = pathIds[i];
             linkList.push({
                 sourcePathId: dbResult.pathId,
                 destinationPathId: pathId,
                 timestamp: networkResponse.endTime,
             });
         }
-
-        await transaction.commit().then(() => {
-            logger.info(
-                "Commit executed, paths for "
-                + dbResult.url + dbResult.path
-                + " inserted");
-        }).catch((err) => {
-            logger.error(
-                "An error occured while inserting new paths from"
-                + dbResult.url + dbResult.path
-            );
-            logger.error(err.message);
-            logger.err(err.stack);
-        });
 
         await db.link.bulkCreate(linkList);
 
@@ -317,7 +279,7 @@ module.exports = Conductor;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon May 14 2018 01:52:24 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Tue May 15 2018 22:57:40 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

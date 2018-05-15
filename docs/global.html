@@ -1039,7 +1039,7 @@ was suggested as workaround.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line341">line 341</a>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line430">line 430</a>
     </li></ul></dd>
     
 
@@ -1173,7 +1173,7 @@ was suggested as workaround.
                                 the existence of a link at that given
                                 point in time. To check for reachability
                                 please refer to the attached content
-                                entries. The contain a successful flag.</td>
+                                entries. They contain a successful flag.</td>
         </tr>
 
     
@@ -1212,180 +1212,7 @@ was suggested as workaround.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line326">line 326</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-            
-                
-<h4 class="name" id="Link">Link</h4>
-
-
-
-
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">object</span>
-
-
-        </li>
-    </ul>
-
-
-
-
-
-    <h5 class="subsection-title">Properties:</h5>
-
-    
-
-<table class="props">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>sourcePathId</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">UUIDv4</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The ID of the originating path of the
-                                  link</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>destinationPathId</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">UUIDv4</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The ID of the destination path of
-                                       the link</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>timestamp</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">number</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Indicator at which time the link was
-                               existent which does not imply that the
-                               destination was reachable, but only that
-                               the link was placed. To find out if the
-                               target was reachable, look for the content
-                               or paths successful flags</td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line144">line 144</a>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line415">line 415</a>
     </li></ul></dd>
     
 
@@ -1746,53 +1573,6 @@ was suggested as workaround.
 
         <tr>
             
-                <td class="name"><code>fullUrl</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">The full url, no splits. Mostly useful for
-                             logging or display.</td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>http</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last">Indicates the usage of http in the url string.</td>
-        </tr>
-
-    
-
-        <tr>
-            
                 <td class="name"><code>secure</code></td>
             
 
@@ -1817,13 +1597,13 @@ was suggested as workaround.
 
         <tr>
             
-                <td class="name"><code>www</code></td>
+                <td class="name"><code>subdomain</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">boolean</span>
+<span class="param-type">string</span>
 
 
             
@@ -1833,8 +1613,8 @@ was suggested as workaround.
 
             
 
-            <td class="description last">Indicates whether the URL contains www (true)
-                          or not (false).</td>
+            <td class="description last">Eventual subdomains, such that we can
+                             clearly distinguish between hosts</td>
         </tr>
 
     
@@ -1881,7 +1661,7 @@ was suggested as workaround.
 
             
 
-            <td class="description last">The path, including any parameters or hooks.</td>
+            <td class="description last">The path, including any parameters or hooks</td>
         </tr>
 
     
@@ -1920,7 +1700,7 @@ was suggested as workaround.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="parser.js.html">parser.js</a>, <a href="parser.js.html#line63">line 63</a>
+        <a href="parser.js.html">parser.js</a>, <a href="parser.js.html#line68">line 68</a>
     </li></ul></dd>
     
 
@@ -1956,7 +1736,7 @@ was suggested as workaround.
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon May 14 2018 01:52:24 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Tue May 15 2018 22:57:40 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

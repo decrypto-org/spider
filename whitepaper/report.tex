@@ -70,6 +70,36 @@
 \CONTENT{Describe the scope of the project, refer to previous work (e.g., contrast with Nicolas Christin’s work on Silk Road as well as the work where they ran their own relays to collect content). Clearly state our contributions. Summarize the methodology and results.}
 \NOTE{Introduce visible vs invisible part of the darknet}
 
+\NOTE{Ok, here a short summary and why we are making something different than the linked articles/blogs: \\
+*https://www.hyperiongray.com/dark-web-map/* : Displays 6.6k websites in a "map". However, the map is sorted by structural similarity and many of the displayed pages are either offline (E.g. taken offline by law enforcement, by the hoster itself (only displays a notice) or are not yet setup ("I congratulate you! You have made a site on the dark side (onion)"). I think it's clear that this is not what we are doing\\
+*TERBIUM LABS* Work (I assume 2016 from the files name, but is not stated clearly): Reviewed a sample of 400 URLs, collected by their crawler, classified into one of the following categories\\
+•Legal\\
+•Explicit\\
+•Drugs\\
+•Pharmaceuticals\\
+•Fraud\\
+•Multiple Categories (Illicit)\\
+•Falsified Documents & Counterfeits\\
+•Exploitation\\
+•Hacking & Exploits\\
+•Weapons\\
+•Extremism\\
+•Weapons of Mass Destruction\\
+•Other Illicit Activity \\
+•Unknown/Site Down\\
+•Downloadable File\\
+They come to the conclusion that the darknet is mainly legal, however their work is based on a very small sample size\\
+Interesting sections for us: "Handling Illegal Content and Exploitation", "Why we used a Random Sample"\\
+*Empirical analysis of Tor Hidden Services* (ET Information Security, 2015): They collected their data by running a large number of Tor nodes for 6 months and collected 80'000 hidden services that way. They did a size estimation and a content categorization, results seem to approximately match up with _Content and popularity analysis ofTor hidden services_. Since they operated Tor nodes, they also collected which category produces what amount of traffic. They have a small section on Darknet connectivity and found that 59\% of the pages do only link to itself.
+Topic pretty similar to ours, but the approach is different \\   
+*Content and popularity analysis ofTor hidden services* (2014): They used a flaw in the Tor Protocol to gather their data. That way they collected 39800 pages. They propose how one can deanonymise clients of HS, they did a content analysis as well and they looked at the open ports of the found hosts. This enabled them to give an overview of which software is used to deliver the HS.
+Topic also pretty similar to ours, but again, our approach is differen. (bearbeitet)
+
+Conclusion: _Empirical analysis of Tor Hidden Services_ and _Content and popularity analysis ofTor hidden services_ do a pretty similar analysis on their data, but
+a) The papers are at least 3 years old 
+b) They either cracked the Tor protocol or used Tor nodes to discover their data. We do our work on the "visible" part of the darknet
+}
+
 \section{Scraping the Darknet}
 
 In order to get a complete scrape of the visible part of the Darknet, we created a scraper, which follows links recursively until it does not find new links.

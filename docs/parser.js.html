@@ -53,12 +53,17 @@ class Parser {
         // Should match any .onion/possibly/lot/of/path?with=some&amp;arguments=true
         // We are matching as broad as possible.
         /* eslint-disable max-len, no-useless-escape */
-        this.onionRegexMatch = new RegExp(
-            "(http(s)?://)?(www.)?((?:(?:[-a-zA-Z0-9@:%_+~#=][.]){0,241}[-a-zA-Z0-9=]{15,256})[.]onion(:[0-9]{1,5})?)((?:/[-a-zA-Z0-9@:%_+.~#?&amp;//=]*|$)?)?",
+        this.globalOnionRegexMatch = new RegExp(
+            "(?:http(s)?:\/\/)?(?:www.)?(?:([-a-z0-9.]+[.]){0,242}([-a-z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+.~#?&amp;\/=|$]+)?",
             "gi"
         );
-        this.relativeUrlRegexMatch = new RegExp(
-            /\s*(href|action)\s*=\s*(\"([/][^"/][^"]*)\"|\'([/][^'/][^'])\'|[^'">\s]+)/gi
+        this.globalBaseUrlMatch = new RegExp(
+            "(?:http(s)?:\/\/)?(?:www.)?([-a-z0-9=]{15,256}\.onion)",
+            "gi"
+        );
+        this.singleOnionRegexMatch = new RegExp(
+            "(?:http(s)?:\/\/)?(?:www\.)?(?:([-a-z0-9\.]+[.]){0,242}([-a-zA-Z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+\.~#?&amp;\/=]*)?",
+            "i"
         );
 
         // Note: We only keep sites that have textual data encoded, the rest
@@ -91,16 +96,13 @@ class Parser {
     /**
      * @typedef ParseResult
      * @type{object}
-     * @property {string} fullUrl - The full url, no splits. Mostly useful for
-     *                              logging or display.
-     * @property {boolean} http - Indicates the usage of http in the url string.
      * @property {boolean} secure - Indicates whether https (true) was used or
      *                              not (false).
-     * @property {boolean} www - Indicates whether the URL contains www (true)
-     *                           or not (false).
+     * @property {string} subdomain Eventual subdomains, such that we can
+     *                              clearly distinguish between hosts
      * @property {string} baseUrl - The base url, including any possible http,
      *                              https, www or subdomains.
-     * @property {string} path - The path, including any parameters or hooks.
+     * @property {string} path - The path, including any parameters or hooks
      */
 
     /**
@@ -120,61 +122,101 @@ class Parser {
      */
     extractOnionURI(contentString, fromEntry={}, isHtmlString=true) {
         // Those are the groups that get matche, compare to above regexp
-        // group1: The whole url
-        // group2: http or https
-        // group3: indicates whether http or https (by s) was used
-        // group4: Would match any www.
-        // group5: Base url
-        // group6: The port. Will be ignored, since we only make http(s)
-        // requests. The used libraries (http(s).get) automatically append port
-        // group7: Path
-        let results = [];
-        let m;
-        do {
-            m = this.onionRegexMatch.exec(contentString);
-            if (m) {
-                //
-                /** @type{ParseResult} */
-                let result = {
-                    "fullUrl": m[0],
-                    "http": m[1] != null,
-                    "secure": m[2] != null,
-                    "www": m[3] != null,
-                    "baseUrl": m[4],
-                    "path": m[9] || "",
-                };
-                results.push(result);
-            }
-        } while (m);
+        // group0: The whole url
+        // group1: http or https (secure)
+        // group2: subdomain
+        // group3: baseUrl
+        // group4: The path
 
-        if (!isHtmlString) {
-            return results;
-        }
+        let results = [];
         let $ = cheerio.load(contentString);
-        let baseUrl = $("base").attr("href") || fromEntry.url;
-        let protocol = "http";
-        if (fromEntry.secure) {
-            protocol = "https";
+        let baseUrlSet = new Set();
+        if (isHtmlString) {
+            $("a").each((i, elem) => {
+                let uri = $(elem).attr("href");
+                if (!uri) {
+                    // Example of how this could happen:
+                    // &lt;a id="top">&lt;/a>
+                    return true;
+                }
+                if (uri.startsWith("#")) {
+                    // we ignore anchors, since they refere to the same page
+                    return true; // equaly continue in .each syntax
+                } else if (uri.startsWith("/") &amp;&amp; fromEntry != {}) {
+                    // we are working with a relative url. Get baseurl
+                    // from the fromEntry
+                    let baseUrl = $("base").attr("href") || fromEntry.url;
+                    results.push({
+                        secure: fromEntry.secure || false,
+                        subdomain: fromEntry.subdomain || "",
+                        baseUrl: baseUrl,
+                        path: uri,
+                    });
+                    return true;
+                } else if (uri.startsWith("/") &amp;&amp; fromEntry == {}) {
+                    logger.warn(
+                        "[PARSER]\n"
+                        + "Found relative URI, but no fromEntry was specified\n"
+                        + "Ignoring this entry."
+                    );
+                    return true;
+                } else {
+                    // Here we need to parse a full uri
+                    // lets first try again with the regex
+                    let parsed = this.singleOnionRegexMatch.exec(uri);
+                    if (parsed) {
+                        let secure = false;
+                        if (parsed[1] === "s"){
+                            secure = true;
+                        }
+                        results.push({
+                            secure: secure,
+                            subdomain: parsed[2] || "",
+                            baseUrl: parsed[3],
+                            path: parsed[4] || "",
+                        });
+                        baseUrlSet.add(parsed[3]);
+                    }
+                }
+            });
+            let baseUrl;
+            do {
+                baseUrl = this.globalBaseUrlMatch.exec(contentString);
+                if (baseUrl &amp;&amp; !baseUrlSet.has(baseUrl[2])) {
+                    let secure = false;
+                    if (baseUrl[1] === "s"){
+                        secure = true;
+                    }
+                    results.push({
+                        secure: secure,
+                        subdomain: "",
+                        baseUrl: baseUrl[2],
+                        path: "",
+                    });
+                    baseUrlSet.add(baseUrl[2]);
+                }
+            } while (baseUrl);
+        } else {
+            // fallback to slow regex
+            let m;
+            do {
+                m = this.globalOnionRegexMatch.exec(contentString);
+                if (m) {
+                    let secure = false;
+                    if (baseUrl[1] === "s"){
+                        secure = true;
+                    }
+                    /** @type{ParseResult} */
+                    let result = {
+                        secure: secure,
+                        subdomain: m[2] || "",
+                        baseUrl: m[3],
+                        path: m[4] || "",
+                    };
+                    results.push(result);
+                }
+            } while (m);
         }
-        // Groups within relativeUrlRegexMatch:
-        // group1: The full string, inclusive href
-        // group2: The url enclosed in "" or ''
-        // group3/4: The stripped URL (only one is defined)
-        do {
-            m = this.relativeUrlRegexMatch.exec(contentString);
-            if (m) {
-                let path = m[3] || m[4];
-                let result = {
-                    "fullUrl": protocol + "://" + baseUrl + path,
-                    "http": true, /* Only currently supported protocol */
-                    "secure": fromEntry.secure || false, /* fallback */
-                    "www": false,
-                    "baseUrl": baseUrl,
-                    "path": path,
-                };
-                results.push(result);
-            }
-        } while (m);
         return results;
     }
 }
@@ -196,7 +238,7 @@ module.exports = Parser;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Mon May 14 2018 01:52:24 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Tue May 15 2018 22:57:40 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>
