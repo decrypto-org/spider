@@ -16,7 +16,6 @@ module.exports = (sequelize, DataTypes) => {
         },
         baseUrl: {
             type: DataTypes.TEXT,
-            unique: true,
         },
         createdAt: {
             type: DataTypes.DATE,
