@@ -23,7 +23,7 @@ let cutOffDepth = 0;
 let torPort = 9050;
 let testHtml = fs.readFileSync(
     __dirname + "/data/hiddenWiki.html"
-).toString("utf8").replace(/\s/g, "");
+).toString("utf8");
 let testDbResponse = {
     "baseUrl": "testBaseUrl.onion",
     "secure": true,
@@ -39,14 +39,12 @@ describe("Parser.extractOnionURI", () => {
         // First test our simples example: one url
         let result = parser.extractOnionURI("msydqstlz2kzerdg.onion", {}, false);
         result.length.should.equal(1);
-        result[0].fullUrl.should.equal("msydqstlz2kzerdg.onion");
-        result[0].http.should.equal(false);
         result[0].secure.should.equal(false);
-        result[0].www.should.equal(false);
+        result[0].subdomain.should.equal("");
         result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
         result[0].path.should.equal("");
-        result = parser.extractOnionURI(testHtml, );
-        result.length.should.equal(345, testDbResponse);
+        result = parser.extractOnionURI(testHtml, testDbResponse);
+        result.length.should.equal(345);
         done();
     });
 });

@@ -11,6 +11,9 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
+        subDomain: {
+            type: DataTypes.TEXT,
+        },
         baseUrl: {
             type: DataTypes.TEXT,
             unique: true,
