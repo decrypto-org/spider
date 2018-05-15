@@ -9,6 +9,8 @@ let should = chai.should();
 let logger = require("../app/library/logger");
 let fs = require("fs");
 
+require("../app/extensions/Set");
+require("../app/extensions/Object");
 /* global describe, it */
 chai.use(chaiHttp);
 
@@ -44,7 +46,7 @@ describe("Parser.extractOnionURI", () => {
         result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
         result[0].path.should.equal("");
         result = parser.extractOnionURI(testHtml, testDbResponse);
-        result.length.should.equal(345);
+        result.length.should.equal(316);
         done();
     });
 });

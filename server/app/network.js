@@ -250,7 +250,7 @@ class Network extends EventEmitter {
         }
         this.waitingRequestPerHost[dbResult.baseUrlId] += 1;
         let response = await this.get(
-            dbResult.url,
+            dbResult.subdomain + dbResult.url,
             dbResult.path,
             dbResult.secure
         );

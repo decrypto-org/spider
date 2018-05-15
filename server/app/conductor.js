@@ -51,7 +51,7 @@ class Conductor {
         await db.sequelize.sync();
 
         if (!attach) {
-            db.resetStaleEntries(0 /* timeDelta */);
+            await db.resetStaleEntries(0 /* timeDelta */);
         }
 
         // Create a network instance
@@ -86,6 +86,7 @@ class Conductor {
             // Long term solution: Use Bulk inserts
             uriList.push({
                 baseUrl: baseUrl,
+                subdomain: "",
                 path: path,
                 depth: 0,
                 secure: matchedUrl.secure,
@@ -171,12 +172,14 @@ class Conductor {
         );
         /** @type {Array.<Link>} Can be directyl bulkCreated */
         let linkList = [];
+        /** @type {Array.<URIDefinition>} URIDefinitions for bulkInsert */
         let uriList = [];
 
         for (let url of urlsList) {
             let path = url.path || "/";
             uriList.push({
                 baseUrl: url.baseUrl,
+                subdomain: url.subdomain,
                 path: path,
                 depth: dbResult.depth + 1,
                 secure: url.secure,

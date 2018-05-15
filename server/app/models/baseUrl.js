@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        subDomain: {
+        subdomain: {
             type: DataTypes.TEXT,
         },
         baseUrl: {
@@ -30,6 +30,18 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BIGINT,
             defaultValue: 0,
         },
+    },
+    {
+        indexes: [
+            {
+                unique: true,
+                fields: [
+                    {attribute: "baseUrl"},
+                    {attribute: "subdomain"},
+                ],
+            },
+        ],
+        timestamps: true
     });
     BaseUrl.associate = function(models) {
         BaseUrl.hasMany(models.path, {

@@ -18,6 +18,7 @@ let db = {};
  */
 function logForSequelize(value) {
     // Ignore DB log for now - this only logs the sql queries that were made
+    console.log(value);
     return;
 }
 
@@ -66,6 +67,7 @@ db.Sequelize = Sequelize;
  * yet existent. However, the return value will always contain the ID's of the
  * corresponding entries. No update will be done on the entries if they exist.
  * @param {string} baseUrl - The base url to be inserted
+ * @param {śtring} subdomain - The URIs subdomain
  * @param {string} path - The path of the uir to be inserted
  * @param {number} depth - Indicates the search depth at which the entry is
  *                         to be inserted.
@@ -83,6 +85,7 @@ db.Sequelize = Sequelize;
  */
 db.insertUri = async function(
     baseUrl,
+    subdomain,
     path,
     depth,
     secure=false,
@@ -92,9 +95,11 @@ db.insertUri = async function(
     let [baseUrlEntry] = await db.baseUrl.findOrCreate({
         where: {
             baseUrl: baseUrl,
+            subdomain: subdomain,
         },
         defaults: {
             baseUrl: baseUrl,
+            subdomain: subdomain,
         },
         transaction: transaction,
     });
@@ -103,6 +108,7 @@ db.insertUri = async function(
         where: {
             baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
             path: path,
+            subdomain: subdomain,
         },
         defaults: {
             lastStartedTimestamp: 0,
@@ -123,6 +129,7 @@ db.insertUri = async function(
 /**
  * @typedef {URIDefinition}
  * @type {Object}
+ * @property {!string} subdomain Potential subdomains
  * @property {!string} baseUrl The baseUrl of the URI
  * @property {!string} path The path part of the URI
  * @property {!number} depth The search depth at which this entry was found
@@ -166,8 +173,8 @@ db.bulkInsertUri = async function(
                 // NULL in the DB, we must set it here to ""
                 uriDefinition.path = "";
             }
-            return secondaryUriDefinition.baseUrl === uriDefinition.baseUrl &&
-            secondaryUriDefinition.path === uriDefinition.path;
+            return secondaryUriDefinition.baseUrl === uriDefinition.baseUrl
+            && secondaryUriDefinition.path === uriDefinition.path;
         });
         return index == auxiliaryIndex;
     });
@@ -176,7 +183,7 @@ db.bulkInsertUri = async function(
     }
     // Now lets build those requests:
     let baseUrlRequestString = "\
-    INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\")\n\
+    INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\", \"subdomain\")\n\
         VALUES\n\
     ";
     let pathRequestString = "INSERT INTO \"paths\"\n\
@@ -195,34 +202,35 @@ db.bulkInsertUri = async function(
     ";
     // First we have to build the baseUrl insertion, since for the path
     // we need to know the actual baseUrlIds
-    let baseUrlSet = new Set();
-    for (let i = 0; i < uriDefinitions.length; i++) {
-        let uriDefinition = uriDefinitions[i];
-        if (baseUrlSet.has(uriDefinition.baseUrl)) {
-            continue;
+    let baseUrlDefinitions = uriDefinitions.filter(
+        (uriDefinition, index, self) => {
+            let auxiliaryIndex = self.findIndex((secondaryUriDefinition) => {
+                return uriDefinition.baseUrl === secondaryUriDefinition.baseUrl
+                && uriDefinition.subdomain === secondaryUriDefinition.subdomain;
+            });
+            return auxiliaryIndex == index;
         }
-        baseUrlSet.add(uriDefinition.baseUrl);
-    }
-    // Counter variable to detect when we are at the last element of the set.
-    let c = 0;
+    );
+
     let replacementsForBaseUrlRequest = [];
-    for (let currentBaseUrl of baseUrlSet.values()) {
+    for (let i = 0; i < baseUrlDefinitions.length; i++) {
         let newBaseUrlId = uuidv4();
-        if (!currentBaseUrl) {
+        let baseUrlDefinition = baseUrlDefinitions[i];
+        if (!baseUrlDefinition.baseUrl) {
             continue; // If baseUrl was empty, we just ignore this case
         }
-        let value = "(?, ?)";
+        let value = "(?, ?, ?)";
         replacementsForBaseUrlRequest.push(newBaseUrlId);
-        replacementsForBaseUrlRequest.push(currentBaseUrl);
-        if (c == baseUrlSet.size - 1) {
+        replacementsForBaseUrlRequest.push(baseUrlDefinition.baseUrl);
+        replacementsForBaseUrlRequest.push(baseUrlDefinition.subdomain);
+        if (i == baseUrlDefinitions.length - 1) {
             value += "\n";
         } else {
             value += ",\n";
         }
-        c++;
         baseUrlRequestString += value;
     }
-    baseUrlRequestString += "ON CONFLICT (\"baseUrl\")\n\
+    baseUrlRequestString += "ON CONFLICT (\"baseUrl\", \"subdomain\")\n\
     DO UPDATE SET \"numberOfHits\" = \"baseUrls\".\"numberOfHits\" + 1\n\
     RETURNING \"baseUrlId\", \"baseUrl\"";
     /** @type {Array.<Array|number>} baseUrlReturnValue contains two entries,
@@ -525,11 +533,13 @@ db.getEntries = async function({
             "secure": path.secure,
             "url": null,
             "baseUrlId": null,
+            "subdomain": null,
             "content": null,
             "link": null,
         };
         dbResult["url"] = path.baseUrl.baseUrl;
         dbResult["baseUrlId"] = path.baseUrl.baseUrlId;
+        dbResult["subdomain"] = path.baseUrl.subdomain;
         dbResults.push(dbResult);
     }
     this.offsetForDbRequest += paths.length;

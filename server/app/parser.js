@@ -26,15 +26,16 @@ class Parser {
         // We are matching as broad as possible.
         /* eslint-disable max-len, no-useless-escape */
         this.globalOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www\.)?(?:([-a-z0-9\.]+[.]){0,242}([-a-zA-Z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+\.~#?&\/=|$]+)?",
+            "(?:http(s)?:\/\/)?(?:www.)?(?:([-a-z0-9.]+[.]){0,242}([-a-z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+.~#?&\/=|$]+)?",
+            "gi"
+        );
+        this.globalBaseUrlMatch = new RegExp(
+            "(?:http(s)?:\/\/)?(?:www.)?([-a-z0-9=]{15,256}\.onion)",
             "gi"
         );
         this.singleOnionRegexMatch = new RegExp(
             "(?:http(s)?:\/\/)?(?:www\.)?(?:([-a-z0-9\.]+[.]){0,242}([-a-zA-Z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+\.~#?&\/=]*)?",
             "i"
-        );
-        this.relativeUrlRegexMatch = new RegExp(
-            /\s*(href|action)\s*=\s*(\"([/][^"/][^"]*)\"|\'([/][^'/][^'])\'|[^'">\s]+)/gi
         );
 
         // Note: We only keep sites that have textual data encoded, the rest
@@ -99,38 +100,21 @@ class Parser {
         // group3: baseUrl
         // group4: The path
 
-        // 
-        // if(!isHtmlString){
-        //     return [{
-        //         "fullUrl": "msydqstlz2kzerdg.onion",
-        //         "http": false,
-        //         "secure": false,
-        //         "www": false,
-        //         "subdomain": false,
-        //         "baseUrl": "msydqstlz2kzerdg.onion",
-        //         "path": "",
-        //     }];
-        // }
-        
         let results = [];
         let $ = cheerio.load(contentString);
-
-        let absoluteCounter = 0;
-        let relativeCounter = 0;
-
-        if(isHtmlString){
+        let baseUrlSet = new Set();
+        if (isHtmlString) {
             $("a").each((i, elem) => {
                 let uri = $(elem).attr("href");
-                if(!uri) {
+                if (!uri) {
                     // Example of how this could happen:
                     // <a id="top"></a>
                     return true;
                 }
-                if(uri.startsWith("#")){
+                if (uri.startsWith("#")) {
                     // we ignore anchors, since they refere to the same page
-                    return true;  // equaly continue in .each syntax
-                }
-                else if (uri.startsWith("/") && fromEntry != {}){
+                    return true; // equaly continue in .each syntax
+                } else if (uri.startsWith("/") && fromEntry != {}) {
                     // we are working with a relative url. Get baseurl
                     // from the fromEntry
                     let baseUrl = $("base").attr("href") || fromEntry.url;
@@ -138,35 +122,44 @@ class Parser {
                         secure: fromEntry.secure || false,
                         subdomain: fromEntry.subdomain || "",
                         baseUrl: baseUrl,
-                        path: uri
+                        path: uri,
                     });
-                    relativeCounter+=1;
                     return true;
-                }
-                else if (uri.startsWith("/") && fromEntry == {}){
+                } else if (uri.startsWith("/") && fromEntry == {}) {
                     logger.warn(
                         "[PARSER]\n"
                         + "Found relative URI, but no fromEntry was specified\n"
                         + "Ignoring this entry."
                     );
-                    relativeCounter+=1;
                     return true;
-                }
-                else {
+                } else {
                     // Here we need to parse a full uri
                     // lets first try again with the regex
                     let parsed = this.singleOnionRegexMatch.exec(uri);
-                    if(parsed) {
+                    if (parsed) {
                         results.push({
                             secure: parsed[1] || false,
                             subdomain: parsed[2] || "",
                             baseUrl: parsed[3],
-                            path: parsed[4] || ""
+                            path: parsed[4] || "",
                         });
-                        absoluteCounter+=1;
+                        baseUrlSet.add(parsed[3]);
                     }
                 }
             });
+            let baseUrl;
+            do {
+                baseUrl = this.globalBaseUrlMatch.exec(contentString);
+                if (baseUrl && !baseUrlSet.has(baseUrl[2])) {
+                    results.push({
+                        secure: baseUrl[1] || false,
+                        subdomain: "",
+                        baseUrl: baseUrl[2],
+                        path: "",
+                    });
+                    baseUrlSet.add(baseUrl[2]);
+                }
+            } while (baseUrl);
         } else {
             // fallback to slow regex
             let m;
@@ -179,16 +172,12 @@ class Parser {
                         secure: m[1] || false,
                         subdomain: m[2] || "",
                         baseUrl: m[3],
-                        path: m[4] || ""
+                        path: m[4] || "",
                     };
                     results.push(result);
                 }
             } while (m);
         }
-
-        console.log(absoluteCounter);
-        console.log(relativeCounter);
-
         return results;
     }
 }
