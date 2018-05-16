@@ -211,7 +211,16 @@ db.bulkInsertUri = async function(
             return auxiliaryIndex == index;
         }
     );
-
+    baseUrlDefinitions.sort((a, b) => {
+        let primaryX = a.baseUrl.toLowerCase();
+        let primaryY = b.baseUrl.toLowerCase();
+        if (primaryX === primaryY) {
+            let secondaryX = a.subdomain.toLowerCase();
+            let secondaryY = b.subdomain.toLowerCase();
+            return secondaryX < secondaryY;
+        }
+        return primaryX < primaryY;
+    });
     let replacementsForBaseUrlRequest = [];
     for (let i = 0; i < baseUrlDefinitions.length; i++) {
         let newBaseUrlId = uuidv4();
@@ -255,15 +264,23 @@ db.bulkInsertUri = async function(
     }
 
     let replacementsForPathRequest = [];
+    uriDefinitions.sort((a, b) => {
+        let primaryX = a.path.toLowerCase();
+        let primaryY = b.path.toLowerCase();
+        if (primaryX === primaryY) {
+            // Note: we can use the baseUrl as secondary sorting,
+            // since we already uniqueified baseUrl/Path pairs above
+            let secondaryX = a.baseUrl.toLowerCase();
+            let secondaryY = b.baseUrl.toLowerCase();
+            return secondaryX < secondaryY;
+        }
+        return primaryX < primaryY;
+    });
     for (let i = 0; i < uriDefinitions.length; i++) {
         let newPathId = uuidv4();
         let random = Math.random();
         let uriDefinition = uriDefinitions[i];
         let path = uriDefinition.path;
-        if (!path) {
-            // If the path was empty we reset it to empty
-            path = "";
-        }
         let value = "( ?, 0, 0, FALSE, 0, ?, ?, ?, ?, ?)";
         replacementsForPathRequest.push(...[
             newPathId,

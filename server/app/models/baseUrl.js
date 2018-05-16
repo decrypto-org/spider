@@ -39,8 +39,13 @@ module.exports = (sequelize, DataTypes) => {
                     {attribute: "subdomain"},
                 ],
             },
+            {
+                fields: [
+                    {attribute: "baseUrl", sorted: "ASC"},
+                ],
+            },
         ],
-        timestamps: true
+        timestamps: true,
     });
     BaseUrl.associate = function(models) {
         BaseUrl.hasMany(models.path, {

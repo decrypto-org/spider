@@ -138,7 +138,7 @@ class Parser {
                     let parsed = this.singleOnionRegexMatch.exec(uri);
                     if (parsed) {
                         let secure = false;
-                        if (parsed[1] === "s"){
+                        if (parsed[1] === "s") {
                             secure = true;
                         }
                         results.push({
@@ -156,7 +156,7 @@ class Parser {
                 baseUrl = this.globalBaseUrlMatch.exec(contentString);
                 if (baseUrl && !baseUrlSet.has(baseUrl[2])) {
                     let secure = false;
-                    if (baseUrl[1] === "s"){
+                    if (baseUrl[1] === "s") {
                         secure = true;
                     }
                     results.push({
@@ -175,7 +175,7 @@ class Parser {
                 m = this.globalOnionRegexMatch.exec(contentString);
                 if (m) {
                     let secure = false;
-                    if (baseUrl[1] === "s"){
+                    if (m[1] === "s") {
                         secure = true;
                     }
                     /** @type{ParseResult} */
