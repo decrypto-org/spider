@@ -245,15 +245,30 @@ class Network extends EventEmitter {
      * @param {DbResult} dbResult - Contains the DB result to be downloaded
      */
     async download(dbResult) {
+        let response = {};
         if (this.waitingRequestPerHost[dbResult.baseUrlId] == undefined) {
             this.waitingRequestPerHost[dbResult.baseUrlId] = 0;
         }
         this.waitingRequestPerHost[dbResult.baseUrlId] += 1;
-        let response = await this.get(
-            dbResult.subdomain + dbResult.url,
-            dbResult.path,
-            dbResult.secure
-        );
+        let url = dbResult.subdomain + dbResult.url;
+        if (url.length == 0) {
+            response = {
+                "url": url,
+                "path": dbResult.path,
+                "body": "[MISSING]",
+                "statusCode": 400,
+                "mimeType": "[NO CONTENT TYPE PROVIDED]",
+                "startTime": 0,
+            };
+            logger.error("Tried to construct empty url.");
+            logger.error("This should never happen - returning early");
+        } else {
+            response = await this.get(
+                url,
+                dbResult.path,
+                dbResult.secure
+            );
+        }
         this.waitingRequestPerHost[dbResult.baseUrlId] -= 1;
         if (this.waitingRequestPerHost[dbResult.baseUrlId] == 0) {
             // We need to delete this, otherwise we store in memory
