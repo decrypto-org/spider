@@ -64,8 +64,8 @@ module.exports = (sequelize, DataTypes) => {
             {
                 unique: true,
                 fields: [
-                    {attribute: "path"},
                     {attribute: "baseUrlBaseUrlId"},
+                    {attribute: "path"},
                 ],
             },
         ],

@@ -183,10 +183,13 @@ db.bulkInsertUri = async function(
     }
     // Now lets build those requests:
     let baseUrlRequestString = "\
+    LOCK TABLE ONLY \"baseUrls\" IN SHARE ROW EXCLUSIVE MODE;\
     INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\", \"subdomain\")\n\
         VALUES\n\
     ";
-    let pathRequestString = "INSERT INTO \"paths\"\n\
+    let pathRequestString = "\
+    LOCK TABLE ONLY \"paths\" IN SHARE ROW EXCLUSIVE MODE;\
+    INSERT INTO \"paths\"\n\
         (\"pathId\",\n\
          \"lastStartedTimestamp\",\n\
          \"lastFinishedTimestamp\",\n\

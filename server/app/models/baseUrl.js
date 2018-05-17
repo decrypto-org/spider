@@ -51,7 +51,6 @@ module.exports = (sequelize, DataTypes) => {
         BaseUrl.hasMany(models.path, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
-            unique: "compositeIndex",
         });
     };
     return BaseUrl;
