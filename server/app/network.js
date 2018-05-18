@@ -422,7 +422,7 @@ class Network extends EventEmitter {
         let request = {
             method: "GET",
             hostname: url,
-            path: path,
+            path: encodeURI(path),
             agent: new ProxyAgent(this.proxyUri),
             headers: headers,
         };

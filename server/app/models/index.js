@@ -33,7 +33,7 @@ let sequelize = new Sequelize(
         pool: {
             max: process.env.DB_MAX_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
-            idle: 20000,
+            idle: 60000,
             acquire: 60000,
         },
         operatorsAliases: false,
@@ -126,6 +126,8 @@ db.insertUri = async function(
     return [baseUrlEntry.baseUrlId, pathEntry.pathId];
 };
 
+db.queriesToRetry = {};
+
 /**
  * @typedef {URIDefinition}
  * @type {Object}
@@ -150,10 +152,13 @@ db.insertUri = async function(
  * they are already present.
  * @param  {Array.<URIDefinition>} uriDefinitions - All the URIs that should be
  *                                                  inserted if not yet existent
+ * @param {number} numOfRetries=3 How often should a request that times out be
+ *                                retried
  * @return {Array.<UUIDv4>} Return the touched pathIds
  */
 db.bulkInsertUri = async function(
-    uriDefinitions
+    uriDefinitions,
+    numOfRetries=3
 ) {
     /* eslint-disable no-multi-str */
     // First: create SQL request for bulkCreate ON CONFLICT DO NOTHING
@@ -164,6 +169,27 @@ db.bulkInsertUri = async function(
     // insertion of updatedAt/createdAt times
     // We cannot have duplicates in our insertion list, so we have to filter
     // those
+
+    /**
+     * Executes a raw query with the provided string.
+     * Used to enable retries
+     * @param  {String} queryString  The SQL query string with placeholders
+     *                               that should be used for the query
+     * @param  {Array.<String|number|boolean>} replacements Replacements for the
+     *                                                      placeholders
+     * @return {Object}              Returns the raw returnvalue of the db
+     */
+    async function executeQuery(queryString, replacements) {
+        let result = await db.sequelize.query(
+            queryString,
+            {replacements: replacements}
+        ).catch((err) => {
+            logger.error(err.message);
+            logger.error(err.stack);
+            return null;
+        });
+        return result;
+    }
 
     // Filter to remove duplicates
     uriDefinitions = uriDefinitions.filter((uriDefinition, index, self) => {
@@ -254,10 +280,27 @@ db.bulkInsertUri = async function(
      *                               itself contains objects, indexed by column
      *                               name.
      */
-    let baseUrlReturnValue = await db.sequelize.query(
+    let baseUrlRetryCounter = 0;
+    let baseUrlReturnValue = await executeQuery(
         baseUrlRequestString,
-        {replacements: replacementsForBaseUrlRequest}
+        replacementsForBaseUrlRequest
     );
+    while (baseUrlReturnValue == null && baseUrlRetryCounter < numOfRetries) {
+        baseUrlRetryCounter += 1;
+        baseUrlReturnValue = await executeQuery(
+            baseUrlRequestString,
+            replacementsForBaseUrlRequest
+        );
+    }
+    if (baseUrlReturnValue == null) {
+        logger.error("Could not insert baseUrls successfully.");
+        logger.error(
+            "Failed on \n"
+            + baseUrlRequestString + "\n"
+            + JSON.stringify(replacementsForBaseUrlRequest)
+        );
+        return []; // This allows to continue without interruption
+    }
     baseUrlReturnValue = baseUrlReturnValue[0];
 
     let baseUrlIdByBaseUrl = {};
@@ -303,10 +346,27 @@ db.bulkInsertUri = async function(
     pathRequestString += "ON CONFLICT (\"baseUrlBaseUrlId\", \"path\")\n\
     DO UPDATE SET \"numberOfHits\" = \"paths\".\"numberOfHits\" + 1\n\
     RETURNING \"pathId\"";
-    let pathsReturnValue = await db.sequelize.query(
+    let pathRetryCounter = 0;
+    let pathsReturnValue = await executeQuery(
         pathRequestString,
-        {replacements: replacementsForPathRequest}
+        replacementsForPathRequest
     );
+    while (pathsReturnValue == null && pathRetryCounter < numOfRetries) {
+        pathRetryCounter += 1;
+        pathsReturnValue = await executeQuery(
+            pathRequestString,
+            replacementsForPathRequest
+        );
+    }
+    if (pathsReturnValue == null) {
+        logger.error("Could not insert paths successfully.");
+        logger.error(
+            "Failed on \n"
+            + pathRequestString + "\n"
+            + JSON.stringify(replacementsForPathRequest)
+        );
+        return []; // This allows to continue without interruption
+    }
     pathsReturnValue = pathsReturnValue[0];
     return pathsReturnValue.map((pathIdObj) => {
         return pathIdObj.pathId;

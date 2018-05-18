@@ -102,6 +102,7 @@ class Parser {
 
         let results = [];
         let $ = cheerio.load(contentString);
+        let relativeBaseUrl = $("base").attr("href") || fromEntry.url;
         let baseUrlSet = new Set();
         if (isHtmlString) {
             $("a").each((i, elem) => {
@@ -117,15 +118,23 @@ class Parser {
                 } else if (uri.startsWith("/") && fromEntry != {}) {
                     // we are working with a relative url. Get baseurl
                     // from the fromEntry
-                    let baseUrl = $("base").attr("href") || fromEntry.url;
                     results.push({
                         secure: fromEntry.secure || false,
                         subdomain: fromEntry.subdomain || "",
-                        baseUrl: baseUrl,
+                        baseUrl: relativeBaseUrl,
                         path: uri,
                     });
                     return true;
                 } else if (uri.startsWith("/") && fromEntry == {}) {
+                    if (relativeBaseUrl) {
+                        results.push({
+                            secure: fromEntry.secure || false,
+                            subdomain: fromEntry.subdomain || "",
+                            baseUrl: relativeBaseUrl,
+                            path: uri,
+                        });
+                        return true;
+                    }
                     logger.warn(
                         "[PARSER]\n"
                         + "Found relative URI, but no fromEntry was specified\n"
