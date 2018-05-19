@@ -28,9 +28,10 @@
     "dotenv-parse-variables": "^0.1.0",
     "eslint": "^4.19.1",
     "pg": "^7.4.3",
-    "portscanner": "^2.1.1",
+    "pg-hstore": "^2.3.2",
+    "portscanner": "^2.2.0",
     "proxy-agent": "^2.3.1",
-    "sequelize": "^4.37.7",
+    "sequelize": "^4.37.8",
     "tor-router": "^3.4.0",
     "uuid": "^3.2.1",
     "winston": "^3.0.0-rc5"
@@ -40,6 +41,6 @@
     "chai-http": "^4.0.0",
     "eslint-config-google": "^0.9.1",
     "jsdoc": "^3.5.5",
-    "mocha": "^5.1.1"
+    "mocha": "^5.2.0"
   }
 }

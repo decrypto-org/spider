@@ -62,7 +62,7 @@ if (isNaN(_maxPool) || _maxPool <= 0) {
 }
 module.exports.MAX_POOL_SIZE = _maxPool;
 
-module.exports.buildInstance = async function(socksPort) {
+module.exports.buildInstance = async function(socksPort, conductor) {
     let torController = await TorController.buildInstance(
         socksPort,
         60000 /* timeout - please adapt according to the needed steps */
@@ -91,7 +91,7 @@ module.exports.buildInstance = async function(socksPort) {
     //     // the timeout if the process is already running. Otherwise, we
     //     // will just fail subsequently
     // });
-    return new Network(socksPort, torController);
+    return new Network(socksPort, torController, conductor);
 };
 
 /**
@@ -110,8 +110,10 @@ class Network extends EventEmitter {
      * @param {Object} torController - The torController controls all the tor
      *                                 instances and can be used to instantiate,
      *                                 kill or rotate IPs of instances.
+     * @param {Object} conductor Reference conductor to detect overload on the
+     *                           DB connector.
      */
-    constructor(socksPort, torController) {
+    constructor(socksPort, torController, conductor) {
         super();
         logger.info("Initialize Network");
         this.socksPort = socksPort;
@@ -134,6 +136,7 @@ class Network extends EventEmitter {
         this.torController = torController;
         this.parser = new Parser();
         this.setMaxListeners(module.exports.MAX_SLOTS);
+        this.conductor = conductor;
         logger.info("Network initialized");
     }
 
@@ -147,6 +150,25 @@ class Network extends EventEmitter {
             this.pool.length >= 0
         ) {
             let error = false;
+            let dbFailureCount = 0;
+            let ready = false;
+            while (dbFailureCount < module.exports.MAX_SLOTS && !ready) {
+                ready = await this.conductor.databaseReady().then(() => {
+                    return true;
+                }).catch((err) => {
+                    logger.error(err);
+                    logger.error("An error occured while waiting on the DB");
+                    dbFailureCount += 1;
+                    return false;
+                });
+            }
+            if (!ready) {
+                logger.error(
+                    "Unrecoverable ERROR:\n"
+                    + "DB seems to be dead. Shutting down"
+                );
+                process.exit(1);
+            }
             // Notify the client that the pool is running low on entries
             // to download. (Optimization: since we do not need to wait
             // for the download to finish, the pool will be repopulated
@@ -384,7 +406,7 @@ class Network extends EventEmitter {
      * @typedef NetworkHandlerResponse - Only contains valid responses
      * @type {object}
      * @property {!string} url - The url of the returned request.
-     * @property {!string} path - Th path of the returned request.
+     * @property {!string} path - The path of the returned request.
      * @property {?string} body - The body of a response.
      * @property {!number} statusCode - The HTTP status code of a response.
      * @property {?string} mimeType - The MIME Type of a response.

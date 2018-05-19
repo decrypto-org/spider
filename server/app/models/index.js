@@ -1,5 +1,6 @@
 let Logger = require("../library/logger");
 let logger = Logger.logger;
+
 let fs = require("fs");
 let path = require("path");
 let Sequelize = require("sequelize");
@@ -35,8 +36,8 @@ let sequelize = new Sequelize(
             min: process.env.DB_MIN_CONNECTIONS,
             idle: 60000,
             acquire: 60000,
+            evict: 1,
         },
-        operatorsAliases: false,
         logging: logForSequelize,
     },
 );
@@ -154,11 +155,19 @@ db.queriesToRetry = {};
  *                                                  inserted if not yet existent
  * @param {number} numOfRetries=3 How often should a request that times out be
  *                                retried
+ * @param {Transaction} transaction=null The transaction that should be used for
+ *                                  the current request. This enables us to
+ *                                  insert all the data with only one commit.
+ *                                  Further, we do not have any interleavings
+ *                                  and the locks are gotten for all tables.
+ *                                  By default a single transaction per update
+ *                                  will be used
  * @return {Array.<UUIDv4>} Return the touched pathIds
  */
 db.bulkInsertUri = async function(
     uriDefinitions,
-    numOfRetries=3
+    numOfRetries=3,
+    transaction=null
 ) {
     /* eslint-disable no-multi-str */
     // First: create SQL request for bulkCreate ON CONFLICT DO NOTHING
@@ -182,7 +191,10 @@ db.bulkInsertUri = async function(
     async function executeQuery(queryString, replacements) {
         let result = await db.sequelize.query(
             queryString,
-            {replacements: replacements}
+            {
+                replacements: replacements,
+                transaction: transaction,
+            }
         ).catch((err) => {
             logger.error(err.message);
             logger.error(err.stack);
@@ -208,13 +220,14 @@ db.bulkInsertUri = async function(
         return {};
     }
     // Now lets build those requests:
+    // LOCK TABLE ONLY \"baseUrls\" IN SHARE ROW EXCLUSIVE MODE;\
     let baseUrlRequestString = "\
-    LOCK TABLE ONLY \"baseUrls\" IN SHARE ROW EXCLUSIVE MODE;\
     INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\", \"subdomain\")\n\
         VALUES\n\
     ";
+
+    // LOCK TABLE ONLY \"paths\" IN SHARE ROW EXCLUSIVE MODE;\
     let pathRequestString = "\
-    LOCK TABLE ONLY \"paths\" IN SHARE ROW EXCLUSIVE MODE;\
     INSERT INTO \"paths\"\n\
         (\"pathId\",\n\
          \"lastStartedTimestamp\",\n\
@@ -392,6 +405,9 @@ db.bulkInsertUri = async function(
  *                                    successfully or not. This will accordingly
  *                                    set the lastSuccessfulTimestamp to
  *                                    lastFinishedTimestamp (if set to true)
+ * @param {Transaction} transaction=null The transaction within the update
+ *                                       should be performed. Default:
+ *                                       Create a new transaction per update.
  * @param {boolean} finished=true - If set to true, this will reset the
  *                                  inProgress flag to false. Note that
  *                                  successful=true implies that the request is
@@ -404,6 +420,7 @@ db.updateUri = async function(
     lastFinishedTimestamp,
     secure=false,
     successful=true,
+    transaction=null,
     finished=true,
 ) {
     let inProgress = true;
@@ -428,6 +445,7 @@ db.updateUri = async function(
     }
     await db.path.update(updateObj, {
         where: whereClause,
+        transaction: transaction,
     });
 };
 
@@ -442,6 +460,10 @@ db.updateUri = async function(
  *                             was fetched.
  * @param {number} statusCode=200 - HTTP Status code returned. Indicates whether
  *                                  the download was successful or not.
+ * @param {Transaction} transaction=null The transaction under which the
+ *                                       insertion should be performed.
+ *                                       Default creates a own transaction
+ *                                       per insert
  * @return {object} Returns the created content entry.
  */
 db.insertBody = async function(
@@ -449,7 +471,8 @@ db.insertBody = async function(
     body,
     mimeType,
     timestamp,
-    statusCode=200
+    statusCode=200,
+    transaction=null
 ) {
     let response = await db.content.create({
             scrapeTimestamp: timestamp,
@@ -457,6 +480,8 @@ db.insertBody = async function(
             content: body,
             pathPathId: pathId,
             statusCode: statusCode,
+    }, {
+        transaction: transaction,
     });
     return response;
 };

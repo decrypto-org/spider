@@ -3,12 +3,14 @@ let Network = require("./network");
 let {logger} = require("./library/logger");
 let db = require("./models");
 
+let EventEmitter = require("events");
+
 /**
  * The conductor is the one controlling the spidering
  * through the web. Therefor it needs to access the network
  * module and the models/database.
  */
-class Conductor {
+class Conductor extends EventEmitter {
     /**
      * Initialize the conductor and start the scrape
      * @constructor
@@ -18,6 +20,7 @@ class Conductor {
      * @param {number} torPort=9050 - Port to use for Tor controller server.
      */
     constructor(cutOffDepth, torPort) {
+        super();
         // Startup message
         logger.info("Conductor now takes over control");
 
@@ -25,12 +28,17 @@ class Conductor {
 
         this.torPort = torPort || 9050;
 
+        this.DB_READY = "dbReadyEvent";
+
         // Parser init
         this.parser = new Parser();
+
+        this.queuedDbRequests = [];
 
         // Initialization of later used variables
         this.offsetForDbRequest = 0;
         this.limitForDbRequest = Network.MAX_SLOTS;
+        this.setMaxListeners(Network.MAX_SLOTS);
         // Used to only get new data once per undershoot (but multiple times
         // for multiple network pool undershoots)
         this.gettingNewDataFromDb = false;
@@ -56,7 +64,8 @@ class Conductor {
 
         // Create a network instance
         this.network = await Network.buildInstance(
-            this.torPort
+            this.torPort,
+            this /* conductor reference */
         );
 
         // Now inserting the start urls into the database with scrape
@@ -134,81 +143,121 @@ class Conductor {
     }
 
     /**
-     * If the network finished a download, insert it into the database.
-     * @param {NetworkHandlerResponse} networkResponse - The networks response
-     *                                                   already serialized
-     * @param {DbResult} dbResult - The dbResult for which the download was
-     *                              started
+     * This will only resolve as soon as we have enough capacity to insert
+     * into the database again. This should prevent any timeouts on
+     * our side.
+     * @return {Promise} Resolved as soon as the database is responsive
      */
-    async insertNetworkResponseIntoDb(networkResponse, dbResult) {
-        let successful = networkResponse.statusCode == 200;
-        // We need to await this before proceeding to prevent getting
-        // already scraped entries in the next step
-        await db.updateUri(
-            dbResult.baseUrlId,
-            dbResult.pathId,
-            networkResponse.startTime,
-            networkResponse.endTime,
-            dbResult.secure,
-            successful
-        );
-        await db.insertBody(
-            dbResult.pathId,
-            networkResponse.body || "[MISSING]",
-            networkResponse.mimeType || "[MISSING]",
-            networkResponse.endTime,
-            networkResponse.statusCode
-        );
-        // Scrape the links to other pages, then insert them into the db
-        // if the download was successful and the MIME Type correct
-        if (networkResponse.body == null || !successful) {
-            return;
+    async databaseReady() {
+        if (this.queuedDbRequests.length < Network.MAX_SLOTS) {
+            return Promise.resolve();
         }
-
-        /** @type{Parser.ParseResult} */
-        let urlsList = this.parser.extractOnionURI(
-            networkResponse.body,
-            dbResult
-        );
-        /** @type {Array.<Link>} Can be directyl bulkCreated */
-        let linkList = [];
-        /** @type {Array.<URIDefinition>} URIDefinitions for bulkInsert */
-        let uriList = [];
-
-        for (let url of urlsList) {
-            let path = url.path || "/";
-            uriList.push({
-                baseUrl: url.baseUrl,
-                subdomain: url.subdomain,
-                path: path,
-                depth: dbResult.depth + 1,
-                secure: url.secure,
+        return new Promise((resolve, reject) => {
+            this.once(this.DB_READY, () => {
+                resolve();
+                return;
             });
+            setTimeout(() => {
+                // VACUUM takes as much as...
+                logger.warn("databaseReady timed out.");
+                reject("databaseReady timed out.");
+            }, 100000);
+        });
+    }
+
+    /**
+     * Serializes requests to the DB to ensure no overload occures.
+     * This helps to add a pushback mechanism for the network
+     */
+    async insertAllIntoDB() {
+        this.insertingEntries = true;
+        while (0 < this.queuedDbRequests.length) {
+            let currentDbRequest = this.queuedDbRequests.pop();
+            let dbResult = currentDbRequest.dbResult;
+            let networkResponse = currentDbRequest.networkResponse;
+            let urlsList = currentDbRequest.urlsList;
+            let successful = networkResponse.statusCode < 400;
+            let transaction = null;
+            // db.sequelize.transaction(
+            //     { autocommit: false }
+            // );
+            await db.updateUri(
+                dbResult.baseUrlId,
+                dbResult.pathId,
+                networkResponse.startTime,
+                networkResponse.endTime,
+                dbResult.secure,
+                successful,
+                transaction
+            );
+            await db.insertBody(
+                dbResult.pathId,
+                networkResponse.body || "[MISSING]",
+                networkResponse.mimeType || "[MISSING]",
+                networkResponse.endTime,
+                networkResponse.statusCode,
+                transaction
+            );
+            if (networkResponse.body == null || !successful) {
+                continue;
+            }
+            /** @type {Array.<Link>} Can be directyl bulkCreated */
+            let linkList = [];
+            /** @type {Array.<URIDefinition>} URIDefinitions for bulkInsert */
+            let uriList = [];
+
+            for (let url of urlsList) {
+                let path = url.path || "/";
+                uriList.push({
+                    baseUrl: url.baseUrl,
+                    subdomain: url.subdomain,
+                    path: path,
+                    depth: dbResult.depth + 1,
+                    secure: url.secure,
+                });
+            }
+
+            let pathIds = await db.bulkInsertUri(
+                uriList,
+                3, 
+                transaction
+            );
+
+            for (let i = 0; i < pathIds.length; i++) {
+                let pathId = pathIds[i];
+                linkList.push({
+                    sourcePathId: dbResult.pathId,
+                    destinationPathId: pathId,
+                    timestamp: networkResponse.endTime,
+                });
+            }
+
+            await db.link.bulkCreate(
+                linkList
+            );
+            // await transaction.commit().then(() => {
+            //     logger.info(
+            //         "Commited for download "
+            //         + networkResponse.url
+            //         + networkResponse.path
+            //     );
+            // });
+            if (this.queuedDbRequests.length < Network.MAX_SLOTS){
+                this.emit(this.DB_READY);
+            }
+
+            // Repopulate network pool (E.g. if this would have been
+            // the last request available)
+            if (this.network.pool.length < process.env.NETWORK_MIN_POOL_SIZE &&
+                !this.gettingNewDataFromDb) {
+                let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
+                this.gettingNewDataFromDb = true;
+                await this.getEntriesToDownloadPool(limit);
+                this.gettingNewDataFromDb = false;
+            }
         }
-
-        let pathIds = await db.bulkInsertUri(uriList);
-
-        for (let i = 0; i < pathIds.length; i++) {
-            let pathId = pathIds[i];
-            linkList.push({
-                sourcePathId: dbResult.pathId,
-                destinationPathId: pathId,
-                timestamp: networkResponse.endTime,
-            });
-        }
-
-        await db.link.bulkCreate(linkList);
-
-        // For the case we hit 0 in the network pool and
-        // this was the last request, we need to repopulate
-        // the pool here, if any data was added to the database
-        if (this.network.pool.length < process.env.NETWORK_MIN_POOL_SIZE &&
-            !this.gettingNewDataFromDb) {
-            let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
-            this.gettingNewDataFromDb = true;
-            await this.getEntriesToDownloadPool(limit);
-            this.gettingNewDataFromDb = false;
-        }
+        this.emit(this.DB_READY);
+        this.insertingEntries = false;
     }
 
     /**
@@ -229,7 +278,20 @@ class Conductor {
         // Arrow function ensures correct context
         this.network.on(
             Network.NEW_NETWORK_DATA_AVAILABLE, (networkResponse, dbResult) => {
-                this.insertNetworkResponseIntoDb(networkResponse, dbResult);
+                /** @type{Parser.ParseResult} */
+                let urlsList = this.parser.extractOnionURI(
+                    networkResponse.body,
+                    dbResult
+                );
+                this.queuedDbRequests.push({
+                    networkResponse,
+                    dbResult,
+                    urlsList,
+                });
+                logger.info("Added data to db insert pool. Current size: " + this.queuedDbRequests.length)
+                if (!this.insertingEntries) {
+                    this.insertAllIntoDB();
+                }
             }
         );
     }
