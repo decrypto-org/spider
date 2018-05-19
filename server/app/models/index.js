@@ -34,7 +34,7 @@ let sequelize = new Sequelize(
             max: process.env.DB_MAX_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
             idle: 60000,
-            acquire: 60000,
+            acquire: 120000,
         },
         operatorsAliases: false,
         logging: logForSequelize,

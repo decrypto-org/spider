@@ -236,6 +236,7 @@ class Network extends EventEmitter {
                 // Note: Cleanup code should detect this entry as being stale
                 // and reset its state - Not the job of the network module
                 error = true;
+                this.freeUpSlot();
             });
         }
     }

@@ -102,7 +102,7 @@ class Parser {
 
         let results = [];
         let $ = cheerio.load(contentString);
-        let relativeBaseUrl = $("base").attr("href") || fromEntry.url;
+        let relativeBaseUrl = fromEntry.url;
         let baseUrlSet = new Set();
         if (isHtmlString) {
             $("a").each((i, elem) => {
