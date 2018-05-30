@@ -74,7 +74,7 @@ const dbLogger = createLogger({
     transports: [
         new transports.File({
             tailable: true,
-            filename: process.env.LOG_LOCATION + "sequelize.log",
+            filename: process.env.LOG_LOCATION + "/sequelize.log",
             level: "dbSilly",
         }),
     ],

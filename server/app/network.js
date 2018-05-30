@@ -2,33 +2,7 @@ let {logger} = require("./library/logger");
 let TorController = require("./library/torController");
 let Parser = require("./parser");
 
-let EventEmitter = require("events");
 const ProxyAgent = require("proxy-agent");
-
-/**
- * This event is thrown everytime a slot is freed-up
- */
-module.exports.SLOT_FREED_UP = "slotFreedUp";
-
-/**
- * This event is thrown everytime the downloader has finished a request.
- * Is used to notify the client, that new data is available to process
- */
-module.exports.NEW_NETWORK_DATA_AVAILABLE = "newNetworkDataAvailable";
-
-/**
- * This event is thrown everytime data is added to the pool (not for every
- * entry added but for every update of the pool)
- */
-module.exports.DATA_ADDED_TO_POOL = "newDataToDownload";
-
-/**
- * This event is emitted as long as the pool is below its minimum defined
- * size. This can be used by a client to add new data to the pool.
- * One argument should be passed, indicating how many entries are available
- * to the pool max.
- */
-module.exports.POOL_LOW = "needNewDataToDownload";
 
 /**
  * Indicate the maximal number of slots available
@@ -102,7 +76,7 @@ module.exports.buildInstance = async function(socksPort) {
  * process that data, such that it can be used for extracting and
  * storing information.
  */
-class Network extends EventEmitter {
+class Network {
     /**
      * Initialize the downloader class
      * @constructor
@@ -112,7 +86,6 @@ class Network extends EventEmitter {
      *                                 kill or rotate IPs of instances.
      */
     constructor(socksPort, torController) {
-        super();
         logger.info("Initialize Network");
         this.socksPort = socksPort;
         this.ttl = 60100; // Max ttl for Tor: 60s + 100 ms for processing
@@ -133,117 +106,19 @@ class Network extends EventEmitter {
         this.pool = [];
         this.torController = torController;
         this.parser = new Parser();
-        this.setMaxListeners(module.exports.MAX_SLOTS);
+
+        // Those arrays are bound in size by the number of concurrently allowed
+        // requests. (e.g. MAX_SLOTS)
+        this.waitingForSlot = [];
+        this.waitingForData = [];
         logger.info("Network initialized");
-    }
-
-    /**
-     * Downloads everything within the pool and everything that might be added
-     * in the future.
-     */
-    async downloadAll() {
-        while (
-            this.availableSlots >= 0 ||
-            this.pool.length >= 0
-        ) {
-            let error = false;
-            // Notify the client that the pool is running low on entries
-            // to download. (Optimization: since we do not need to wait
-            // for the download to finish, the pool will be repopulated
-            // when this download finished)
-            // Notify before in case we are already down to 0 entries
-            // in the pool -- otherwise the network module starves.
-            if (this.pool.length < module.exports.MIN_POOL_SIZE) {
-                this.emit(
-                    module.exports.POOL_LOW,
-                    module.exports.MAX_POOL_SIZE-this.pool.length
-                );
-            }
-            let dbResult = await this.getPoolEntry().catch((err) => {
-                logger.error(err);
-                let waitingRequestCount = 0;
-                let hosts = Object.keys(this.waitingRequestPerHost);
-                for (let host in hosts) {
-                    if (hosts.hasOwnProperty(host)) {
-                        waitingRequestCount += this.waitingRequestPerHost[host];
-                    }
-                }
-                if (
-                    this.availableSlots == module.exports.MAX_SLOTS &&
-                    this.pool.length == 0 &&
-                    waitingRequestCount == 0
-                ) {
-                    // No pending requests, no pool data, and all slots are free
-                    // We are finished.
-                    logger.info("Network detected that we are finished");
-                    logger.info("Exiting...");
-                    // Clean up after ourselves
-                    this.torController.closeTorInstances().then(
-                        process.exit(0)
-                    );
-                }
-                // If we are not finished yet, another error must have occured
-                // we will retry later
-                // Note that this should only happen from a bug on our side
-                error = true;
-            });
-            // if an error occured we will just continue with the next entry
-            // eventually we'll find one that is working
-            if (error) {
-                continue;
-            }
-
-            // If there are already 6 or more connections to this host, we will
-            // stall the execution of this one and add it to the queue.
-            // Note that this is a simple JSON object and no ordering is
-            // guaranteed. Further: We do never wait on something, so the code
-            // below should be executed "atomically". Please note: Do not add
-            // any code here, that contains async call
-            if (
-                this.waitingRequestPerHost[dbResult.baseUrlId] != undefined &&
-                this.waitingRequestPerHost[dbResult.baseUrlId]
-                >= this.maxSimultaneousRequestsPerHost
-            ) {
-                let queue = this.queuedRequestsByHost[dbResult.baseUrlId];
-                if (!queue) {
-                    queue = [];
-                }
-                queue.push(dbResult);
-                this.queuedRequestsByHost[dbResult.baseUrlId] = queue;
-                continue;
-            }
-            await this.getSlot().catch((err) => {
-                logger.error(err);
-                // Push the dbResult back onto the stack - it should be handled
-                // later. We can do this, since an exception in the getting
-                // of the slot has nothing to do with the dbResult itself.
-                // If this would not hold, we would risk a loop
-                this.pool.push(dbResult);
-                error = true;
-            });
-            if (error) {
-                continue;
-            }
-            // Do not wait for the download to finish.
-            // This method should be used as a downloader pool and therefor
-            // start several downloads simultaneously
-            this.download(dbResult).catch((err) => {
-                logger.error(err);
-                // SHould not push back to pool here, since it may be the reason
-                // for the errourness execution.
-                // this.pool.push(dbResult);
-                logger.warn("Discarding " + JSON.stringify(dbResult));
-                // Note: Cleanup code should detect this entry as being stale
-                // and reset its state - Not the job of the network module
-                error = true;
-                this.freeUpSlot();
-            });
-        }
     }
 
     /**
      * Download a single webpage and handle the events around it.
      * @param {DbResult} dbResult - Contains the DB result to be downloaded
+     * @return {NetworkHandlerResponse} Return the downloaded and parsed
+     *                                  result
      */
     async download(dbResult) {
         let response = {};
@@ -263,6 +138,11 @@ class Network extends EventEmitter {
             };
             logger.error("Tried to construct empty url.");
             logger.error("This should never happen - returning early");
+            // Note that this has never happened in a real life example.
+            // This once happened in a testcase, why we inserted this, since
+            // a more resilient structure is always good. We want to keep
+            // running as long as possible. Error output however is important
+            // to detect errors in the program itself.
         } else {
             response = await this.get(
                 url,
@@ -276,12 +156,8 @@ class Network extends EventEmitter {
             // all the scraped Hosts -- OOM is an issue here
             delete this.waitingRequestPerHost[dbResult.url];
         }
-        this.emit(
-            module.exports.NEW_NETWORK_DATA_AVAILABLE,
-            response,
-            dbResult
-        );
         this.freeUpSlot();
+        return response;
     }
 
     /**
@@ -318,12 +194,12 @@ class Network extends EventEmitter {
                 resolve(this.pool.pop());
                 return;
             }
-            this.once(module.exports.DATA_ADDED_TO_POOL, () => {
+            let pos = this.waitingForData.push(() => {
                 resolve(this.pool.pop());
-                return;
             });
             setTimeout(() => {
                 logger.warn("getPoolEntry timed out");
+                this.waitingForData[pos] = null;
                 reject("getPoolEntry timed out");
             }, 4*this.ttl);
             // 4*:
@@ -348,13 +224,14 @@ class Network extends EventEmitter {
                 return;
             }
             // Wait, if not
-            this.once(module.exports.SLOT_FREED_UP, () => {
+            let pos = this.waitingForSlot.push(() => {
+                // At this point we know that a slot is available
                 this.availableSlots--;
                 resolve();
-                return;
             });
             setTimeout(() => {
                 logger.warn("getSlot timed out!");
+                this.waitingForSlot[pos] = null;
                 reject("getSlot timed out");
             }, 2*this.ttl);
             // 2*
@@ -368,17 +245,42 @@ class Network extends EventEmitter {
      */
     freeUpSlot() {
         this.availableSlots++;
-        this.emit(module.exports.SLOT_FREED_UP);
+        let callback = null;
+        // If the callback was set to null, the request already timed out and
+        // we do not have to handle this, just skip it for now
+        while (callback == null && this.waitingForSlot.length > 0) {
+            callback = this.waitingForSlot.pop();
+        }
+
+        if (callback == null) {
+            return;
+        }
+
+        callback();
     }
 
     /**
      * Add new data entries to the pool and notify the appropriate functions
-     * @param {DbResult[]} newData - Contains new pool data to be downloaded
+     * @param {Array.<DbResult>} newData - Contains new pool data to be
+     *                                     downloaded
      */
     addDataToPool(newData) {
         this.pool.push(...newData);
         logger.debug("Added data to pool. Current size: " + this.pool.length);
-        this.emit(module.exports.DATA_ADDED_TO_POOL);
+
+        let callback = null;
+        let maxNumOfDownloadersToCall = newData.length;
+        // We get smaller in any iteration: the waitingForData gets smaller in
+        // every iteration, maxNumOfDownloads in some
+        while (
+            this.waitingForData.length > 0 && maxNumOfDownloadersToCall > 0
+        ) {
+            callback = this.waitingForData.pop();
+            if (callback != null) {
+                callback();
+                maxNumOfDownloadersToCall -= 1;
+            }
+        }
     }
 
     /**

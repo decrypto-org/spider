@@ -34,6 +34,10 @@ class Conductor {
         // Used to only get new data once per undershoot (but multiple times
         // for multiple network pool undershoots)
         this.gettingNewDataFromDb = false;
+        // Store the maximum number of concurrent connections to the database
+        this.availableDbConnections = process.env.DB_MAX_CONNECTIONS || 10;
+
+        this.waitingForDbConnection = [];
     }
 
     /**
@@ -103,18 +107,24 @@ class Conductor {
             logger.info("Please specify initial data (-i path/to/file.csv)");
             process.exit(0);
         }
-        await this.runScraper();
 
         // Here we are sure that the handler is initialized
-        this.network.downloadAll();
+        this.downloadAll();
     }
 
 
     /**
      * Get entries from the DB directly to the network download pool.
      * @param {number} limit - The number of entries to get from the DB
+     * @return {Promise} Only used for early returns
      */
     async getEntriesToDownloadPool(limit) {
+        if (this.gettingNewDataFromDb) {
+            // We are already repopulating the pool - no need to go a second
+            // time.
+            return Promise.resolve();
+        }
+        this.gettingNewDataFromDb = true;
         logger.debug("Current pool size: " + this.network.pool.length);
         logger.debug("Getting " + limit + " entries into the pool");
         let excludeKeyObj = Object.filter(
@@ -128,9 +138,56 @@ class Conductor {
             excludedHosts: Object.keys(excludeKeyObj),
         });
         if (dbResults.length == 0 && !moreAvailable) {
-            return;
+            return Promise.resolve();
         }
         this.network.addDataToPool(dbResults);
+        this.gettingNewDataFromDb = false;
+        return Promise.resolve();
+    }
+
+    /**
+     * Ensures that we are not overloading the db in case of a very fast network
+     * this mechanism pushes back, such that we wait before issuing new
+     * connections to the network.
+     * @return {Promise} Is resolved as soon as a DBConnection is available
+     *                   for this download
+     */
+    async getDbConnection() {
+        return new Promise((resolve, reject) => {
+            if (this.availableDbConnections > 0) {
+                this.availableDbConnections -= 1;
+                resolve();
+                return;
+            }
+
+            this.waitingForDbConnection.push(() => {
+                this.availableDbConnections -= 1;
+                resolve();
+                return;
+            });
+            // we do not timeout here, since we already have data that should be
+            // inserted. Worst case scenario: We loose connection to the db.
+            // In this case we won't be able to make progress, however, we would
+            // not be able to do so anyway.
+        });
+    }
+
+    /**
+     * Does return the DB connection to the connection pool and potentially
+     * calls any waiting client.
+     */
+    returnDbConnection() {
+        this.availableDbConnections += 1;
+
+        let callback = null;
+
+        while (callback == null && this.waitingForDbConnection.length > 0) {
+            callback = this.waitingForDbConnection.pop();
+        }
+
+        if (callback != null) {
+            callback();
+        }
     }
 
     /**
@@ -212,26 +269,125 @@ class Conductor {
     }
 
     /**
-     * Controls on run of the scraper. This includes storing found urls on the
-     * DB and populating the networks pool.
+     * Downloads everything within the pool and everything that might be added
+     * in the future.
      */
-    async runScraper() {
-        this.network.on(Network.POOL_LOW, async (size) => {
-            if (this.gettingNewDataFromDb) {
-                // We are already repopulating the pool - no need to go a second
-                // time.
-                return;
+    async downloadAll() {
+        while (
+            this.network.availableSlots >= 0 ||
+            this.network.pool.length >= 0
+        ) {
+            let error = false;
+            // Notify the client that the pool is running low on entries
+            // to download. (Optimization: since we do not need to wait
+            // for the download to finish, the pool will be repopulated
+            // when this download finished)
+            // Notify before in case we are already down to 0 entries
+            // in the pool -- otherwise the network module starves.
+            if (this.network.pool.length < Network.MIN_POOL_SIZE) {
+                this.getEntriesToDownloadPool(
+                    Network.MAX_POOL_SIZE - this.network.pool.length
+                );
             }
-            this.gettingNewDataFromDb = true;
-            await this.getEntriesToDownloadPool(size);
-            this.gettingNewDataFromDb = false;
-        });
-        // Arrow function ensures correct context
-        this.network.on(
-            Network.NEW_NETWORK_DATA_AVAILABLE, (networkResponse, dbResult) => {
-                this.insertNetworkResponseIntoDb(networkResponse, dbResult);
+            let dbResult = await this.network.getPoolEntry().catch((err) => {
+                logger.error(err);
+                let waitingRequestCount = 0;
+                let hosts = Object.keys(this.network.waitingRequestPerHost);
+                for (let host in hosts) {
+                    if (hosts.hasOwnProperty(host)) {
+                        waitingRequestCount +=
+                            this.network.waitingRequestPerHost[host];
+                    }
+                }
+                if (
+                    this.network.availableSlots == module.exports.MAX_SLOTS &&
+                    this.network.pool.length == 0 &&
+                    waitingRequestCount == 0
+                ) {
+                    // No pending requests, no pool data, and all slots are free
+                    // We are finished.
+                    logger.info("Network detected that we are finished");
+                    logger.info("Exiting...");
+                    // Clean up after ourselves
+                    this.network.torController.closeTorInstances().then(
+                        process.exit(0)
+                    );
+                }
+                // If we are not finished yet, another error must have occured
+                // we will retry later
+                // Note that this should only happen from a bug on our side
+                error = true;
+            });
+            // if an error occured we will just continue with the next entry
+            // eventually we'll find one that is working
+            if (error) {
+                continue;
             }
-        );
+
+            // If there are already 6 or more connections to this host, we will
+            // stall the execution of this one and add it to the queue.
+            // Note that this is a simple JSON object and no ordering is
+            // guaranteed. Further: We do never wait on something, so the code
+            // below should be executed "atomically". Please note: Do not add
+            // any code here, that contains async call
+            if (
+                this.network.waitingRequestPerHost[dbResult.baseUrlId]
+                != undefined &&
+                this.network.waitingRequestPerHost[dbResult.baseUrlId]
+                >= this.network.maxSimultaneousRequestsPerHost
+            ) {
+                let queue =
+                    this.network.queuedRequestsByHost[dbResult.baseUrlId];
+                if (!queue) {
+                    queue = [];
+                }
+                queue.push(dbResult);
+                this.network.queuedRequestsByHost[dbResult.baseUrlId] = queue;
+                continue;
+            }
+            await this.network.getSlot().catch((err) => {
+                logger.error(err);
+                // Push the dbResult back onto the stack - it should be handled
+                // later. We can do this, since an exception in the getting
+                // of the slot has nothing to do with the dbResult itself.
+                // If this would not hold, we would risk a loop
+                this.network.pool.push(dbResult);
+                error = true;
+            });
+            if (error) {
+                continue;
+            }
+            // Hacky way to work around overloading the database and still
+            // make use of as amany concurrent connections as possible.
+            // This ensures that we do never download faster than we can write
+            // and that we do not bloat the memory. However, it allows for a
+            // very slow connection to not slow down the process as long as we
+            // have #db connection many fast downloads
+            await this.getDbConnection();
+            this.returnDbConnection();
+
+
+            // Do not wait for the download to finish.
+            // This method should be used as a downloader pool and therefor
+            // start several downloads simultaneously
+            this.network.download(dbResult).then(async (response) => {
+                await this.getDbConnection();
+
+                this.insertNetworkResponseIntoDb(response, dbResult);
+
+                this.returnDbConnection();
+            }).catch((err) => {
+                logger.error(err);
+                // SHould not push back to pool here, since it may be the reason
+                // for the errourness execution.
+                // this.pool.push(dbResult);
+                logger.warn("Discarding " + JSON.stringify(dbResult));
+                // Note: Cleanup code should detect this entry as being stale
+                // and reset its state - Not the job of the network module
+                error = true;
+                this.network.freeUpSlot();
+            });
+        }
     }
 }
 module.exports = Conductor;
