@@ -8,8 +8,18 @@
 
 FROM robrunne/tor-router:1.0.0
 
-RUN apt update -y
-RUN apt install -y htop
+RUN apt update -y -qq
+RUN apt install -y -qq htop
+RUN apt install --reinstall -y -qq iptables
+# The commands below cannot be done in the build process
+# since docker does not support privileged operations
+# during the build process.
+# RUN apt install -y -qq iptables-persistent 
+# RUN iptables -A INPUT -m conntrack --cstate ESTABLISHED,RELATED -j ACCEPT
+# RUN iptables -A OUTPUT -m conntrack --cstate ESTABLISHED,RELATED -j ACCEPT
+# RUN iptables -A INPUT -s 172.16.0.0/12 -j ACCEPT
+# RUN iptables -P INPUT REJECT
+# RUN iptables -P OUTPUT REJECT
 # somehow docker complained that tor is not in the pwd file.
 # the same worked for the spider, however, I suspect that the node user
 # is already created in the node js base image
