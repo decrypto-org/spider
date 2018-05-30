@@ -582,7 +582,7 @@ db.getEntries = async function({
         },
         order: [
             ["depth", "ASC"],
-            ["random", "ASC"],
+            ["random", "DESC"],
         ],
         limit: limit,
         include: [db.baseUrl],

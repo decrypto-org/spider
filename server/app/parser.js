@@ -26,15 +26,15 @@ class Parser {
         // We are matching as broad as possible.
         /* eslint-disable max-len, no-useless-escape */
         this.globalOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www.)?(?:([-a-z0-9.]+[.]){0,242}([-a-z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+.~#?&\/=|$]+)?",
+            "(?:http(s)?:\/\/)?(?:www.)?(?:([-a-z0-9.]+[.]){0,242}([-a-z0-9]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+.~#?&\/=|$]+)?",
             "gi"
         );
         this.globalBaseUrlMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www.)?([-a-z0-9=]{15,256}\.onion)",
+            "(?:http(s)?:\/\/)?(?:www.)?([-a-z0-9]{15,256}\.onion)",
             "gi"
         );
         this.singleOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www\.)?(?:([-a-z0-9\.]+[.]){0,242}([-a-zA-Z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+\.~#?&\/=]*)?",
+            "(?:http(s)?:\/\/)?(?:www\.)?(?:([-a-z0-9\.]+[.]){0,242}([-a-zA-Z0-9]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+\.~#?&\/=]*)?",
             "i"
         );
 
