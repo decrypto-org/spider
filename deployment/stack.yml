@@ -63,5 +63,8 @@ services:
     networks:
       frontend:
     ports:
-      - "9077:9077"
+      - "127.0.0.1:9077:9077"
       - "127.0.0.1:9000:9000"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
