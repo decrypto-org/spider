@@ -11,9 +11,6 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-        subdomain: {
-            type: DataTypes.TEXT,
-        },
         baseUrl: {
             type: DataTypes.TEXT,
         },
@@ -34,12 +31,6 @@ module.exports = (sequelize, DataTypes) => {
         indexes: [
             {
                 unique: true,
-                fields: [
-                    {attribute: "baseUrl"},
-                    {attribute: "subdomain"},
-                ],
-            },
-            {
                 fields: [
                     {attribute: "baseUrl", sorted: "ASC"},
                 ],

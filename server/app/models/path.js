@@ -32,6 +32,9 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.TEXT,
             allowNull: false,
         },
+        subdomain: {
+            type: DataTypes.TEXT,
+        },
         secure: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
@@ -66,6 +69,7 @@ module.exports = (sequelize, DataTypes) => {
                 fields: [
                     {attribute: "baseUrlBaseUrlId"},
                     {attribute: "path"},
+                    {attribute: "subdomain"},
                 ],
             },
         ],

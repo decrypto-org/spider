@@ -210,7 +210,7 @@ db.bulkInsertUri = async function(
     // Now lets build those requests:
     let baseUrlRequestString = "\
     LOCK TABLE ONLY \"baseUrls\" IN SHARE ROW EXCLUSIVE MODE;\
-    INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\", \"subdomain\")\n\
+    INSERT INTO \"baseUrls\" (\"baseUrlId\", \"baseUrl\")\n\
         VALUES\n\
     ";
     let pathRequestString = "\
@@ -225,7 +225,8 @@ db.bulkInsertUri = async function(
          \"path\",\n\
          \"secure\",\n\
          \"random\",\n\
-         \"baseUrlBaseUrlId\"\n\
+         \"baseUrlBaseUrlId\",\n\
+         \"subdomain\"\n\
         )\
         VALUES\n\
     ";
@@ -234,8 +235,7 @@ db.bulkInsertUri = async function(
     let baseUrlDefinitions = uriDefinitions.filter(
         (uriDefinition, index, self) => {
             let auxiliaryIndex = self.findIndex((secondaryUriDefinition) => {
-                return uriDefinition.baseUrl === secondaryUriDefinition.baseUrl
-                && uriDefinition.subdomain === secondaryUriDefinition.subdomain;
+                return uriDefinition.baseUrl === secondaryUriDefinition.baseUrl;
             });
             return auxiliaryIndex == index;
         }
@@ -243,12 +243,7 @@ db.bulkInsertUri = async function(
     baseUrlDefinitions.sort((a, b) => {
         let primaryX = a.baseUrl.toLowerCase();
         let primaryY = b.baseUrl.toLowerCase();
-        if (primaryX === primaryY) {
-            let secondaryX = a.subdomain.toLowerCase();
-            let secondaryY = b.subdomain.toLowerCase();
-            return secondaryX < secondaryY;
-        }
-        return primaryX < primaryY;
+        return primaryX <= primaryY;
     });
     let replacementsForBaseUrlRequest = [];
     for (let i = 0; i < baseUrlDefinitions.length; i++) {
@@ -257,10 +252,9 @@ db.bulkInsertUri = async function(
         if (!baseUrlDefinition.baseUrl) {
             continue; // If baseUrl was empty, we just ignore this case
         }
-        let value = "(?, ?, ?)";
+        let value = "(?, ?)";
         replacementsForBaseUrlRequest.push(newBaseUrlId);
         replacementsForBaseUrlRequest.push(baseUrlDefinition.baseUrl);
-        replacementsForBaseUrlRequest.push(baseUrlDefinition.subdomain);
         if (i == baseUrlDefinitions.length - 1) {
             value += "\n";
         } else {
@@ -268,7 +262,7 @@ db.bulkInsertUri = async function(
         }
         baseUrlRequestString += value;
     }
-    baseUrlRequestString += "ON CONFLICT (\"baseUrl\", \"subdomain\")\n\
+    baseUrlRequestString += "ON CONFLICT (\"baseUrl\")\n\
     DO UPDATE SET \"numberOfHits\" = \"baseUrls\".\"numberOfHits\" + 1\n\
     RETURNING \"baseUrlId\", \"baseUrl\"";
     /** @type {Array.<Array|number>} baseUrlReturnValue contains two entries,
@@ -327,7 +321,7 @@ db.bulkInsertUri = async function(
         let random = Math.random();
         let uriDefinition = uriDefinitions[i];
         let path = uriDefinition.path;
-        let value = "( ?, 0, 0, FALSE, 0, ?, ?, ?, ?, ?)";
+        let value = "( ?, 0, 0, FALSE, 0, ?, ?, ?, ?, ?, ?)";
         replacementsForPathRequest.push(...[
             newPathId,
             uriDefinition.depth,
@@ -335,6 +329,7 @@ db.bulkInsertUri = async function(
             uriDefinition.secure,
             random,
             baseUrlIdByBaseUrl[uriDefinition.baseUrl],
+            uriDefinition.subdomain,
         ]);
         if (i == uriDefinitions.length - 1) {
             value += "\n";
@@ -343,7 +338,10 @@ db.bulkInsertUri = async function(
         }
         pathRequestString += value;
     }
-    pathRequestString += "ON CONFLICT (\"baseUrlBaseUrlId\", \"path\")\n\
+    pathRequestString += "ON CONFLICT (\
+        \"baseUrlBaseUrlId\",\
+        \"path\",\
+        \"subdomain\")\n\
     DO UPDATE SET \"numberOfHits\" = \"paths\".\"numberOfHits\" + 1\n\
     RETURNING \"pathId\"";
     let pathRetryCounter = 0;
@@ -613,13 +611,12 @@ db.getEntries = async function({
             "secure": path.secure,
             "url": null,
             "baseUrlId": null,
-            "subdomain": null,
+            "subdomain": path.subdomain,
             "content": null,
             "link": null,
         };
         dbResult["url"] = path.baseUrl.baseUrl;
         dbResult["baseUrlId"] = path.baseUrl.baseUrlId;
-        dbResult["subdomain"] = path.baseUrl.subdomain;
         dbResults.push(dbResult);
     }
     this.offsetForDbRequest += paths.length;
@@ -629,6 +626,85 @@ db.getEntries = async function({
     let moreData = dbResults.length != 0;
     return [dbResults, moreData];
 };
+
+/**
+ * Get entries from DB that we have not yet scraped (grouped by host)
+ * @param  {number} limit       How many entries that we should try to get
+ * @param  {number} cutoffValue The maximum depth that we should look for
+ * @return {Array.<DbResult>}   Array of DbResults
+ */
+db.getNeverScrapedEntries = async function(limit, cutoffValue){
+    /* eslint-disable no-multi-str */
+    if (limit == 0){
+        return [[], false];
+    }
+    let dbResults = [];
+    let pathIds = [];
+
+    let [entriesToScrape, ] = await db.sequelize.query("\
+    SELECT DISTINCT ON (\"paths\".\"baseUrlBaseUrlId\")\n\
+        \"paths\".\"subdomain\" AS subdomain,\n\
+        \"baseUrls\".\"baseUrl\" AS url,\n\
+        \"baseUrls\".\"baseUrlId\" AS baseUrlId,\n\
+        \"paths\".\"path\" AS path,\n\
+        \"paths\".\"pathId\" AS pathId,\n\
+        \"paths\".\"depth\" AS depth,\n\
+        \"paths\".\"secure\" AS secure\n\
+    FROM \n\
+        (\n\
+            SELECT \n\
+                \"baseUrlBaseUrlId\",\n\
+                MAX(\"lastFinishedTimestamp\") AS maxtime,\n\
+                BOOL_OR(\"inProgress\") AS \"ongoing\"\n\
+            FROM \n\
+                \"paths\"\n\
+                JOIN \"baseUrls\" ON \
+                \"baseUrls\".\"baseUrlId\" = \"paths\".\"baseUrlBaseUrlId\"\n\
+            GROUP BY \"paths\".\"baseUrlBaseUrlId\"\n\
+            HAVING \n\
+                BOOL_OR(\"inProgress\") = false \n\
+                AND MAX(\"lastFinishedTimestamp\") = 0\n\
+            LIMIT 2000\n\
+        ) t \n\
+        JOIN paths ON \"paths\".\"baseUrlBaseUrlId\" = t.\"baseUrlBaseUrlId\"\n\
+        JOIN \"baseUrls\" ON\
+             \"baseUrls\".\"baseUrlId\" = t.\"baseUrlBaseUrlId\"\n\
+    LIMIT 2000;\n\
+    ");
+
+    logger.info(entriesToScrape);
+
+    for (let i = 0; i<entriesToScrape.length; i++){
+        let entryToScrape = entriesToScrape[i];
+        pathIds.push(entryToScrape.pathid);
+        let dbResult = {
+            baseUrlId: entryToScrape.baseurlid,
+            url: entryToScrape.url,
+            path: entryToScrape.path,
+            pathId: entryToScrape.pathid,
+            depth: entryToScrape.depth,
+            content: null,
+            contentId: null,
+            link: null,
+            secure: entryToScrape.secure,
+            subdomain: entryToScrape.subdomain,
+        };
+        dbResults.push(dbResult);
+    }
+    // Loop and generate return Array, as well as the pathId Array to set flag
+    await db.path.update(
+        {inProgress: true},
+        {
+            where: {
+                pathId: {
+                    [Op.in]: pathIds,
+                },
+            },
+        },
+    );
+    return dbResults;
+    /* eslint-enable no-multi-str */
+}
 
 /**
  * Sets the inProgress flag of the specified dbResult to the passed flag.

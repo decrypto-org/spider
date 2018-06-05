@@ -66,7 +66,7 @@ class Conductor {
         // Now inserting the start urls into the database with scrape
         // timestamp=0, so they will be scraped first (with other, not yet
         // scraped data).
-        // Note that we exect a csv. We then check every cell if it contains
+        // Note that we expect a csv. We then check every cell if it contains
         // a .onion url, therefor we use two nested loops.
         let startUrlsNormalized = [];
         for (let lineOfUrls of startUrls) {
@@ -83,11 +83,6 @@ class Conductor {
         for (let matchedUrl of startUrlsNormalized) {
             let path = matchedUrl.path || "/";
             let baseUrl = matchedUrl.baseUrl.toLowerCase();
-            // Note: Without the await, we will get failing commits
-            // possibly we overload the database (For large numbers
-            // of initial urls)
-            // Short term: not an issue, finished in about 5 min
-            // Long term solution: Use Bulk inserts
             uriList.push({
                 baseUrl: baseUrl,
                 subdomain: "",
@@ -131,12 +126,26 @@ class Conductor {
             this.network.waitingRequestPerHost,
             (pending) => pending >= this.network.maxSimultaneousRequestsPerHost
         );
-        let [dbResults, moreAvailable] = await db.getEntries({
+        // Get the not yet scraped baseUrls path
+        let unscrapedDbResults = await db.getNeverScrapedEntries(
+            limit,
+            this.cutOffDepth
+        );
+        let dbResults = [];
+        if (unscrapedDbResults.length >= limit){
+            this.network.addDataToPool(unscrapedDbResults);
+            this.gettingNewDataFromDb = false;
+            return Promise.resolve();
+        } else {
+            dbResults = unscrapedDbResults;
+        }
+        let [randomizedDbResults, moreAvailable] = await db.getEntries({
             dateTime: 0,
-            limit: limit,
+            limit: limit - dbResults.length,
             cutoffValue: this.cutOffDepth,
             excludedHosts: Object.keys(excludeKeyObj),
         });
+        dbResults.push(...randomizedDbResults);
         if (dbResults.length == 0 && !moreAvailable) {
             return Promise.resolve();
         }

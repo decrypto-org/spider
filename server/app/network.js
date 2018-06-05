@@ -395,11 +395,7 @@ class Network {
             request.on("error", (err) => {
                 reject(err);
             });
-            setTimeout(()=>{
-                logger.warn(
-                    "getAsync timed out for "
-                    + JSON.stringify(settingsObj)
-                );
+            setTimeout(() => {
                 reject(
                     "promiseNetwork request "
                     + settingsObj.hostname
