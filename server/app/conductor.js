@@ -132,21 +132,21 @@ class Conductor {
             this.cutOffDepth
         );
         let dbResults = [];
-        if (unscrapedDbResults.length >= limit){
+        if (unscrapedDbResults.length >= limit) {
             this.network.addDataToPool(unscrapedDbResults);
             this.gettingNewDataFromDb = false;
             return Promise.resolve();
         } else {
             dbResults = unscrapedDbResults;
         }
-        let [randomizedDbResults, moreAvailable] = await db.getEntries({
+        let [randomizedDbResults, available] = await db.getEntriesRandomized({
             dateTime: 0,
             limit: limit - dbResults.length,
             cutoffValue: this.cutOffDepth,
             excludedHosts: Object.keys(excludeKeyObj),
         });
         dbResults.push(...randomizedDbResults);
-        if (dbResults.length == 0 && !moreAvailable) {
+        if (dbResults.length == 0 && !available) {
             return Promise.resolve();
         }
         this.network.addDataToPool(dbResults);
@@ -264,6 +264,76 @@ class Conductor {
         }
 
         await db.link.bulkCreate(linkList);
+
+        // Update distinct link count on paths
+        // First get the counts for the just inserted paths/links
+        /* eslint-disable no-multi-str */
+        let queryString = "\
+        SELECT\n\
+            COUNT(DISTINCT paths.\"baseUrlBaseUrlId\") as incount,\n\
+            \"links\".\"destinationPathId\"\n\
+        FROM\n\
+            links\n\
+            INNER JOIN paths ON paths.\"pathId\" = links.\"sourcePathId\"\n\
+        WHERE\n\
+            \"links\".\"destinationPathId\" IN (\n\
+        ";
+        let replacementsForCount = [];
+        for(let i = 0; i < pathIds.length; i++){
+            let value = "?";
+            replacementsForCount.push(pathIds[i]);
+            if (i == pathIds.length -1){
+                value += "\n";
+            } else {
+                value += ",\n";
+            }
+            queryString += value;
+        }
+        queryString += ")\n\
+        GROUP BY links.\"destinationPathId\"";
+        let incountsByPathId = await db.sequelize.query(
+            queryString,
+            {replacements: replacementsForCount}
+        ).catch((err) => {
+            // This error is not that bad, we just log it and continue
+            // It might be recalculated in a later step or it would have
+            // a low incoming count anyway
+            logger.error(err.message);
+            logger.error(err.stack);
+        });
+
+        incountsByPathId = incountsByPathId[0];
+        queryString = "\
+        UPDATE paths AS p set\n\
+            \"numberOfDistinctHits\" = v.frequency\n\
+        FROM (values\n\
+        "
+        let replacementsForUpdate = [];
+        for (let i = 0; i < incountsByPathId.length; i++){
+            let incount = incountsByPathId[i];
+            let value = "(?::uuid, ?::BIGINT)";
+            replacementsForUpdate.push(incount.destinationPathId);
+            replacementsForUpdate.push(incount.incount);
+            if (i == incountsByPathId.length - 1){
+                value += "\n";
+            } else {
+                value += ",\n";
+            }
+            queryString += value;
+        }
+        queryString += ") as v(id, frequency)\n\
+        WHERE v.id = p.\"pathId\"";
+
+        await db.sequelize.query(
+            queryString,
+            {replacements: replacementsForUpdate}
+        ).catch((err) => {
+            // This error is not that bad, we just log it and continue
+            // It might be recalculated in a later step or it would have
+            // a low incoming count anyway
+            logger.error(err.message);
+            logger.error(err.stack);
+        });
 
         // For the case we hit 0 in the network pool and
         // this was the last request, we need to repopulate

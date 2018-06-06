@@ -550,7 +550,7 @@ db.resetStaleEntries = async function(
  *                      anything pending, we can conclude that we have
  *                      finished and exit.
  */
-db.getEntries = async function({
+db.getEntriesRandomized = async function({
     dateTime=0,
     limit=100,
     cutoffValue=1,
@@ -633,15 +633,15 @@ db.getEntries = async function({
  * @param  {number} cutoffValue The maximum depth that we should look for
  * @return {Array.<DbResult>}   Array of DbResults
  */
-db.getNeverScrapedEntries = async function(limit, cutoffValue){
+db.getNeverScrapedEntries = async function(limit, cutoffValue) {
     /* eslint-disable no-multi-str */
-    if (limit == 0){
+    if (limit == 0) {
         return [[], false];
     }
     let dbResults = [];
     let pathIds = [];
 
-    let [entriesToScrape, ] = await db.sequelize.query("\
+    let [entriesToScrape] = await db.sequelize.query("\
     SELECT DISTINCT ON (\"paths\".\"baseUrlBaseUrlId\")\n\
         \"paths\".\"subdomain\" AS subdomain,\n\
         \"baseUrls\".\"baseUrl\" AS url,\n\
@@ -674,7 +674,7 @@ db.getNeverScrapedEntries = async function(limit, cutoffValue){
 
     logger.info(entriesToScrape);
 
-    for (let i = 0; i<entriesToScrape.length; i++){
+    for (let i = 0; i<entriesToScrape.length; i++) {
         let entryToScrape = entriesToScrape[i];
         pathIds.push(entryToScrape.pathid);
         let dbResult = {
@@ -704,7 +704,7 @@ db.getNeverScrapedEntries = async function(limit, cutoffValue){
     );
     return dbResults;
     /* eslint-enable no-multi-str */
-}
+};
 
 /**
  * Sets the inProgress flag of the specified dbResult to the passed flag.

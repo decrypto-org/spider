@@ -55,6 +55,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BIGINT,
             defaultValue: 0,
         },
+        numberOfDistinctHits: {
+            type: DataTypes.BIGINT,
+            defaultValue: 0,
+        },
     },
     {
         indexes: [
