@@ -41,7 +41,7 @@ class Parser {
         // Note: We only keep sites that have textual data encoded, the rest
         // will be discarded as of now.
         this.base64Regex = new RegExp(
-            /\s*data:([^tex]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/i
+            /\s*data:((?!text)[a-z]+\/[a-z+-]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/gi
         );
         /* eslint-enable max-len, no-useless-escape */
     }
@@ -52,14 +52,17 @@ class Parser {
      * Direct Link: https://gist.github.com/bgrins/6194623
      * @param {string} stringToTest - This string will be tested against the
      *                                regex.
-     * @return {boolean} The return value indicates whether the passed string
+     * @return {string} The return value indicates whether the passed string
      *                   contained any base64 data (true) or not (false).
      */
-    matchBase64Media(stringToTest) {
-        let result = this.base64Regex.test(stringToTest);
+    removeBase64Media(stringToTest) {
+        let result = stringToTest.replace(
+            this.base64Regex,
+            "[OMITTED MEDIA DATA]"
+        );
         if (result) {
             logger.warn(
-                "[CONTAINS MEDIA DATA] Discarding " + stringToTest.slice(0, 100)
+                "[CONTAINS MEDIA DATA] Replacing " + stringToTest.slice(0, 10)
             );
         }
         return result;

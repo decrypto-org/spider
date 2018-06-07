@@ -146,7 +146,7 @@ class Conductor {
             dbResults = unscrapedDbResults;
         }
         let prioritizedPages = await db.getEntriesPrioritized(
-            0,  /* dateTime */
+            0, /* dateTime */
             limit - dbResults.length,
             this.cutOffDepth,
             Object.keys(excludeKeyObj)
@@ -182,7 +182,7 @@ class Conductor {
      *                   for this download
      */
     async getDbConnection() {
-        logger.info("Get DB connection")
+        logger.info("Get DB connection");
         return new Promise((resolve, reject) => {
             if (this.availableDbConnections > 0) {
                 this.availableDbConnections -= 1;
@@ -309,10 +309,10 @@ class Conductor {
             \"links\".\"destinationPathId\" IN (\n\
         ";
         let replacementsForCount = [];
-        for(let i = 0; i < pathIds.length; i++){
+        for (let i = 0; i < pathIds.length; i++) {
             let value = "?";
             replacementsForCount.push(pathIds[i]);
-            if (i == pathIds.length -1){
+            if (i == pathIds.length -1) {
                 value += "\n";
             } else {
                 value += ",\n";
@@ -337,14 +337,14 @@ class Conductor {
         UPDATE paths AS p set\n\
             \"numberOfDistinctHits\" = v.frequency\n\
         FROM (values\n\
-        "
+        ";
         let replacementsForUpdate = [];
-        for (let i = 0; i < incountsByPathId.length; i++){
+        for (let i = 0; i < incountsByPathId.length; i++) {
             let incount = incountsByPathId[i];
             let value = "(?::uuid, ?::BIGINT)";
             replacementsForUpdate.push(incount.destinationPathId);
             replacementsForUpdate.push(incount.incount);
-            if (i == incountsByPathId.length - 1){
+            if (i == incountsByPathId.length - 1) {
                 value += "\n";
             } else {
                 value += ",\n";

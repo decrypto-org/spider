@@ -502,20 +502,8 @@ class Network {
                 response.on("end", () => {
                     result["endTime"] = (new Date).getTime();
                     try {
-                        if (this.parser.matchBase64Media(rawData)) {
-                            result.body = "[ CONTAINED MEDIA DATA]";
-                            logger.warn("We discarded data!");
-                            logger.warn(
-                                "Reason:\n" +
-                                "Ensure compliance with any laws.\n" +
-                                "Therefor we discard any data that contains" +
-                                "a) not a text string\n" +
-                                "b) any textual representation of media content"
-                            );
-                            logger.warn("Caused by " + url + path);
-                        } else {
-                            result.body = rawData;
-                        }
+                        let body = this.parser.removeBase64Media(rawData);
+                        result.body = rawData;
                         resolve(result);
                         return;
                     } catch (e) {

@@ -23,20 +23,20 @@ module.exports = (sequelize, DataTypes) => {
             {
                 fields: [
                     {attribute: "destinationPathId"},
-                    {attribute: "sourcePathId"}
-                ]
+                    {attribute: "sourcePathId"},
+                ],
             },
             {
                 fields: [
-                    {attribute: "sourcePathId", order: "DESC"}
-                ]
+                    {attribute: "sourcePathId", order: "DESC"},
+                ],
             },
             {
                 fields: [
-                    {attribute: "destinationPathId", order: "DESC"}
-                ]
-            }
-        ]
+                    {attribute: "destinationPathId", order: "DESC"},
+                ],
+            },
+        ],
     });
     Link.associate = function(models) {
         Link.belongsTo(models.path, {

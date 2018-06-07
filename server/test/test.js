@@ -23,8 +23,11 @@ let cutOffDepth = 0;
 // of those tests. Locally, one could adapt or just terminate the tor
 // instance to run the tests.
 let torPort = 9050;
-let testHtml = fs.readFileSync(
+let extractUriHtml = fs.readFileSync(
     __dirname + "/data/hiddenWiki.html"
+).toString("utf8");
+let replaceBase64Html = fs.readFileSync(
+    __dirname + "/data/base64.html"
 ).toString("utf8");
 let testDbResponse = {
     "baseUrl": "testBaseUrl.onion",
@@ -45,8 +48,17 @@ describe("Parser.extractOnionURI", () => {
         result[0].subdomain.should.equal("");
         result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
         result[0].path.should.equal("");
-        result = parser.extractOnionURI(testHtml, testDbResponse);
+        result = parser.extractOnionURI(extractUriHtml, testDbResponse);
         result.length.should.equal(316);
+        done();
+    });
+});
+
+describe("Parser.removeBase64Media", () => {
+    let parser = new Parser();
+    it("should return a string without any media content", (done) => {
+        let result = parser.removeBase64Media(replaceBase64Html);
+        result.split("[OMITTED MEDIA DATA]").length.should.equal(3);
         done();
     });
 });

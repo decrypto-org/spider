@@ -640,7 +640,12 @@ db.getEntriesRandomized = async function({
  *                                        returned
  * @return {Array.<DbResult>}             Return an array of DbResults
  */
-db.getEntriesPrioritized = async function(dateTime, limit, depth, excludedHosts){
+db.getEntriesPrioritized = async function(
+    dateTime,
+    limit,
+    depth,
+    excludedHosts
+) {
     let paths = await db.path.findAll({
         where: {
             lastStartedTimestamp: {
@@ -701,7 +706,7 @@ db.getEntriesPrioritized = async function(dateTime, limit, depth, excludedHosts)
 
     let moreData = dbResults.length != 0;
     return [dbResults, moreData];
-}
+};
 
 /**
  * Get entries from DB that we have not yet scraped (grouped by host)

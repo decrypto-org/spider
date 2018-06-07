@@ -70,13 +70,13 @@ module.exports = (sequelize, DataTypes) => {
             },
             {
                 fields: [
-                    {attribute: "lastFinishedTimestamp", order: "ASC"}
-                ]
+                    {attribute: "lastFinishedTimestamp", order: "ASC"},
+                ],
             },
             {
                 fields: [
-                    {attribute: "pathId"}
-                ]
+                    {attribute: "pathId"},
+                ],
             },
             {
                 unique: true,
