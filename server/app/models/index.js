@@ -628,6 +628,82 @@ db.getEntriesRandomized = async function({
 };
 
 /**
+ * Get entries from DB ordered by network (incomin links) prioritization
+ * @param  {number} dateTime      Entries which were scraped before this
+ *                                timestamp may be rescraped to see a temporal
+ *                                change in the network
+ * @param  {number} limit         Return at most limit entries, but might be
+ *                                less, if not as many entries are available.
+ * @param  {number} depth         Describe the maximum depth, the scraper will
+ *                                be looking for new entries
+ * @param  {Array.<UUIDv4>} excludedHosts Exclude hosts, that should not be
+ *                                        returned
+ * @return {Array.<DbResult>}             Return an array of DbResults
+ */
+db.getEntriesPrioritized = async function(dateTime, limit, depth, excludedHosts){
+    let paths = await db.path.findAll({
+        where: {
+            lastStartedTimestamp: {
+                [Op.lte]: dateTime,
+            },
+            inProgress: {
+                [Op.eq]: false,
+            },
+            depth: {
+                [Op.lte]: depth,
+            },
+            baseUrlBaseUrlId: {
+                [Op.notIn]: excludedHosts,
+            },
+        },
+        order: [
+            ["numberOfDistinctHits", "DESC"],
+        ],
+        limit: limit,
+        include: [db.baseUrl],
+    });
+
+    // collect pathIds for the update
+    let pathIds = paths.map((path) => path.pathId);
+
+    // Do a update with the same conditions as the get.
+    // This should never lead to issues, since only one
+    // getter is always run at the same time.
+    await db.path.update(
+        {inProgress: true},
+        {
+            where: {
+                pathId: {
+                    [Op.in]: pathIds,
+                },
+            },
+        },
+    );
+
+    let dbResults = [];
+    for (let path of paths) {
+        let dbResult = {
+            "path": path.path,
+            "pathId": path.pathId,
+            "depth": path.depth,
+            "secure": path.secure,
+            "url": null,
+            "baseUrlId": null,
+            "subdomain": path.subdomain,
+            "content": null,
+            "link": null,
+        };
+        dbResult["url"] = path.baseUrl.baseUrl;
+        dbResult["baseUrlId"] = path.baseUrl.baseUrlId;
+        dbResults.push(dbResult);
+    }
+    this.offsetForDbRequest += paths.length;
+
+    let moreData = dbResults.length != 0;
+    return [dbResults, moreData];
+}
+
+/**
  * Get entries from DB that we have not yet scraped (grouped by host)
  * @param  {number} limit       How many entries that we should try to get
  * @param  {number} cutoffValue The maximum depth that we should look for
@@ -671,8 +747,6 @@ db.getNeverScrapedEntries = async function(limit, cutoffValue) {
              \"baseUrls\".\"baseUrlId\" = t.\"baseUrlBaseUrlId\"\n\
     LIMIT 2000;\n\
     ");
-
-    logger.info(entriesToScrape);
 
     for (let i = 0; i<entriesToScrape.length; i++) {
         let entryToScrape = entriesToScrape[i];

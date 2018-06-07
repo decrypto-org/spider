@@ -96,7 +96,11 @@ class Conductor {
 
         await this.getEntriesToDownloadPool(
             Network.MAX_POOL_SIZE
-        );
+        ).catch((err) => {
+            logger.error(err.message);
+            logger.error(err.stack);
+            this.gettingNewDataFromDb = false;
+        });
         if (this.network.pool.length == 0) {
             logger.info("No data available to scrape.");
             logger.info("Please specify initial data (-i path/to/file.csv)");
@@ -114,9 +118,11 @@ class Conductor {
      * @return {Promise} Only used for early returns
      */
     async getEntriesToDownloadPool(limit) {
+        logger.info("Get data from DB to network pool");
         if (this.gettingNewDataFromDb) {
             // We are already repopulating the pool - no need to go a second
             // time.
+            logger.info("We are still not finished getting new data");
             return Promise.resolve();
         }
         this.gettingNewDataFromDb = true;
@@ -139,6 +145,18 @@ class Conductor {
         } else {
             dbResults = unscrapedDbResults;
         }
+        let prioritizedPages = await db.getEntriesPrioritized(
+            0,  /* dateTime */
+            limit - dbResults.length,
+            this.cutOffDepth,
+            Object.keys(excludeKeyObj)
+        );
+        dbResults.push(...prioritizedPages[0]);
+        if (dbResults.length >= limit) {
+            this.network.addDataToPool(dbResults);
+            this.gettingNewDataFromDb = false;
+            return Promise.resolve();
+        }
         let [randomizedDbResults, available] = await db.getEntriesRandomized({
             dateTime: 0,
             limit: limit - dbResults.length,
@@ -147,6 +165,8 @@ class Conductor {
         });
         dbResults.push(...randomizedDbResults);
         if (dbResults.length == 0 && !available) {
+            logger.info("No new entries from db. Nothing to add to pool");
+            this.gettingNewDataFromDb = false;
             return Promise.resolve();
         }
         this.network.addDataToPool(dbResults);
@@ -162,15 +182,18 @@ class Conductor {
      *                   for this download
      */
     async getDbConnection() {
+        logger.info("Get DB connection")
         return new Promise((resolve, reject) => {
             if (this.availableDbConnections > 0) {
                 this.availableDbConnections -= 1;
+                logger.info("Resolve DB connection");
                 resolve();
                 return;
             }
 
             this.waitingForDbConnection.push(() => {
                 this.availableDbConnections -= 1;
+                logger.info("Resolve DB connection");
                 resolve();
                 return;
             });
@@ -186,6 +209,7 @@ class Conductor {
      * calls any waiting client.
      */
     returnDbConnection() {
+        logger.info("Returned DB connection");
         this.availableDbConnections += 1;
 
         let callback = null;
@@ -207,6 +231,7 @@ class Conductor {
      *                              started
      */
     async insertNetworkResponseIntoDb(networkResponse, dbResult) {
+        logger.info("Insert network response into DB");
         let successful = networkResponse.statusCode == 200;
         // We need to await this before proceeding to prevent getting
         // already scraped entries in the next step
@@ -236,6 +261,11 @@ class Conductor {
             networkResponse.body,
             dbResult
         );
+
+        if (urlsList.length <= 0) {
+            return;
+        }
+
         /** @type {Array.<Link>} Can be directyl bulkCreated */
         let linkList = [];
         /** @type {Array.<URIDefinition>} URIDefinitions for bulkInsert */
@@ -341,9 +371,11 @@ class Conductor {
         if (this.network.pool.length < process.env.NETWORK_MIN_POOL_SIZE &&
             !this.gettingNewDataFromDb) {
             let limit = Network.MAX_POOL_SIZE - this.network.pool.length;
-            this.gettingNewDataFromDb = true;
-            await this.getEntriesToDownloadPool(limit);
-            this.gettingNewDataFromDb = false;
+            await this.getEntriesToDownloadPool(limit).catch((err) => {
+                logger.error(err.message);
+                logger.error(err.stack);
+                this.gettingNewDataFromDb = false;
+            });
         }
     }
 
@@ -357,17 +389,6 @@ class Conductor {
             this.network.pool.length >= 0
         ) {
             let error = false;
-            // Notify the client that the pool is running low on entries
-            // to download. (Optimization: since we do not need to wait
-            // for the download to finish, the pool will be repopulated
-            // when this download finished)
-            // Notify before in case we are already down to 0 entries
-            // in the pool -- otherwise the network module starves.
-            if (this.network.pool.length < Network.MIN_POOL_SIZE) {
-                this.getEntriesToDownloadPool(
-                    Network.MAX_POOL_SIZE - this.network.pool.length
-                );
-            }
             let dbResult = await this.network.getPoolEntry().catch((err) => {
                 logger.error(err);
                 let waitingRequestCount = 0;
@@ -403,10 +424,9 @@ class Conductor {
                 continue;
             }
 
-            // If there are already 6 or more connections to this host, we will
+            // If there are already 4 or more connections to this host, we will
             // stall the execution of this one and add it to the queue.
-            // Note that this is a simple JSON object and no ordering is
-            // guaranteed. Further: We do never wait on something, so the code
+            // Further: We do never wait on something, so the code
             // below should be executed "atomically". Please note: Do not add
             // any code here, that contains async call
             if (
@@ -449,13 +469,19 @@ class Conductor {
             // Do not wait for the download to finish.
             // This method should be used as a downloader pool and therefor
             // start several downloads simultaneously
+            let haveDbConnection = false;
             this.network.download(dbResult).then(async (response) => {
                 await this.getDbConnection();
+                haveDbConnection = true;
 
-                this.insertNetworkResponseIntoDb(response, dbResult);
+                await this.insertNetworkResponseIntoDb(response, dbResult);
 
                 this.returnDbConnection();
             }).catch((err) => {
+                if (haveDbConnection) {
+                    this.returnDbConnection();
+                }
+
                 logger.error(err);
                 // SHould not push back to pool here, since it may be the reason
                 // for the errourness execution.

@@ -17,6 +17,26 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATE,
             defaultValue: sequelize.literal("NOW()"),
         },
+    },
+    {
+        indexes: [
+            {
+                fields: [
+                    {attribute: "destinationPathId"},
+                    {attribute: "sourcePathId"}
+                ]
+            },
+            {
+                fields: [
+                    {attribute: "sourcePathId", order: "DESC"}
+                ]
+            },
+            {
+                fields: [
+                    {attribute: "destinationPathId", order: "DESC"}
+                ]
+            }
+        ]
     });
     Link.associate = function(models) {
         Link.belongsTo(models.path, {

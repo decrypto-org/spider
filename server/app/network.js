@@ -167,6 +167,7 @@ class Network {
      *                   is available.
      */
     async getPoolEntry() {
+        logger.debug("Current pool size: " + this.pool.length);
         return new Promise((resolve, reject) => {
             for (let host in this.queuedRequestsByHost) {
                 // We cannot yet use this entry, since either more than six
@@ -196,11 +197,12 @@ class Network {
             }
             let pos = this.waitingForData.push(() => {
                 resolve(this.pool.pop());
+                return;
             });
             setTimeout(() => {
-                logger.warn("getPoolEntry timed out");
                 this.waitingForData[pos] = null;
                 reject("getPoolEntry timed out");
+                return;
             }, 4*this.ttl);
             // 4*:
             // spider -> remote host
@@ -220,6 +222,7 @@ class Network {
             // Resolve immediately, if a slot is available
             if (this.availableSlots > 0) {
                 this.availableSlots--;
+                logger.info("Slot resolved");
                 resolve();
                 return;
             }
@@ -227,12 +230,14 @@ class Network {
             let pos = this.waitingForSlot.push(() => {
                 // At this point we know that a slot is available
                 this.availableSlots--;
+                logger.info("Slot resolved");
                 resolve();
+                return;
             });
             setTimeout(() => {
-                logger.warn("getSlot timed out!");
                 this.waitingForSlot[pos] = null;
                 reject("getSlot timed out");
+                return;
             }, 2*this.ttl);
             // 2*
             // spider -> remote host
@@ -244,6 +249,7 @@ class Network {
      * Free up a slot and notify the appropriate functions
      */
     freeUpSlot() {
+        logger.info("Free up network slot");
         this.availableSlots++;
         let callback = null;
         // If the callback was set to null, the request already timed out and
@@ -391,9 +397,11 @@ class Network {
         return new Promise((resolve, reject) => {
             let request = lib.get(settingsObj, (response) => {
                 resolve(response);
+                return;
             });
             request.on("error", (err) => {
                 reject(err);
+                return;
             });
             setTimeout(() => {
                 reject(
@@ -402,6 +410,7 @@ class Network {
                     + settingsObj.path
                     + " timed out"
                 );
+                return;
             }, ttl);
         });
     }
@@ -508,6 +517,7 @@ class Network {
                             result.body = rawData;
                         }
                         resolve(result);
+                        return;
                     } catch (e) {
                         logger.error(
                             "An error occured whlie reading the data " +
@@ -515,6 +525,7 @@ class Network {
                         );
                         logger.error("Caused by " + url + path);
                         reject(e);
+                        return;
                     }
                 });
                 let ttl = this.ttl;
@@ -525,11 +536,13 @@ class Network {
                         "error": "responseHandler response timed out",
                         "result": result,
                     });
+                    return;
                 }, ttl);
             });
         }
         return new Promise((resolve, reject) => {
             resolve(result);
+            return;
         });
     }
 }

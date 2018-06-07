@@ -69,6 +69,16 @@ module.exports = (sequelize, DataTypes) => {
                 ],
             },
             {
+                fields: [
+                    {attribute: "lastFinishedTimestamp", order: "ASC"}
+                ]
+            },
+            {
+                fields: [
+                    {attribute: "pathId"}
+                ]
+            },
+            {
                 unique: true,
                 fields: [
                     {attribute: "baseUrlBaseUrlId"},
