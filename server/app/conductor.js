@@ -245,7 +245,7 @@ class Conductor {
         );
         await db.insertBody(
             dbResult.pathId,
-            networkResponse.body || "[MISSING]",
+            networkResponse.body || "",
             networkResponse.mimeType || "[MISSING]",
             networkResponse.endTime,
             networkResponse.statusCode
@@ -253,6 +253,12 @@ class Conductor {
         // Scrape the links to other pages, then insert them into the db
         // if the download was successful and the MIME Type correct
         if (networkResponse.body == null || !successful) {
+            if(successful) {
+                console.error(
+                    "Body is empty for dbResult " + JSON.stringify(dbResult)
+                    + "\nnetworkResponse: " + JSON.stringify(networkResponse)
+                );
+            }
             return;
         }
 

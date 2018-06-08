@@ -128,10 +128,11 @@ class Network {
         this.waitingRequestPerHost[dbResult.baseUrlId] += 1;
         let url = dbResult.subdomain + dbResult.url;
         if (url.length == 0) {
+            console.error("url is empty for " + JSON.stringify(dbResult));
             response = {
                 "url": url,
                 "path": dbResult.path,
-                "body": "[MISSING]",
+                "body": "",
                 "statusCode": 400,
                 "mimeType": "[NO CONTENT TYPE PROVIDED]",
                 "startTime": 0,
