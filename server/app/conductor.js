@@ -133,37 +133,16 @@ class Conductor {
             (pending) => pending >= this.network.maxSimultaneousRequestsPerHost
         );
         // Get the not yet scraped baseUrls path
-        let unscrapedDbResults = await db.getNeverScrapedEntries(
-            limit,
-            this.cutOffDepth
-        );
-        let dbResults = [];
-        if (unscrapedDbResults.length >= limit) {
-            this.network.addDataToPool(unscrapedDbResults);
-            this.gettingNewDataFromDb = false;
-            return Promise.resolve();
-        } else {
-            dbResults = unscrapedDbResults;
-        }
-        let prioritizedPages = await db.getEntriesPrioritized(
+        // let unscrapedDbResults = await db.getNeverScrapedEntries(
+        //     limit,
+        //     this.cutOffDepth
+        // );
+        let [dbResults, available] = await db.getEntriesRecursive(
             0, /* dateTime */
-            limit - dbResults.length,
+            limit,
             this.cutOffDepth,
             Object.keys(excludeKeyObj)
         );
-        dbResults.push(...prioritizedPages[0]);
-        if (dbResults.length >= limit) {
-            this.network.addDataToPool(dbResults);
-            this.gettingNewDataFromDb = false;
-            return Promise.resolve();
-        }
-        let [randomizedDbResults, available] = await db.getEntriesRandomized({
-            dateTime: 0,
-            limit: limit - dbResults.length,
-            cutoffValue: this.cutOffDepth,
-            excludedHosts: Object.keys(excludeKeyObj),
-        });
-        dbResults.push(...randomizedDbResults);
         if (dbResults.length == 0 && !available) {
             logger.info("No new entries from db. Nothing to add to pool");
             this.gettingNewDataFromDb = false;
@@ -253,7 +232,7 @@ class Conductor {
         // Scrape the links to other pages, then insert them into the db
         // if the download was successful and the MIME Type correct
         if (networkResponse.body == null || !successful) {
-            if(successful) {
+            if (successful) {
                 console.error(
                     "Body is empty for dbResult " + JSON.stringify(dbResult)
                     + "\nnetworkResponse: " + JSON.stringify(networkResponse)

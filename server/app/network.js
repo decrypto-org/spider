@@ -193,11 +193,11 @@ class Network {
                 return;
             }
             if (this.pool.length > 0) {
-                resolve(this.pool.pop());
+                resolve(this.pool.shift());
                 return;
             }
             let pos = this.waitingForData.push(() => {
-                resolve(this.pool.pop());
+                resolve(this.pool.shift());
                 return;
             });
             setTimeout(() => {
@@ -391,9 +391,9 @@ class Network {
         );
         let lib = null;
         if (secure) {
-            lib = require("https");
+            lib = require("follow-redirects").https;
         } else {
-            lib = require("http");
+            lib = require("follow-redirects").http;
         }
         return new Promise((resolve, reject) => {
             let request = lib.get(settingsObj, (response) => {
@@ -442,6 +442,7 @@ class Network {
          * instead of html
          */
         let contentType = response.headers["content-type"] ||
+            response.headers["Content-Type"] ||
             "[ NO CONTENT TYPE HEADER PROVIDED ]";
 
         /* According to RFC 1341, we are safe using split(";")[0] to extract
@@ -473,7 +474,7 @@ class Network {
             }
             result.statusCode = statusCode;
             result["endTime"] = (new Date).getTime();
-        } else if (!/\btext\/[jsonxhtml+]{4,}\b/i.test(contentType)) {
+        } else if (!/\btext\/[paijsonxhtml+]{4,}\b/i.test(contentType)) {
             /* For now we only store the textual html or json representation
              * of the page. Later on we could extend this to other mime
              * types or even simulating a full client. This could be done
@@ -504,7 +505,7 @@ class Network {
                     result["endTime"] = (new Date).getTime();
                     try {
                         let body = this.parser.removeBase64Media(rawData);
-                        result.body = rawData;
+                        result.body = body;
                         resolve(result);
                         return;
                     } catch (e) {

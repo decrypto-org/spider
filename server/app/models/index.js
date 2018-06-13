@@ -63,6 +63,28 @@ db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
 /**
+ * Executes a raw query with the provided string.
+ * Used to enable retries
+ * @param  {String} queryString  The SQL query string with placeholders
+ *                               that should be used for the query
+ * @param  {Array.<String|number|boolean>} replacements Replacements for the
+ *                                                      placeholders
+ * @return {Object}              Returns the raw returnvalue of the db
+ */
+async function executeQuery(queryString, replacements) {
+    let result = await db.sequelize.query(
+        queryString,
+        {replacements: replacements}
+    ).catch((err) => {
+        logger.error(err.message);
+        logger.error(err.stack);
+        return null;
+    });
+    return result;
+}
+
+
+/**
  * Insert a new URI into the database. The values will only be inserted if not
  * yet existent. However, the return value will always contain the ID's of the
  * corresponding entries. No update will be done on the entries if they exist.
@@ -169,27 +191,6 @@ db.bulkInsertUri = async function(
     // insertion of updatedAt/createdAt times
     // We cannot have duplicates in our insertion list, so we have to filter
     // those
-
-    /**
-     * Executes a raw query with the provided string.
-     * Used to enable retries
-     * @param  {String} queryString  The SQL query string with placeholders
-     *                               that should be used for the query
-     * @param  {Array.<String|number|boolean>} replacements Replacements for the
-     *                                                      placeholders
-     * @return {Object}              Returns the raw returnvalue of the db
-     */
-    async function executeQuery(queryString, replacements) {
-        let result = await db.sequelize.query(
-            queryString,
-            {replacements: replacements}
-        ).catch((err) => {
-            logger.error(err.message);
-            logger.error(err.stack);
-            return null;
-        });
-        return result;
-    }
 
     // Filter to remove duplicates
     uriDefinitions = uriDefinitions.filter((uriDefinition, index, self) => {
@@ -625,6 +626,126 @@ db.getEntriesRandomized = async function({
     // network moduel. This is left to decide to the controller.
     let moreData = dbResults.length != 0;
     return [dbResults, moreData];
+};
+
+db.getEntriesRecursive = async function(
+    dateTime,
+    limit,
+    depth,
+    excludedHosts
+) {
+    /* eslint-disable no-multi-str */
+    if (limit == 0) {
+        return [[], false];
+    }
+    let dbResults = [];
+    let baseUrlReplacements = [dateTime];
+    let baseUrlRequestString = "\
+SELECT COUNT(contents.\"pathPathId\") as downcnt, \"baseUrls\".\"baseUrlId\"\n\
+    FROM \n\
+    \"baseUrls\"\n\
+    INNER JOIN paths \"pScr\"\
+    ON \"pScr\".\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
+    LEFT JOIN contents ON \"pScr\".\"pathId\" = contents.\"pathPathId\"\n\
+WHERE EXISTS ( \
+    SELECT \"pUnscr\".\"pathId\"\n\
+    FROM paths \"pUnscr\"\n\
+    WHERE \n\
+        \"pUnscr\".\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
+        AND \"pUnscr\".\"lastFinishedTimestamp\" <= ?\n\
+        AND \"pUnscr\".\"depth\" <= 1\n\
+)";
+    if (excludedHosts.length > 0) {
+        baseUrlRequestString += " AND \"baseUrls\".\"baseUrlId\" NOT IN (";
+        for (let i = 0; i < excludedHosts.length; i++) {
+            baseUrlReplacements.push(excludedHosts[i]);
+            if (i == excludedHosts.length - 1) {
+                baseUrlRequestString += "?";
+            } else {
+                baseUrlRequestString += "?,\n";
+            }
+        }
+        baseUrlRequestString += ")";
+    }
+    baseUrlReplacements.push(limit);
+    baseUrlRequestString += "\
+GROUP BY \"baseUrls\".\"baseUrlId\"\n\
+ORDER BY downcnt ASC \n\
+LIMIT ?";
+    let baseUrlResult = await executeQuery(
+        baseUrlRequestString,
+        baseUrlReplacements
+    );
+    if (baseUrlResult[0].length == 0) {
+        return [[], false];
+    }
+
+    let pathsReplacements = [];
+    let pathsRequestString = "\
+SELECT  \"res\".\"subdomain\" AS subdomain,\n\
+        \"baseUrls\".\"baseUrl\" AS url,\n\
+        \"baseUrls\".\"baseUrlId\" AS baseUrlId,\n\
+        \"res\".\"path\" AS path,\n\
+        \"res\".\"pathId\" AS pathId,\n\
+        \"res\".\"depth\" AS depth,\n\
+        \"res\".\"secure\" AS secure\n\
+FROM \n\
+( \n\
+    SELECT MAX(paths.\"numberOfDistinctHits\") AS \"numDistinct\",\n\
+    MAX(paths.random) AS \"rand\",\n\
+    paths.\"baseUrlBaseUrlId\" AS \"host\"\n\
+FROM paths \n\
+WHERE \n\
+    paths.\"baseUrlBaseUrlId\" in\n\
+    (\n\
+    ";
+
+    for (let i = 0; i < baseUrlResult[0].length; i++) {
+        pathsReplacements.push(baseUrlResult[0][i].baseUrlId);
+        if (i == baseUrlResult[0].length -1) {
+            pathsRequestString += "?\n";
+        } else {
+            pathsRequestString += "?,\n";
+        }
+    }
+
+    pathsReplacements.push(dateTime);
+    pathsRequestString += "\
+)\
+    AND paths.\"lastFinishedTimestamp\" <= ?\n\
+    GROUP BY paths.\"baseUrlBaseUrlId\"\n\
+) AS \"uniqueMaxima\" INNER JOIN paths AS res ON \n\
+res.\"numberOfDistinctHits\" = \"uniqueMaxima\".\"numDistinct\"\n\
+INNER JOIN \"baseUrls\"\
+ON res.\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
+AND res.random = \"uniqueMaxima\".rand \n\
+AND res.\"baseUrlBaseUrlId\" = \"uniqueMaxima\".host;";
+    let entriesToScrape = await executeQuery(
+        pathsRequestString,
+        pathsReplacements
+    );
+    entriesToScrape = entriesToScrape[0];
+
+    for (let i = 0; i < entriesToScrape.length; i++) {
+        let entryToScrape = entriesToScrape[i];
+        dbResults.push({
+            "path": entryToScrape.path,
+            "pathId": entryToScrape.pathid,
+            "depth": entryToScrape.depth,
+            "secure": entryToScrape.secure,
+            "url": entryToScrape.url,
+            "baseUrlId": entryToScrape.baseurlid,
+            "subdomain": entryToScrape.subdomain,
+            "content": null,
+            "link": null,
+        });
+    }
+    let hasMore = true;
+    if (dbResults.length < limit) {
+        hasMore = false;
+    }
+    return [dbResults, hasMore];
+    /* eslint-enable no-multi-str */
 };
 
 /**
