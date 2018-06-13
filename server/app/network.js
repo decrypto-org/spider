@@ -474,7 +474,7 @@ class Network {
             }
             result.statusCode = statusCode;
             result["endTime"] = (new Date).getTime();
-        } else if (!/\btext\/[paijsonxhtml+]{4,}\b/i.test(contentType)) {
+        } else if (!/\b(?:text|application)\/[paijsonxhtml+]{4,}\b/i.test(contentType)) {
             /* For now we only store the textual html or json representation
              * of the page. Later on we could extend this to other mime
              * types or even simulating a full client. This could be done
