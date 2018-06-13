@@ -654,6 +654,7 @@ WHERE EXISTS ( \
         \"pUnscr\".\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
         AND \"pUnscr\".\"lastFinishedTimestamp\" <= ?\n\
         AND \"pUnscr\".\"depth\" <= 1\n\
+        AND \"pUnscr\".\"inProgress\" = false\n\
 )";
     if (excludedHosts.length > 0) {
         baseUrlRequestString += " AND \"baseUrls\".\"baseUrlId\" NOT IN (";
@@ -713,6 +714,7 @@ WHERE \n\
     pathsRequestString += "\
 )\
     AND paths.\"lastFinishedTimestamp\" <= ?\n\
+    AND paths.\"inProgress\" = false\n\
     GROUP BY paths.\"baseUrlBaseUrlId\"\n\
 ) AS \"uniqueMaxima\" INNER JOIN paths AS res ON \n\
 res.\"numberOfDistinctHits\" = \"uniqueMaxima\".\"numDistinct\"\n\
@@ -725,6 +727,19 @@ AND res.\"baseUrlBaseUrlId\" = \"uniqueMaxima\".host;";
         pathsReplacements
     );
     entriesToScrape = entriesToScrape[0];
+
+    let pathIds = entriesToScrape.map((entry) => entry.pathid);
+
+    await db.path.update(
+        {inProgress: true},
+        {
+            where: {
+                pathId: {
+                    [Op.in]: pathIds,
+                },
+            },
+        },
+    );
 
     for (let i = 0; i < entriesToScrape.length; i++) {
         let entryToScrape = entriesToScrape[i];
