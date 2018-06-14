@@ -639,7 +639,7 @@ db.getEntriesRecursive = async function(
         return [[], false];
     }
     let dbResults = [];
-    let baseUrlReplacements = [dateTime];
+    let baseUrlReplacements = [dateTime, depth];
     let baseUrlRequestString = "\
 SELECT COUNT(contents.\"pathPathId\") as downcnt, \"baseUrls\".\"baseUrlId\"\n\
     FROM \n\
@@ -653,7 +653,7 @@ WHERE EXISTS ( \
     WHERE \n\
         \"pUnscr\".\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
         AND \"pUnscr\".\"lastFinishedTimestamp\" <= ?\n\
-        AND \"pUnscr\".\"depth\" <= 1\n\
+        AND \"pUnscr\".\"depth\" <= ?\n\
         AND \"pUnscr\".\"inProgress\" = false\n\
 )";
     if (excludedHosts.length > 0) {
