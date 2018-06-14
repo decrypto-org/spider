@@ -241,10 +241,15 @@ class Conductor {
             return;
         }
 
+        let isHtml = networkResponse.mimeType == "text/html"
+            || networkResponse.mimeType == "application/xhtml"
+            || networkResponse.mimeType == "application/xhtml+xml"
+            || networkResponse.mimeType == "text/xhtml";
         /** @type{Parser.ParseResult} */
         let urlsList = this.parser.extractOnionURI(
             networkResponse.body,
-            dbResult
+            dbResult,
+            isHtml
         );
 
         if (urlsList.length <= 0) {
