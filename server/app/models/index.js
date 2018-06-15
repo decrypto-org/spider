@@ -719,7 +719,9 @@ WHERE \n\
 res.\"numberOfDistinctHits\" = \"uniqueMaxima\".\"numDistinct\"\n\
 INNER JOIN \"baseUrls\"\
 ON res.\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
-AND res.\"baseUrlBaseUrlId\" = \"uniqueMaxima\".host;";
+AND res.\"baseUrlBaseUrlId\" = \"uniqueMaxima\".host\n\
+LIMIT ?;";
+    pathsReplacements.push(limit)
     let entriesToScrape = await executeQuery(
         pathsRequestString,
         pathsReplacements

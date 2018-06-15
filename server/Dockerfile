@@ -6,6 +6,8 @@ COPY package*.json ./
 
 COPY . .
 
+RUN npm install -g npm
+
 RUN npm install
 
 # Connection to the database
