@@ -693,7 +693,6 @@ SELECT  \"res\".\"subdomain\" AS subdomain,\n\
 FROM \n\
 ( \n\
     SELECT MAX(paths.\"numberOfDistinctHits\") AS \"numDistinct\",\n\
-    MAX(paths.random) AS \"rand\",\n\
     paths.\"baseUrlBaseUrlId\" AS \"host\"\n\
 FROM paths \n\
 WHERE \n\
@@ -720,7 +719,6 @@ WHERE \n\
 res.\"numberOfDistinctHits\" = \"uniqueMaxima\".\"numDistinct\"\n\
 INNER JOIN \"baseUrls\"\
 ON res.\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
-AND res.random = \"uniqueMaxima\".rand \n\
 AND res.\"baseUrlBaseUrlId\" = \"uniqueMaxima\".host;";
     let entriesToScrape = await executeQuery(
         pathsRequestString,
