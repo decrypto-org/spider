@@ -682,44 +682,42 @@ LIMIT ?";
     }
 
     let pathsReplacements = [];
-    let pathsRequestString = "\
+    let pathsRequestString = "WITH result AS (\
 SELECT  \"res\".\"subdomain\" AS subdomain,\n\
         \"baseUrls\".\"baseUrl\" AS url,\n\
         \"baseUrls\".\"baseUrlId\" AS baseUrlId,\n\
         \"res\".\"path\" AS path,\n\
         \"res\".\"pathId\" AS pathId,\n\
         \"res\".\"depth\" AS depth,\n\
-        \"res\".\"secure\" AS secure\n\
+        \"res\".\"secure\" AS secure,\n\
+        ROW_NUMBER() OVER (PARTITION BY res.\"baseUrlBaseUrlId\"\n\
+                            ORDER BY res.\"numberOfDistinctHits\") AS rk\n\
 FROM \n\
-( \n\
-    SELECT MAX(paths.\"numberOfDistinctHits\") AS \"numDistinct\",\n\
-    paths.\"baseUrlBaseUrlId\" AS \"host\"\n\
-FROM paths \n\
-WHERE \n\
-    paths.\"baseUrlBaseUrlId\" in\n\
-    (\n\
+    paths AS res \n\
+    JOIN (\n\
+        values \n\
     ";
 
     for (let i = 0; i < baseUrlResult[0].length; i++) {
         pathsReplacements.push(baseUrlResult[0][i].baseUrlId);
         if (i == baseUrlResult[0].length -1) {
-            pathsRequestString += "?\n";
+            pathsRequestString += "(UUID(?)," + i + ")\n";
         } else {
-            pathsRequestString += "?,\n";
+            pathsRequestString += "(UUID(?)," + i + "),\n";
         }
     }
 
     pathsReplacements.push(dateTime);
     pathsRequestString += "\
-)\
-    AND paths.\"lastFinishedTimestamp\" <= ?\n\
-    AND paths.\"inProgress\" = false\n\
-    GROUP BY paths.\"baseUrlBaseUrlId\"\n\
-) AS \"uniqueMaxima\" INNER JOIN paths AS res ON \n\
-res.\"numberOfDistinctHits\" = \"uniqueMaxima\".\"numDistinct\"\n\
+) AS X (id, ordering) ON X.id = res.\"baseUrlBaseUrlId\"\n\
 INNER JOIN \"baseUrls\"\
 ON res.\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
-AND res.\"baseUrlBaseUrlId\" = \"uniqueMaxima\".host\n\
+WHERE res.\"lastFinishedTimestamp\" <= ?\n\
+ORDER BY X.ordering ASC \n\
+)\n\
+SELECT r.* \n\
+FROM result r \n\
+WHERE r.rk = 1 \n\
 LIMIT ?;";
     pathsReplacements.push(limit)
     let entriesToScrape = await executeQuery(
