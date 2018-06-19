@@ -29,9 +29,6 @@ class Parser {
             "(?:http(s)?:\/\/)?(?:www.)?(?:([-a-z0-9.]+[.]){0,242}((?:[a-z2-7]{16}|[a-z2-7]{56})\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+.~#?&\/=|$]+)?",
             "gi"
         );
-        this.relativeUrlRegexMatch = new RegExp(
-            /\s*(href|action)\s*=\s*(\"([/][^"/][^"]*)\"|\'([/][^'/][^'])\'|[^'">\s]+)/gi
-        );
         this.globalBaseUrlMatch = new RegExp(
             "(?:http(s)?:\/\/)?(?:www.)?((?:[a-z2-7]{16}|[a-z2-7]{56})\.onion)",
             "gi"
@@ -107,58 +104,9 @@ class Parser {
         // group4: The path
 
         let results = [];
+        let $ = cheerio.load(contentString);
         let relativeBaseUrl = fromEntry.url;
         let baseUrlSet = new Set();
-        let m;
-        do {
-            m = this.globalOnionRegexMatch.exec(contentString);
-            if (m) {
-                let secure = false;
-                if (m[1] === "s") {
-                    secure = true;
-                }
-                /** @type{ParseResult} */
-                let result = {
-                    secure: secure,
-                    subdomain: m[2] || "",
-                    baseUrl: m[3],
-                    path: m[4] || "",
-                };
-                results.push(result);
-            }
-        } while (m);
-
-        if (!isHtmlString) {
-            return results;
-        }
-        let $ = cheerio.load(contentString);
-        let baseUrl = $("base").attr("href") || fromEntry.url;
-        let protocol = "http";
-        if (fromEntry.secure) {
-            protocol = "https";
-        }
-        // Groups within relativeUrlRegexMatch:
-        // group1: The full string, inclusive href
-        // group2: The url enclosed in "" or ''
-        // group3/4: The stripped URL (only one is defined)
-        do {
-            m = this.relativeUrlRegexMatch.exec(contentString);
-            if (m) {
-                let path = m[3] || m[4];
-                let result = {
-                    "fullUrl": protocol + "://" + baseUrl + path,
-                    "http": true, /* Only currently supported protocol */
-                    "secure": fromEntry.secure || false, /* fallback */
-                    "www": false,
-                    "baseUrl": baseUrl,
-                    "path": path,
-                };
-                results.push(result);
-            }
-        } while (m);
-        console.log(results);
-        return results;
-
         if (isHtmlString) {
             $("a").each((i, elem) => {
                 let uri = $(elem).attr("href");
@@ -232,7 +180,6 @@ class Parser {
                     baseUrlSet.add(baseUrl[2]);
                 }
             } while (baseUrl);
-
         } else {
             // fallback to slow regex
             let m;

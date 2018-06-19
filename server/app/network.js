@@ -474,7 +474,7 @@ class Network {
             }
             result.statusCode = statusCode;
             result["endTime"] = (new Date).getTime();
-        } else if (!/\b(?:text|application)\/[cvrpaijsonxhtml+]{3,}\b/i.test(
+        } else if (!/\b(?:text|application)\/[paijsonxhtml+]{3,}\b/i.test(
             contentType
         )) {
             /* For now we only store the textual html or json representation
