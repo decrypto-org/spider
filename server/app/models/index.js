@@ -628,21 +628,48 @@ db.getEntriesRandomized = async function({
     return [dbResults, moreData];
 };
 
+/**
+ * Get the entries to the download pool in a recursive manner: we allways 
+ * collect downloads from all hosts first before starting a next round
+ * @param  {number} dateTime      Cutoff unix timestamp: From which timestamp on
+ *                                the scraper should see entries
+ * @param  {number} limit         How many entries should be returned at maximum
+ * @param  {number} depth         The deepest level that will be returned
+ * @param  {Array.<UUIDv4>} excludedHosts UUIDs of hosts that should not be
+ *                                        considered for the pool
+ * @param  {boolean} inverse       Indicate whether the entries with the highest
+ *                                 or lowest link count should be returned first
+ *                                 Depending on the case, it is useful to either
+ *                                 return the most linked page (presumably this
+ *                                 page is of high importance) or the least
+ *                                 linked page (if the most linked urls are
+ *                                 always Icons or similar).
+ * @return {Array.<DbResult>|boolean} The DbResult contains the results
+ *                      returned by the Database.
+ *                      The boolean indicates whether more data is available
+ *                      as of now.
+ *                      Note: this can change, when the network fetches
+ *                      new data. If both, network and DB do not have
+ *                      anything pending, we can conclude that we have
+ *                      finished and exit.
+ */
 db.getEntriesRecursive = async function(
     dateTime,
     limit,
     depth,
-    excludedHosts
+    excludedHosts,
+    inverse
 ) {
     /* eslint-disable no-multi-str */
     if (limit == 0) {
         return [[], false];
     }
+    let sorting = (inverse ? "ASC" : "DESC");
     let dbResults = [];
     let baseUrlReplacements = [dateTime, depth];
     let baseUrlRequestString = "\
 SELECT COUNT(contents.\"pathPathId\") as downcnt, \"baseUrls\".\"baseUrlId\"\n\
-    FROM \n\
+FROM \n\
     \"baseUrls\"\n\
     INNER JOIN paths \"pScr\"\
     ON \"pScr\".\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
@@ -691,7 +718,9 @@ SELECT  \"res\".\"subdomain\" AS subdomain,\n\
         \"res\".\"depth\" AS depth,\n\
         \"res\".\"secure\" AS secure,\n\
         ROW_NUMBER() OVER (PARTITION BY res.\"baseUrlBaseUrlId\"\n\
-                            ORDER BY res.\"numberOfDistinctHits\") AS rk\n\
+                            ORDER BY res.\"numberOfDistinctHits\" " +
+                            sorting +
+                            ") AS rk\n\
 FROM \n\
     paths AS res \n\
     JOIN (\n\
@@ -713,6 +742,7 @@ FROM \n\
 INNER JOIN \"baseUrls\"\
 ON res.\"baseUrlBaseUrlId\" = \"baseUrls\".\"baseUrlId\"\n\
 WHERE res.\"lastFinishedTimestamp\" <= ?\n\
+AND res.\"inProgress\" = FALSE \n\
 ORDER BY X.ordering ASC \n\
 )\n\
 SELECT r.* \n\
@@ -915,7 +945,7 @@ db.getNeverScrapedEntries = async function(limit, cutoffValue) {
             },
         },
     );
-    return dbResults;
+    return [dbResults, dbResults.length >= limit];
     /* eslint-enable no-multi-str */
 };
 

@@ -6,7 +6,7 @@ networks:
 
 volumes:
   postgres-vol:
-  spider-log-vol:
+  log-vol:
 
 services:
   db:
@@ -46,7 +46,7 @@ services:
           - tor
           - onionnet
     volumes:
-      - spider-log-vol:/home/node/log
+      - log-vol:/home/node/log
       - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
     command: $tdse_server_start_command
     stdin_open: true

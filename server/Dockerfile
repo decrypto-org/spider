@@ -4,11 +4,11 @@ WORKDIR /usr/src/tdse/spider
 
 COPY package*.json ./
 
-COPY . .
-
 RUN npm install -g npm
 
 RUN npm install
+
+COPY . .
 
 # Connection to the database
 EXPOSE 10864

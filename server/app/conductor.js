@@ -132,17 +132,71 @@ class Conductor {
             this.network.waitingRequestPerHost,
             (pending) => pending >= this.network.maxSimultaneousRequestsPerHost
         );
-        // Get the not yet scraped baseUrls path
-        // let unscrapedDbResults = await db.getNeverScrapedEntries(
-        //     limit,
-        //     this.cutOffDepth
-        // );
-        let [dbResults, available] = await db.getEntriesRecursive(
-            0, /* dateTime */
-            limit,
-            this.cutOffDepth,
-            Object.keys(excludeKeyObj)
-        );
+        let dbResults = [];
+        let available = false;
+        let inverse = false;
+        switch (process.env.SCRAPING_STRATEGY) {
+            case "new":
+                [dbResults, available] = await db.getNeverScrapedEntries(
+                    limit,
+                    this.cutOffDepth
+                );
+                break;
+            case "prioritized":
+                 [dbResults, available] = await db.getEntriesPrioritized(
+                    0, /* dateTime */
+                    limit - dbResults.length,
+                    this.cutOffDepth,
+                    Object.keys(excludeKeyObj)
+                );
+                break;
+            case "random":
+                [dbResults, available] = await db.getEntriesRandomized({
+                    dateTime: 0,
+                    limit: limit - dbResults.length,
+                    cutoffValue: this.cutOffDepth,
+                    excludedHosts: Object.keys(excludeKeyObj),
+                });
+                break;
+            case "combined":
+                let [unscrapedDbResults, newAvailable] = await db.getNeverScrapedEntries(
+                    limit,
+                    this.cutOffDepth
+                );
+                dbResults = unscrapedDbResults;
+                if (unscrapedDbResults.length >= limit) {
+                    break;
+                }
+                let [prioritizedPages, prioAvailable] = await db.getEntriesPrioritized(
+                    0, /* dateTime */
+                    limit - dbResults.length,
+                    this.cutOffDepth,
+                    Object.keys(excludeKeyObj)
+                );
+                dbResults.push(...prioritizedPages);
+                if (dbResults.length >= limit) {
+                    break;
+                }
+                let [randomizedDbResults, randAvailable] = await db.getEntriesRandomized({
+                    dateTime: 0,
+                    limit: limit - dbResults.length,
+                    cutoffValue: this.cutOffDepth,
+                    excludedHosts: Object.keys(excludeKeyObj),
+                });
+                dbResults.push(...randomizedDbResults);
+                break;
+            case "inverse":
+                inverse = true;
+            case "recursive":
+            default:
+                [dbResults, available] = await db.getEntriesRecursive(
+                    0, /* dateTime */
+                    limit,
+                    this.cutOffDepth,
+                    Object.keys(excludeKeyObj)
+                );
+                break;
+        }
         if (dbResults.length == 0 && !available) {
             logger.info("No new entries from db. Nothing to add to pool");
             this.gettingNewDataFromDb = false;
