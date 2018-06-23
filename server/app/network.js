@@ -126,6 +126,8 @@ class Network {
             this.waitingRequestPerHost[dbResult.baseUrlId] = 0;
         }
         this.waitingRequestPerHost[dbResult.baseUrlId] += 1;
+        let subdomain = ((dbResult.subdomain == null) ?
+            "" : dbResult.subdomain);
         let url = dbResult.subdomain + dbResult.url;
         if (url.length == 0) {
             console.error("url is empty for " + JSON.stringify(dbResult));
