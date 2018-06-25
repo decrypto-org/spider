@@ -135,6 +135,7 @@ class Conductor {
         let dbResults = [];
         let available = false;
         let inverse = false;
+        /* eslint-disable no-fallthrough */
         switch (process.env.SCRAPING_STRATEGY) {
             case "new":
                 [dbResults, available] = await db.getNeverScrapedEntries(
@@ -158,8 +159,9 @@ class Conductor {
                     excludedHosts: Object.keys(excludeKeyObj),
                 });
                 break;
-            case "combined":
-                let [unscrapedDbResults, newAvailable] = await db.getNeverScrapedEntries(
+            case "combined": {
+                let [unscrapedDbResults, newAvailable] =
+                await db.getNeverScrapedEntries(
                     limit,
                     this.cutOffDepth
                 );
@@ -167,7 +169,8 @@ class Conductor {
                 if (unscrapedDbResults.length >= limit) {
                     break;
                 }
-                let [prioritizedPages, prioAvailable] = await db.getEntriesPrioritized(
+                let [prioritizedPages, prioAvailable] =
+                await db.getEntriesPrioritized(
                     0, /* dateTime */
                     limit - dbResults.length,
                     this.cutOffDepth,
@@ -177,14 +180,17 @@ class Conductor {
                 if (dbResults.length >= limit) {
                     break;
                 }
-                let [randomizedDbResults, randAvailable] = await db.getEntriesRandomized({
+                let [randomizedDbResults, randAvailable] =
+                await db.getEntriesRandomized({
                     dateTime: 0,
                     limit: limit - dbResults.length,
                     cutoffValue: this.cutOffDepth,
                     excludedHosts: Object.keys(excludeKeyObj),
                 });
                 dbResults.push(...randomizedDbResults);
+                available = randAvailable && prioAvailable && newAvailable;
                 break;
+            }
             case "inverse":
                 inverse = true;
             case "recursive":
@@ -193,10 +199,13 @@ class Conductor {
                     0, /* dateTime */
                     limit,
                     this.cutOffDepth,
-                    Object.keys(excludeKeyObj)
+                    Object.keys(excludeKeyObj),
+                    inverse
                 );
                 break;
         }
+        /* eslint-enable no-fallthrough */
+
         if (dbResults.length == 0 && !available) {
             logger.info("No new entries from db. Nothing to add to pool");
             this.gettingNewDataFromDb = false;

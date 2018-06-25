@@ -516,9 +516,9 @@ class Network {
                     // Detect mimeType if not available. If mimeType
                     // is not on our whitelist, we'll proceed as above
                     // in the else if case
-                    if (contentType === "[ NO CONTENT TYPE HEADER PROVIDED ]"){
+                    if (contentType === "[ NO CONTENT TYPE HEADER PROVIDED ]") {
                         let contentType = await this.detectMimeType(
-                            Buffer.from(rawData, 'utf8')
+                            Buffer.from(rawData, "utf8")
                         ).catch(
                             (err) => {
                                 logger.warn(url + path);
@@ -542,7 +542,7 @@ class Network {
                             // Destroy all references to it by setting it to
                             // null
                             rawData = null;
-                            return result
+                            return result;
                         }
                         result["mimeType"] = contentType.split(";")[0];
                     }
@@ -594,7 +594,7 @@ class Network {
     async detectMimeType(inputBuffer) {
         return new Promise((resolve, reject) => {
             magic.detect(inputBuffer, (err, result) => {
-                if (err != null){
+                if (err != null) {
                     reject(err);
                 }
                 resolve(result);

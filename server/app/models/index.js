@@ -629,7 +629,7 @@ db.getEntriesRandomized = async function({
 };
 
 /**
- * Get the entries to the download pool in a recursive manner: we allways 
+ * Get the entries to the download pool in a recursive manner: we allways
  * collect downloads from all hosts first before starting a next round
  * @param  {number} dateTime      Cutoff unix timestamp: From which timestamp on
  *                                the scraper should see entries
@@ -749,7 +749,7 @@ SELECT r.* \n\
 FROM result r \n\
 WHERE r.rk = 1 \n\
 LIMIT ?;";
-    pathsReplacements.push(limit)
+    pathsReplacements.push(limit);
     let entriesToScrape = await executeQuery(
         pathsRequestString,
         pathsReplacements
