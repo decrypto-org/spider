@@ -2,6 +2,8 @@ let {logger} = require("./library/logger");
 let TorController = require("./library/torController");
 let Parser = require("./parser");
 
+let mmm = require("mmmagic");
+let magic = new mmm.Magic(mmm.MAGIC_MIME);
 const ProxyAgent = require("proxy-agent");
 
 /**
@@ -107,6 +109,10 @@ class Network {
         this.torController = torController;
         this.parser = new Parser();
 
+        this.mimeTypeWhitelist = new RegExp(
+            !/\b(?:text|application)\/[vcrpaijsonxhtml+]{3,}\b/i
+        );
+
         // Those arrays are bound in size by the number of concurrently allowed
         // requests. (e.g. MAX_SLOTS)
         this.waitingForSlot = [];
@@ -136,7 +142,7 @@ class Network {
                 "path": dbResult.path,
                 "body": "",
                 "statusCode": 400,
-                "mimeType": "[NO CONTENT TYPE PROVIDED]",
+                "mimeType": "[ NO CONTENT TYPE HEADER PROVIDED ]",
                 "startTime": 0,
             };
             logger.error("Tried to construct empty url.");
@@ -476,9 +482,9 @@ class Network {
             }
             result.statusCode = statusCode;
             result["endTime"] = (new Date).getTime();
-        } else if (!/\b(?:text|application)\/[vcrpaijsonxhtml+]{3,}\b/i.test(
+        } else if (this.mimeTypeWhitelist.test(
             contentType
-        )) {
+        ) && contentType != "[ NO CONTENT TYPE HEADER PROVIDED ]") {
             /* For now we only store the textual html or json representation
              * of the page. Later on we could extend this to other mime
              * types or even simulating a full client. This could be done
@@ -504,9 +510,42 @@ class Network {
             response.on("data", (chunk) => {
                 rawData += chunk;
             });
-            return new Promise((resolve, reject) => {
-                response.on("end", () => {
+            return new Promise(async (resolve, reject) => {
+                response.on("end", async () => {
                     result["endTime"] = (new Date).getTime();
+                    // Detect mimeType if not available. If mimeType
+                    // is not on our whitelist, we'll proceed as above
+                    // in the else if case
+                    if (contentType === "[ NO CONTENT TYPE HEADER PROVIDED ]"){
+                        let contentType = await this.detectMimeType(
+                            Buffer.from(rawData, 'utf8')
+                        ).catch(
+                            (err) => {
+                                logger.warn(url + path);
+                                logger.warn("Unable to detect MIME Type.");
+                                logger.warn("Discarding raw data...");
+                                // Actively discarding the data to make sure
+                                // it is not used any further.
+                                // Destroy all references to it by setting it to
+                                // null
+                                rawData = null;
+                                return result;
+                            });
+                        if (this.mimeTypeWhitelist.test(contentType)) {
+                            logger.warn(url + path);
+                            logger.warn("Unsuported MIME Type. \n" +
+                                "Only accept html and json, but received " +
+                                contentType
+                            );
+                            // Actively discarding the data to make sure
+                            // it is not used any further.
+                            // Destroy all references to it by setting it to
+                            // null
+                            rawData = null;
+                            return result
+                        }
+                        result["mimeType"] = contentType.split(";")[0];
+                    }
                     try {
                         let body = this.parser.removeBase64Media(rawData);
                         result.body = body;
@@ -537,6 +576,29 @@ class Network {
         return new Promise((resolve, reject) => {
             resolve(result);
             return;
+        });
+    }
+
+    /**
+     * Try to detect the mimeType of the input buffer. This is useful
+     * in cases where no content-type header is not set. This function is
+     * basically an async wrapper for the callback based detection method
+     * of mmmagic.
+     * @param  {String|Buffer} inputBuffer The buffer containing the data
+     * @return {Promise}                   If the promise will be resolved, the
+     *                                     return string contains the mimeType.
+     *                                     If the promise is rejected, we were
+     *                                     not able to detect the mimeType and
+     *                                     therefor throw away the data.
+     */
+    async detectMimeType(inputBuffer) {
+        return new Promise((resolve, reject) => {
+            magic.detect(inputBuffer, (err, result) => {
+                if (err != null){
+                    reject(err);
+                }
+                resolve(result);
+            });
         });
     }
 }
