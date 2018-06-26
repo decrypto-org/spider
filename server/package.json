@@ -17,7 +17,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:jogli5er/tdse-spider.git"
+    "url": "git@github.com:decrypto-org/spider.git"
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",

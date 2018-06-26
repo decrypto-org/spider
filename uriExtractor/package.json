@@ -1,0 +1,46 @@
+{
+  "name": "uriextractor",
+  "version": "0.0.1",
+  "description": "Extracts uri's from any textual representation by using a regex. The data is loaded in batches from the DB and written back in batches. Further it uses only one db connection to not degrade the performance of the actual scraper.",
+  "private": true,
+  "main": "extractor.js",
+  "scripts": {
+    "test": "cp ../server/.env . && mocha",
+    "start": "cp ../server/.env . && node --use_strict extractor.js",
+    "debugHost": "cp ../server/.env . && export DEBUG=true && node --inspect-brk --use_strict extractor.js",
+    "debugVirt": "cp ../server/.env . && export DEBUG=true && node --inspect-brk=0.0.0.0:65001 --use_strict extractor.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/decrypto-org/spider.git"
+  },
+  "keywords": [
+    "darknet",
+    "Tor",
+    "scraper",
+    "onion",
+    "uri",
+    "extraction"
+  ],
+  "author": "Roman Brunner (robrunne@student.ethz.ch)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/decrypto-org/spider/issues"
+  },
+  "homepage": "https://github.com/decrypto-org/spider#readme",
+  "dependencies": {
+    "sequelize": "^4.37.7",
+    "pg": "^7.4.3",
+    "dotenv": "^5.0.1",
+    "dotenv-expand": "^4.2.0",
+    "dotenv-parse-variables": "^0.1.0"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "chai-http": "^4.0.0",
+    "eslint": "^4.19.1",
+    "eslint-config-google": "^0.9.1",
+    "jsdoc": "^3.5.5",
+    "mocha": "^5.1.1"
+  }
+}

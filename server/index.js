@@ -71,7 +71,7 @@ if (commandLineOptions.attach != undefined) {
     attach = commandLineOptions.attach;
 } else if (process.env.ATTACH != "") {
     attach = process.env.ATTACH === "true";
-}
+} // else case is already handled by setting default value false above
 
 logger.info("Starting spider");
 main.init(startUrls, depth, attach);
