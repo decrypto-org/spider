@@ -26,16 +26,16 @@ class Parser {
         // We are matching as broad as possible.
         /* eslint-disable max-len, no-useless-escape */
         this.globalOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www.)?(?:([-a-z0-9.]+[.]){0,242}((?:[a-z2-7]{16}|[a-z2-7]{56})\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+.~#?&\/=|$]+)?",
-            "gi"
+            "(?:http(s)?:\/\/)?(?:www\\.)?(?:((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?)(\/(?:[^\"\'\\s<]*|$))?",
+            "ugi"
         );
         this.globalBaseUrlMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www.)?((?:[a-z2-7]{16}|[a-z2-7]{56})\.onion)",
-            "gi"
+            "(?:http(s)?:\/\/)?(?:www\\.)?(?:((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion))",
+            "ugi"
         );
         this.singleOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www\.)?(?:([-a-z0-9\.]+[.]){0,242}((?:[a-z2-7]{16}|[a-z2-7]{56})\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+\.~#?&\/=]*)?",
-            "i"
+            "(?:http(s)?:\/\/)?(?:www\\.)?(?:((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?)(\/(?:[^\"\'\\s<]*|$))?",
+            "ui"
         );
 
         // Note: We only keep sites that have textual data encoded, the rest
