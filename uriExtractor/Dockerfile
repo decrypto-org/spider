@@ -2,21 +2,21 @@ FROM robrunne/tdse-dependencies:1.0.0
 
 WORKDIR /usr/src/tdse/spider/server
 
-COPY ../server/package*.json ./
+COPY ./server .
 
 RUN npm install -g npm
 
 RUN npm install
 
-COPY ../server .
-
 WORKDIR /usr/src/tdse/spider/extractor
 
-COPY package*.json ./
+COPY ./uriExtractor/package*.json ./
+
+COPY ./server/.env ./
 
 RUN npm install
 
-COPY . .
+COPY ./uriExtractor .
 
 # Connection to the database
 EXPOSE 10864

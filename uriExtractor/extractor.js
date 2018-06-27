@@ -4,20 +4,23 @@ let variableExpansion = require("dotenv-expand");
 let uuidv4 = require("uuid/v4");
 
 let extractorEnv = dotenv.config();
-extractorEnv = variableExpansion(extractorEnv);
+variableExpansion(extractorEnv);
 
 // We have to first load the settings from the .env file, hence
 // we require the db afterwards
 let db = require("../server/app/models");
 
-let Op = db.Sequelize.Op;
 let parser = new Parser();
 
 let queryResults = [];
 let currentOffset = 0;
-let limit = 2000;
 let errorCount = 0;
 
+/**
+ * Generate a dbResult out of a query result.
+ * @param  {queryResult} queryResult A raw postgres query row result
+ * @return {DbResult}             Return a dbResult object.
+ */
 function getDbResult(queryResult) {
     return {
         "url": queryResult.baseUrl,
@@ -32,22 +35,28 @@ function getDbResult(queryResult) {
     };
 }
 
-async function insertParseResultsIntoDb (parseResults, dbResult) {
-    let linkList = [];
+/**
+ * Insert the found paths into the database, including generation of links
+ * and updates of link counts for prioritization
+ * @param  {Array.<Parser.ParseResult>} parseResults An array of parsed links
+ * @param  {DbResult} dbResult     The dbResult from which the content was
+ *                                 parsed
+ */
+async function insertParseResultsIntoDb(parseResults, dbResult) {
     let uriList = [];
 
     if (parseResults.length <= 0) {
         return;
     }
 
-    for(let url of parseResults) {
+    for (let url of parseResults) {
         let path = url.path || "/";
         uriList.push({
             baseUrl: url.baseUrl,
             subdomain: url.subdomain,
             path: path,
             depth: dbResult.depth + 1,
-            secure: url.secure
+            secure: url.secure,
         });
     }
 
@@ -60,7 +69,7 @@ async function insertParseResultsIntoDb (parseResults, dbResult) {
     "INSERT INTO links \n" +
         "(\n" +
             "\"linkId\",\n" +
-            "\"sourcePathId\",\n" + 
+            "\"sourcePathId\",\n" +
             "\"destinationPathId\",\n" +
             "\"timestamp\"\n" +
         ")\n" +
@@ -72,7 +81,7 @@ async function insertParseResultsIntoDb (parseResults, dbResult) {
             uuidv4(),
             dbResult.pathId,
             pathId,
-            dbResult.time,]
+            dbResult.time]
         );
         if (i == pathIds.length - 1) {
             linkInsertString += "(?, ?, ?, ?)\n";
@@ -81,7 +90,7 @@ async function insertParseResultsIntoDb (parseResults, dbResult) {
         }
     }
     linkInsertString += "ON CONFLICT (\"sourcePathId\", \"destinationPathId\")"+
-    "DO NOTHING;"
+    "DO NOTHING;";
 
     try {
         await db.sequelize.query(
@@ -94,10 +103,10 @@ async function insertParseResultsIntoDb (parseResults, dbResult) {
         return;
     }
 
-    if(pathIds.length <= 0){
+    if (pathIds.length <= 0) {
         return;
     }
-    
+
     // Update distinct link count on paths
     // First get the counts for the just inserted paths/links
     /* eslint-disable no-multi-str */
@@ -169,7 +178,12 @@ async function insertParseResultsIntoDb (parseResults, dbResult) {
     });
 }
 
-async function orchestrateExtraction () {
+/**
+ * Run the extraction process until through all contents once. This
+ * can be thought of as a "DevOps" helper.
+ */
+async function orchestrateExtraction() {
+    let dbResult = [];
     do {
         let getContentsForExtractionString = "" +
         "SELECT *\n" +
@@ -192,7 +206,7 @@ async function orchestrateExtraction () {
                 getContentsForExtractionString,
                 {replacements: replacements}
             );
-        } catch(err) {
+        } catch (err) {
             console.error(err.message);
             console.error(err.stack);
             errorCount += 1;
@@ -206,27 +220,14 @@ async function orchestrateExtraction () {
         queryResults = queryResults[0];
         currentOffset += queryResults.length;
 
-        // dbResult = await db.path.findAll({
-        //     where: {
-        //         lastSuccessfulTimestamp: {
-        //             [Op.gt]: 0,
-        //         },
-        //     },
-        //     order: [
-        //         ["lastSuccessfulTimestamp", "ASC"],
-        //     ],
-        //     include: [{
-        //         model: db.content,
-        //     }, {
-        //         model: db.baseUrl,
-        //     }],
-        //     offset: currentOffset,
-        //     limit: limit,
-        // });
         for (let i = 0; i < queryResults.length; i++) {
             let queryResult = queryResults[i];
-            console.log("lookin at entry " + JSON.stringify(queryResult));
-            let dbResult = getDbResult(queryResult);
+            console.log(
+                "Processing content from " +
+                queryResult.baseUrl +
+                queryResult.path
+            );
+            dbResult = getDbResult(queryResult);
             let parseResults = parser.extractOnionURI(
                 dbResult.content,
                 dbResult,
