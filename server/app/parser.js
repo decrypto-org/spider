@@ -26,7 +26,7 @@ class Parser {
         // We are matching as broad as possible.
         /* eslint-disable max-len, no-useless-escape */
         this.globalOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www\\.)?(?:((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?)(\/(?:[^\"\'\\s<]*|$))?",
+            "(?:http(s)?:\/\/)?(?:www\\.)?((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?(\/[^\"\'\\s<]*)?",
             "ugi"
         );
         this.globalBaseUrlMatch = new RegExp(
@@ -34,14 +34,14 @@ class Parser {
             "ugi"
         );
         this.singleOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www\\.)?(?:((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?)(\/(?:[^\"\'\\s<]*|$))?",
+            "(?:http(s)?:\/\/)?(?:www\\.)?((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?(\/[^\"\'\\s<]*)?",
             "ui"
         );
 
         // Note: We only keep sites that have textual data encoded, the rest
         // will be discarded as of now.
         this.base64Regex = new RegExp(
-            /\s*data:((?!text)[a-z]+\/[a-z+-]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/gi
+            /\s*data:((?!text)[a-z0-9]+\/[a-z+-0-9]+(;[a-z0-9\-]+\=[a-z0-9\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/gi
         );
         /* eslint-enable max-len, no-useless-escape */
     }
@@ -105,7 +105,7 @@ class Parser {
 
         let results = [];
         let $ = cheerio.load(contentString);
-        let relativeBaseUrl = fromEntry.url;
+        let relativeBaseUrl = fromEntry.baseUrl;
         let baseUrlSet = new Set();
         if (isHtmlString) {
             $("a").each((i, elem) => {
@@ -129,6 +129,22 @@ class Parser {
                     });
                     return true;
                 } else if (uri.startsWith("/") && fromEntry == {}) {
+                    if (relativeBaseUrl) {
+                        results.push({
+                            secure: fromEntry.secure || false,
+                            subdomain: fromEntry.subdomain || "",
+                            baseUrl: relativeBaseUrl,
+                            path: uri,
+                        });
+                        return true;
+                    }
+                    logger.warn(
+                        "[PARSER]\n"
+                        + "Found relative URI, but no fromEntry was specified\n"
+                        + "Ignoring this entry."
+                    );
+                    return true;
+                } else if (uri.startsWith("?")) {
                     if (relativeBaseUrl) {
                         results.push({
                             secure: fromEntry.secure || false,
@@ -182,24 +198,31 @@ class Parser {
             } while (baseUrl);
         } else {
             // fallback to slow regex
-            let m;
-            do {
-                m = this.globalOnionRegexMatch.exec(contentString);
-                if (m) {
-                    let secure = false;
-                    if (m[1] === "s") {
-                        secure = true;
-                    }
-                    /** @type{ParseResult} */
-                    let result = {
-                        secure: secure,
-                        subdomain: m[2] || "",
-                        baseUrl: m[3],
-                        path: m[4] || "",
-                    };
-                    results.push(result);
+            let splittedStrings = contentString.split(/\r?\n/);
+            for (let i = 0; i < splittedStrings.length; i++) {
+                let splitString = splittedStrings[i];
+                if (!splitString.includes(".onion")){
+                    continue;
                 }
-            } while (m);
+                let m;
+                do {
+                    m = this.globalOnionRegexMatch.exec(splitString);
+                    if (m) {
+                        let secure = false;
+                        if (m[1] === "s") {
+                            secure = true;
+                        }
+                        /** @type{ParseResult} */
+                        let result = {
+                            secure: secure,
+                            subdomain: m[2] || "",
+                            baseUrl: m[3],
+                            path: m[4] || "",
+                        };
+                        results.push(result);
+                    }
+                } while (m);
+            }
         }
         return results;
     }

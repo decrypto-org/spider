@@ -49,7 +49,8 @@ describe("Parser.extractOnionURI", () => {
         result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
         result[0].path.should.equal("");
         result = parser.extractOnionURI(extractUriHtml, testDbResponse);
-        result.length.should.equal(297);
+        console.log(result);
+        result.length.should.equal(298);
         done();
     });
 });
@@ -58,7 +59,7 @@ describe("Parser.removeBase64Media", () => {
     let parser = new Parser();
     it("should return a string without any media content", (done) => {
         let result = parser.removeBase64Media(replaceBase64Html);
-        result.split("[OMITTED MEDIA DATA]").length.should.equal(3);
+        result.split("[OMITTED MEDIA DATA]").length.should.equal(4);
         done();
     });
 });

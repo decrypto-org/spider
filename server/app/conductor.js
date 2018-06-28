@@ -73,7 +73,8 @@ class Conductor {
             for (let rawUrl of lineOfUrls) {
                 let parsedUrl = this.parser.extractOnionURI(
                     rawUrl,
-                    "" /* baseUrl */
+                    "" /* baseUrl */,
+                    false
                 );
                 startUrlsNormalized.push(...parsedUrl);
             }
