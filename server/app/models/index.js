@@ -205,8 +205,8 @@ db.bulkInsertUri = async function(
         });
         return index == auxiliaryIndex;
     });
-    if (uriDefinitions.length == 0) {
-        return {};
+    if (uriDefinitions.length <= 0) {
+        return [];
     }
     // Now lets build those requests:
     let baseUrlRequestString = "\

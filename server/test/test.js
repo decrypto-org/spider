@@ -30,7 +30,7 @@ let replaceBase64Html = fs.readFileSync(
     __dirname + "/data/base64.html"
 ).toString("utf8");
 let testDbResponse = {
-    "baseUrl": "testBaseUrl.onion",
+    "url": "testBaseUrl.onion",
     "secure": true,
 };
 /* eslint-disable max-len */
@@ -49,11 +49,7 @@ describe("Parser.extractOnionURI", () => {
         result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
         result[0].path.should.equal("");
         result = parser.extractOnionURI(extractUriHtml, testDbResponse);
-        for (let i = 0; i<result.length; i++) {
-            if(result[i].baseUrl === "") {
-                console.log(result[i]);
-            }
-        }
+        console.log(result);
         result.length.should.equal(305);
         done();
     });
