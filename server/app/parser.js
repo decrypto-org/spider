@@ -30,7 +30,7 @@ class Parser {
             "ugi"
         );
         this.globalBaseUrlMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www\\.)?(?:((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion))",
+            "(?:http(s)?:\/\/)?(?:www\\.)?((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)",
             "ugi"
         );
         this.singleOnionRegexMatch = new RegExp(
@@ -182,7 +182,7 @@ class Parser {
             let baseUrl;
             do {
                 baseUrl = this.globalBaseUrlMatch.exec(contentString);
-                if (baseUrl && !baseUrlSet.has(baseUrl[2])) {
+                if (baseUrl && !baseUrlSet.has(baseUrl[3])) {
                     let secure = false;
                     if (baseUrl[1] === "s") {
                         secure = true;
@@ -190,10 +190,10 @@ class Parser {
                     results.push({
                         secure: secure,
                         subdomain: "",
-                        baseUrl: baseUrl[2],
+                        baseUrl: baseUrl[3],
                         path: "",
                     });
-                    baseUrlSet.add(baseUrl[2]);
+                    baseUrlSet.add(baseUrl[3]);
                 }
             } while (baseUrl);
         } else {

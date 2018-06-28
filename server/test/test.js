@@ -49,8 +49,12 @@ describe("Parser.extractOnionURI", () => {
         result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
         result[0].path.should.equal("");
         result = parser.extractOnionURI(extractUriHtml, testDbResponse);
-        console.log(result);
-        result.length.should.equal(298);
+        for (let i = 0; i<result.length; i++) {
+            if(result[i].baseUrl === "") {
+                console.log(result[i]);
+            }
+        }
+        result.length.should.equal(305);
         done();
     });
 });
