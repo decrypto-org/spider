@@ -52,7 +52,7 @@ async function insertParseResultsIntoDb(parseResults, dbResult) {
     for (let url of parseResults) {
         let path = url.path || "/";
         uriList.push({
-            url: url.baseUrl,
+            baseUrl: url.baseUrl,
             subdomain: url.subdomain,
             path: path,
             depth: dbResult.depth + 1,
