@@ -110,7 +110,8 @@ class Network {
         this.parser = new Parser();
 
         this.mimeTypeWhitelist = new RegExp(
-            !/\b(?:text|application)\/[vcrpaijsonxhtml+]{3,}\b/i
+            "\\b(?:text|application)\/[vcrpaijsonxhtml+]{3,\}\\b",
+            "i"
         );
 
         // Those arrays are bound in size by the number of concurrently allowed
@@ -482,9 +483,9 @@ class Network {
             }
             result.statusCode = statusCode;
             result["endTime"] = (new Date).getTime();
-        } else if (this.mimeTypeWhitelist.test(
+        } else if (!this.mimeTypeWhitelist.test(
             contentType
-        ) && contentType != "[ NO CONTENT TYPE HEADER PROVIDED ]") {
+        ) || contentType != "[ NO CONTENT TYPE HEADER PROVIDED ]") {
             /* For now we only store the textual html or json representation
              * of the page. Later on we could extend this to other mime
              * types or even simulating a full client. This could be done
@@ -531,7 +532,7 @@ class Network {
                                 rawData = null;
                                 return result;
                             });
-                        if (this.mimeTypeWhitelist.test(contentType)) {
+                        if (!this.mimeTypeWhitelist.test(contentType)) {
                             logger.warn(url + path);
                             logger.warn("Unsuported MIME Type. \n" +
                                 "Only accept html and json, but received " +

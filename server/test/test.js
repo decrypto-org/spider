@@ -64,6 +64,27 @@ describe("Parser.removeBase64Media", () => {
     });
 });
 
+describe("Network only downloads whitelisted data", () => {
+    let networkInstance = new network.Network(1, null);
+    let mimeTypeWhitelist = networkInstance.mimeTypeWhitelist;
+    it("should allow text based mime types", (done) => {
+        (!mimeTypeWhitelist.test("text/html")).should.equal(false);
+        (!mimeTypeWhitelist.test("text/csv")).should.equal(false);
+        (!mimeTypeWhitelist.test("text/xhtml+xml")).should.equal(false);
+        done();
+    });
+    it("should disallow images", (done) => {
+        (!mimeTypeWhitelist.test("image/png")).should.equal(true);
+        (!mimeTypeWhitelist.test("image/jpeg")).should.equal(true);
+        (!mimeTypeWhitelist.test("image/jpeg+utf8")).should.equal(true);
+        done();
+    });
+    it("shoul allow for application data", (done) => {
+        (!mimeTypeWhitelist.test("application/xhtml-xml")).should.equal(false);
+        done();
+    });
+});
+
 describe("Conductor.insertUriIntoDB", () => {
     it("should insert a new baseUrl if no such entry existed before, unique on baseUrl field");
     it("should not insert a new baseUrl entry into the DB if already on exists");
