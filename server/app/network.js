@@ -108,12 +108,15 @@ class Network {
         this.pool = [];
         this.torController = torController;
         this.parser = new Parser();
-
+        /* eslint-disable no-useless-escape */
+        // Note: linter says that some of the escapes are unnecessary, however
+        // when the regex is compiled without them, it produces not the same
+        // behaving regex
         this.mimeTypeWhitelist = new RegExp(
             "\\b(?:text|application)\/[vcrpaijsonxhtml+]{3,\}\\b",
             "i"
         );
-
+        /* eslint-enable no-useless-escape */
         // Those arrays are bound in size by the number of concurrently allowed
         // requests. (e.g. MAX_SLOTS)
         this.waitingForSlot = [];
@@ -485,7 +488,7 @@ class Network {
             result["endTime"] = (new Date).getTime();
         } else if (!this.mimeTypeWhitelist.test(
             contentType
-        ) || contentType != "[ NO CONTENT TYPE HEADER PROVIDED ]") {
+        ) && contentType != "[ NO CONTENT TYPE HEADER PROVIDED ]") {
             /* For now we only store the textual html or json representation
              * of the page. Later on we could extend this to other mime
              * types or even simulating a full client. This could be done

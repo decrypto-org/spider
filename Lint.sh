@@ -35,4 +35,8 @@ printf "Linting tests\n"
 eslint --config .eslintrc.js --fix server/test/**
 printf "Linting uriExtractor.extractor\n"
 eslint --config .eslintrc.js --fix uriExtractor/extractor.js
+printf "Linting dataPreprocessing.models\n"
+eslint --config .eslintrc.js --fix dataPreprocessing/models/**
+printf "Linting dataPreprocessing.index\n"
+eslint --config .eslintrc.js --fix dataPreprocessing/index.js
 printf "Completed - Code adheres to standard\n"

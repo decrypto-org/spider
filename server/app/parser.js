@@ -201,7 +201,7 @@ class Parser {
             let splittedStrings = contentString.split(/\r?\n/);
             for (let i = 0; i < splittedStrings.length; i++) {
                 let splitString = splittedStrings[i];
-                if (!splitString.includes(".onion")){
+                if (!splitString.includes(".onion")) {
                     continue;
                 }
                 let m;

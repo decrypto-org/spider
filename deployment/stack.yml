@@ -96,3 +96,24 @@ services:
       - "db"
     stdin_open: true
     tty: true
+
+  preprocessor:
+    image: robrunne/tdse-data-preprocessor:1.0.0
+    restart: always
+    environment:
+      TDSE_DB_NAME: $TDSE_DB_NAME
+      TDSE_DB_USER: $TDSE_DB_USER
+      TDSE_DB_PASSWORD: $TDSE_DB_PASSWORD
+      TDSE_DB_HOST: spider_db_1
+      TDSE_DB_PORT: $TDSE_DB_PORT
+      TDSE_TOR_HOST: spider_tor_1
+      TDSE_TOR_PORT: 9000
+      TDSE_LOG_LOCATION: /home/node/log
+    networks:
+      frontend:
+      backend:
+    command: bash
+    depends_on:
+      - "db"
+    stdin_open: true
+    tty: true

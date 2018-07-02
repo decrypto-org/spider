@@ -1,0 +1,49 @@
+{
+  "name": "datapreprocessing",
+  "version": "0.0.1",
+  "description": "Extracts contents from html strings and classifies the language using franc.",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "test": "mocha",
+    "start": "node index.js",
+    "runHost": "cp ../server/.env . && node index.js",
+    "debugHost": "cp ../server/.env . && export DEBUG=true && node --inspect-brk index.js",
+    "debugVirt": "export DEBUG=true && node --inspect-brk=0.0.0.0:65001 index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/decrypto-org/spider.git"
+  },
+  "keywords": [
+    "language",
+    "detection",
+    "html",
+    "extraction"
+  ],
+  "author": "Roman Brunner (robrunne@student.ethz.ch)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/decrypto-org/spider/issues"
+  },
+  "homepage": "https://github.com/decrypto-org/spider#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "dotenv": "^6.0.0",
+    "dotenv-expand": "^4.2.0",
+    "franc": "^4.0.0",
+    "franc-all": "^5.0.0",
+    "franc-cli": "^5.0.0",
+    "franc-min": "^4.0.0",
+    "sequelize": "^4.38.0",
+    "textract": "file:../../textract"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "chai-http": "^4.0.0",
+    "eslint": "^4.19.1",
+    "eslint-config-google": "^0.9.1",
+    "jsdoc": "^3.5.5",
+    "mocha": "^5.1.1"
+  }
+}

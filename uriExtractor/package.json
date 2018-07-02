@@ -6,8 +6,8 @@
   "main": "extractor.js",
   "scripts": {
     "test": "cp ../server/.env . && mocha",
-    "start": "cp ../server/.env . && node --use_strict extractor.js",
-    "runVirt": "node --use_strict extractor.js",
+    "start": "node --use_strict extractor.js",
+    "runHost": "cp ../server/.env . && node --use_strict extractor.js",
     "debugHost": "cp ../server/.env . && export DEBUG=true && node --inspect-brk --use_strict extractor.js",
     "debugVirt": "export DEBUG=true && node --inspect-brk=0.0.0.0:65001 --use_strict extractor.js"
   },

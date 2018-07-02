@@ -236,7 +236,7 @@ async function orchestrateExtraction() {
             await insertParseResultsIntoDb(parseResults, dbResult);
         }
     } while (queryResults.length > 0);
-    console.info("No more content data found. Exiting...\n" + 
+    console.info("No more content data found. Exiting...\n" +
         "Current offset (for later pickup): " + currentOffset);
     process.exit(0);
 }
