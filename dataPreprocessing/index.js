@@ -32,6 +32,7 @@ async function run() {
     // Offset within the content table of
     let offset = await targetDb.cleanContent.count();
     let queryResults = [];
+    let countsByLanguage = {};
     do {
         queryResults = await sourceDb.content.findAll({
             where: {
@@ -51,18 +52,31 @@ async function run() {
         offset += queryResults.length;
         for (let i = 0; i < queryResults.length; i++) {
             let rawContent = queryResults[i];
+            let err = false;
             let cleanContent = await extractText(
                 rawContent.content,
                 rawContent.contentType,
-            );
+            ).catch((error) => {
+                console.error(error);
+                err=true;
+            });
+            if(err){
+                continue;
+            }
             let language = franc(cleanContent);
+            if (countsByLanguage.hasOwnProperty(language)){
+                countsByLanguage[language] += 1;
+            } else {
+                countsByLanguage[language] = 1;
+            }
             console.log("language: " + language);
             // Write back to db:
             // First: Clean result, language, then insert terms and
             // add links over invertedIndex as well as insert positions
             // Probably do this also in a separate method
         }
-    } while (queryResults.length > 0);
+    } while (queryResults.length > 0 && offset < 20000);
+    console.log("Statistics: " + JSON.stringify(countsByLanguage));
     console.log("Did not retrieve more contents. Finished.");
     console.log("Restart the process after you've added more contents");
     process.exit(0);
@@ -94,6 +108,15 @@ async function extractText(rawString, mimeType) {
             }
         );
     });
+}
+
+/**
+ * Normalize the inputs and store them back onto the database  
+ * @param  {string} cleanString Cleaned (Stripped) content string
+ * @param  {string} language    ISO 639 language string (3 chars)
+ */
+async function storeResult (cleanString, language) {
+    
 }
 // 1. Get from DB (pool)
 // 2. Extract content

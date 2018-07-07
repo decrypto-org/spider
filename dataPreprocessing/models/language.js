@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
         },
         language: {
-            type: DataTypes.TEXT,
+            type: DataTypes.STRING(3),
         },
         numberOfDocuments: {
             type: DataTypes.BIGINT,

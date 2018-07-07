@@ -9,11 +9,7 @@ module.exports = (sequelize, DataTypes) => {
         position: {
             type: DataTypes.BIGINT,
             defaultValue: 0,
-        },
-        isTitle: {
-            type: DataTypes.BOOLEAN,
-            defaultValue: false,
-        },
+        }
     });
     return Position;
 };

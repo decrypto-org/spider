@@ -6,8 +6,6 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
-    }, {
-
     });
     CleanContent.associate = function(models) {
         CleanContent.hasOne(models.language, {

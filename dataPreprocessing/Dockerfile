@@ -8,11 +8,27 @@ RUN npm install -g npm
 
 RUN npm install
 
-WORKDIR /usr/src/tdse/spider/preprocessing
+WORKDIR /usr/src/tdse
+
+RUN git clone https://github.com/jogli5er/textract
+
+WORKDIR /usr/src/tdse/textract
+
+COPY ./server/.env ./
+
+RUN npm install
+
+RUN npm install .
+
+WORKDIR /usr/src/tdse/spider/dataPreprocessing
+
+COPY ./server/.env ./
 
 COPY ./dataPreprocessing/package*.json ./
 
-COPY ./server/.env ./
+RUN npm install -g npm
+
+RUN npm install ../../textract
 
 RUN npm install
 

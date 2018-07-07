@@ -32,8 +32,6 @@
     "dotenv": "^6.0.0",
     "dotenv-expand": "^4.2.0",
     "franc": "^4.0.0",
-    "franc-all": "^5.0.0",
-    "franc-cli": "^5.0.0",
     "franc-min": "^4.0.0",
     "sequelize": "^4.38.0",
     "textract": "file:../../textract"

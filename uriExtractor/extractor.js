@@ -219,7 +219,7 @@ async function orchestrateExtraction() {
         errorCount = 0;
         queryResults = queryResults[0];
         currentOffset += queryResults.length;
-
+        console.info("Current offset: " + currentOffset);
         for (let i = 0; i < queryResults.length; i++) {
             let queryResult = queryResults[i];
             console.log(
