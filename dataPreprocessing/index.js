@@ -1,14 +1,14 @@
 "use strict";
 let dotenv = require("dotenv");
 let variableExpansion = require("dotenv-expand");
-let uuidv4 = require("uuid/v4");
-let textract = require("textract");
 let franc = require("franc-min");
 let Sequelize = require("sequelize");
 let Op = Sequelize.Op;
 
 let preprocessorEnv = dotenv.config();
 variableExpansion(preprocessorEnv);
+
+let Parser = require("../server/app/parser");
 
 let sourceDb = require("../server/app/models");
 let targetDb = require("./models");
@@ -33,17 +33,18 @@ async function run() {
     let offset = await targetDb.cleanContent.count();
     let queryResults = [];
     let countsByLanguage = {};
+    let parser = new Parser();
     do {
         queryResults = await sourceDb.content.findAll({
             where: {
                 statusCode: {
-                    [Op.lt]: 400
+                    [Op.lt]: 400,
                 },
                 [Op.and]: [
-                    {content: {[Op.ne]: ''}},
-                    {content: {[Op.ne]: '404'}},
-                    {content: {[Op.ne]: '[MISSING]'}}
-                ]
+                    {content: {[Op.ne]: ""}},
+                    {content: {[Op.ne]: "404"}},
+                    {content: {[Op.ne]: "[MISSING]"}},
+                ],
             },
             offset: offset,
             limit: limit,
@@ -53,18 +54,18 @@ async function run() {
         for (let i = 0; i < queryResults.length; i++) {
             let rawContent = queryResults[i];
             let err = false;
-            let cleanContent = await extractText(
+            let cleanContent = await parser.extractText(
                 rawContent.content,
                 rawContent.contentType,
             ).catch((error) => {
                 console.error(error);
                 err=true;
             });
-            if(err){
+            if (err) {
                 continue;
             }
             let language = franc(cleanContent);
-            if (countsByLanguage.hasOwnProperty(language)){
+            if (countsByLanguage.hasOwnProperty(language)) {
                 countsByLanguage[language] += 1;
             } else {
                 countsByLanguage[language] = 1;
@@ -82,45 +83,15 @@ async function run() {
     process.exit(0);
 }
 
+/* eslint-disable no-unused-vars */
 /**
- * Extracts text from the given string using textract. This needs
- * to know the mimetype, in order to select the correct extractor.
- * Since the mimeType is stored within the database, this is not an issue
- * @param  {string} rawString The string from which the text should be extracted
- * @param  {string} mimeType  The mime type of the passed string. This will
- *                            usually be a text/html or plain text format
- * @return {Promise}          Resolved with the extracted text, otherwise
- *                            rejected with a string error message
- */
-async function extractText(rawString, mimeType) {
-    return new Promise((resolve, reject) => {
-        textract.fromBufferWithMime(
-            mimeType,
-            Buffer.from(rawString, "utf8"),
-            (error, text) => {
-                if (error) {
-                    reject(error);
-                    return;
-                } else {
-                    resolve(text);
-                    return;
-                }
-            }
-        );
-    });
-}
-
-/**
- * Normalize the inputs and store them back onto the database  
+ * Normalize the inputs and store them back onto the database
  * @param  {string} cleanString Cleaned (Stripped) content string
  * @param  {string} language    ISO 639 language string (3 chars)
  */
-async function storeResult (cleanString, language) {
-    
+async function storeResult(cleanString, language) {
+
 }
-// 1. Get from DB (pool)
-// 2. Extract content
-// 3. Detect language
-// 4. Write back to DB
+/* eslint-enable no-unused-vars */
 
 run();

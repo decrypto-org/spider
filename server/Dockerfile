@@ -1,15 +1,5 @@
 FROM robrunne/tdse-dependencies:1.0.0
 
-WORKDIR /usr/src/tdse/spider
-
-COPY package*.json ./
-
-RUN npm install -g npm
-
-RUN npm install
-
-COPY . .
-
 # Connection to the database
 EXPOSE 10864
 

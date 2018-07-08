@@ -1,7 +1,6 @@
 let {logger} = require("./library/logger");
 let TorController = require("./library/torController");
 let Parser = require("./parser");
-
 let mmm = require("mmmagic");
 let magic = new mmm.Magic(mmm.MAGIC_MIME);
 const ProxyAgent = require("proxy-agent");
@@ -113,7 +112,7 @@ class Network {
         // when the regex is compiled without them, it produces not the same
         // behaving regex
         this.mimeTypeWhitelist = new RegExp(
-            "\\b(?:text|application)\/[vcrpaijsonxhtml+]{3,\}\\b",
+            "\\b(?:text|application)\/.{3,\}\\b",
             "i"
         );
         /* eslint-enable no-useless-escape */
@@ -335,7 +334,7 @@ class Network {
         let headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 6.1; rv:52.0) Gecko/20100101 Firefox/52.0",
             "Accept-Language": "en-US,en;q=0.5",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept": "*/*",
             "Accept-Encoding": "identity",
             "Connection": "keep-alive",
         };
@@ -532,13 +531,16 @@ class Network {
                                 // it is not used any further.
                                 // Destroy all references to it by setting it to
                                 // null
+                                // This is important, since when we cannot
+                                // detect the mime type, we cannot ensure that
+                                // we comply with legal restrictions
                                 rawData = null;
                                 return result;
                             });
                         if (!this.mimeTypeWhitelist.test(contentType)) {
                             logger.warn(url + path);
                             logger.warn("Unsuported MIME Type. \n" +
-                                "Only accept html and json, but received " +
+                                "Only accept non media content, but received " +
                                 contentType
                             );
                             // Actively discarding the data to make sure

@@ -1,13 +1,5 @@
 FROM robrunne/tdse-dependencies:1.0.0
 
-WORKDIR /usr/src/tdse/spider/server
-
-COPY ./server .
-
-RUN npm install -g npm
-
-RUN npm install
-
 WORKDIR /usr/src/tdse/spider/extractor
 
 COPY ./uriExtractor/package*.json ./

@@ -4,6 +4,8 @@ let {logger} = require("./library/logger");
 /* eslint-enable no-unused-vars */
 let cheerio = require("cheerio");
 
+let textract = require("textract");
+
 /**
  * This module handels the parsing of the responses. This
  * is necessary to extract the information needed to keep the
@@ -66,6 +68,35 @@ class Parser {
             );
         }
         return result;
+    }
+
+    /**
+     * Extracts text from the given string using textract. This needs
+     * to know the mimetype, in order to select the correct extractor.
+     * Since the mimeType is stored within the database, this is not an issue
+     * @param  {string} rawString The string from which the text should be
+     *                            extracted
+     * @param  {string} mimeType  The mime type of the passed string. This will
+     *                            usually be a text/html or plain text format
+     * @return {Promise}          Resolved with the extracted text, otherwise
+     *                            rejected with a string error message
+     */
+    async extractText(rawString, mimeType) {
+        return new Promise((resolve, reject) => {
+            textract.fromBufferWithMime(
+                mimeType,
+                Buffer.from(rawString, "utf8"),
+                (error, text) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    } else {
+                        resolve(text);
+                        return;
+                    }
+                }
+            );
+        });
     }
 
     /**

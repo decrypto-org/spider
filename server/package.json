@@ -33,6 +33,7 @@
     "portscanner": "^2.1.1",
     "proxy-agent": "^2.3.1",
     "sequelize": "^4.37.7",
+    "textract": "file:../../textract",
     "tor-router": "^3.4.0",
     "uuid": "^3.2.1",
     "winston": "^3.0.0-rc5"

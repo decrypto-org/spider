@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
         position: {
             type: DataTypes.BIGINT,
             defaultValue: 0,
-        }
+        },
     });
     return Position;
 };

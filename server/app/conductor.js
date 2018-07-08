@@ -276,6 +276,13 @@ class Conductor {
     async insertNetworkResponseIntoDb(networkResponse, dbResult) {
         logger.info("Insert network response into DB");
         let successful = networkResponse.statusCode == 200;
+        // In the case  the response is a textual representation, we do not yet
+        // extract text from structure. However, if it is a binary file, we do.
+        // That way we might even find some more links in texts we did not read
+        // yet. Further, also our extraction tool might fail, if we store binary
+        // files. Media files are never stored and original binary files are
+        // discarded immediately after extraction
+        let isText = networkResponse.mimeType.startsWith("text");
         // We need to await this before proceeding to prevent getting
         // already scraped entries in the next step
         await db.updateUri(
@@ -286,16 +293,32 @@ class Conductor {
             dbResult.secure,
             successful
         );
+        let bodyToBeInserted = dbResult.body;
+        if (!isText) {
+            bodyToBeInserted = this.parser.extractText(
+                dbResult.body,
+                dbResult.mimeType
+            ).catch((err) => {
+                logger.warn("Content cannot be extracted");
+                logger.warn("Ignoring path " + dbResult.path);
+                logger.warn("Error: " + err);
+                return "";
+            });
+        }
         await db.insertBody(
             dbResult.pathId,
-            networkResponse.body || "",
+            bodyToBeInserted || "",
             networkResponse.mimeType || "[MISSING]",
             networkResponse.endTime,
             networkResponse.statusCode
         );
         // Scrape the links to other pages, then insert them into the db
         // if the download was successful and the MIME Type correct
-        if (networkResponse.body == null || !successful) {
+        if (
+            bodyToBeInserted == null
+            || bodyToBeInserted == ""
+            || !successful
+        ) {
             if (successful) {
                 console.error(
                     "Body is empty for dbResult " + JSON.stringify(dbResult)

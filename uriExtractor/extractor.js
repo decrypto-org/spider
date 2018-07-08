@@ -197,9 +197,16 @@ async function orchestrateExtraction() {
         "    paths.\"lastSuccessfulTimestamp\" > 0\n" +
         "    AND contents.content != '404'\n" +
         "    AND contents.content != ''\n" +
+        "    AND contents.\"contentType\" = 'text/html'" +
+        "    AND contents.\"contentType\" = 'application/xhtml'" +
+        "    AND contents.\"contentType\" = 'application/xhtml+xml'" +
+        "    AND contents.\"contentType\" = 'text/xhtml'" +
         "ORDER BY paths.\"lastSuccessfulTimestamp\" ASC\n" +
         "LIMIT 2000\n" +
         "OFFSET ?";
+        // Note: We only need to run the extended extraction process on html
+        // files only, the other mimetyped files were already extracted
+        // generally
         let replacements = [currentOffset];
         try {
             queryResults = await db.sequelize.query(
