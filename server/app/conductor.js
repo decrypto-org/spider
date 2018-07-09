@@ -293,10 +293,10 @@ class Conductor {
             dbResult.secure,
             successful
         );
-        let bodyToBeInserted = dbResult.body;
+        let bodyToBeInserted = networkResponse.body;
         if (!isText) {
             bodyToBeInserted = this.parser.extractText(
-                dbResult.body,
+                networkResponse.body,
                 dbResult.mimeType
             ).catch((err) => {
                 logger.warn("Content cannot be extracted");
