@@ -302,7 +302,7 @@ class Conductor {
                 logger.warn("Content cannot be extracted");
                 logger.warn("Ignoring path " + dbResult.path);
                 logger.warn("Error: " + err);
-                return "";
+                bodyToBeInserted = "";
             });
         }
         await db.insertBody(
