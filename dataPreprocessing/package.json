@@ -34,6 +34,8 @@
     "franc": "^4.0.0",
     "franc-min": "^4.0.0",
     "sequelize": "^4.38.0",
+    "stemmer": "^1.0.2",
+    "stopword": "^0.1.10",
     "textract": "file:../../textract"
   },
   "devDependencies": {

@@ -294,15 +294,15 @@ class Conductor {
             successful
         );
         let bodyToBeInserted = networkResponse.body;
-        if (!isText) {
-            bodyToBeInserted = this.parser.extractText(
+        if (!isText && bodyToBeInserted != null) {
+            bodyToBeInserted = await this.parser.extractText(
                 networkResponse.body,
-                dbResult.mimeType
+                networkResponse.mimeType
             ).catch((err) => {
                 logger.warn("Content cannot be extracted");
                 logger.warn("Ignoring path " + dbResult.path);
                 logger.warn("Error: " + err);
-                bodyToBeInserted = "";
+                return "";
             });
         }
         await db.insertBody(

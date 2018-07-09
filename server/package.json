@@ -10,7 +10,7 @@
   "scripts": {
     "test": "mocha",
     "start": "node --use_strict index.js",
-    "debugHost": "export DEBUG=true && node --inspect-brk --use_strict index.js",
+    "debugHost": "export DEBUG=true && node --inspect-brk=0.0.0.0:65101 --use_strict index.js",
     "debugVirt": "export DEBUG=true && node --inspect-brk=0.0.0.0:65001 --use_strict index.js"
   },
   "author": "Roman Brunner (robrunne@student.ethz.ch)",
