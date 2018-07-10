@@ -6,13 +6,17 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
+        cleanContent: {
+            type: DataTypes.TEXT,
+            defaultValue: "",
+        },
+        rawContentId: {
+            type: DataTypes.UUID,
+            allowNull: false
+        }
     });
     CleanContent.associate = function(models) {
         CleanContent.hasOne(models.language, {
-            onDelete: "CASCADE",
-            onUpdate: "CASCADE",
-        });
-        CleanContent.hasOne(models.cleanContent, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
