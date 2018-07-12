@@ -12,12 +12,12 @@ module.exports = (sequelize, DataTypes) => {
         },
     });
     Position.associate = function(models) {
-        Position.belongsToMany(models.postings,{
+        Position.belongsToMany(models.postings, {
             through: "postingPosition",
             foreignKey: "positionId",
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
-        })
-    }
+        });
+    };
     return Position;
 };

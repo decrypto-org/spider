@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         updatedAt: {
             type: DataTypes.DATE,
-            defaultValue: sequelize.literal("NOW()")
+            defaultValue: sequelize.literal("NOW()"),
         },
         documentFrequency: {
             type: DataTypes.BIGINT,
@@ -37,7 +37,7 @@ module.exports = (sequelize, DataTypes) => {
     Term.associate = function(models) {
         Term.belongsToMany(models.cleanContent, {
             through: "postings",
-            foreignKey: "termId"
+            foreignKey: "termId",
         });
     };
 
@@ -45,8 +45,9 @@ module.exports = (sequelize, DataTypes) => {
      * Insert a term into the terms table. If the term already existed,
      * increase the document counter.
      * @param  {string} terms Terms to be inserted into the table
-     * @return {Promise}      The Promise will be resolved with a term-id
-     *                        mapping and will be rejected with an error message
+     * @return {Promise}      The Promise will be resolved with a term-
+     *                        term<Object> mapping and will be rejected with an
+     *                        error message
      */
     Term.bulkUpsert = async function(terms) {
         /* eslint-disable no-multi-str */
@@ -81,18 +82,18 @@ RETURNING \"termId\", \"term\"";
             termInsertString,
             {
                 replacements: replacementsForTermInsertion,
-                model: Term
+                model: Term,
             }
         );
         // We do not catch any exception here, since the client should deal
         // with this kind of error
         /* eslint-enable no-multi-str */
-        let termIdMapping = {};
-        for (let i = 0; i < result[0].length; i++) {
-            let term = result[0][i];
-            termIdMapping[term.term] = term.termId;
+        let termTermMapping = {};
+        for (let i = 0; i < result.length; i++) {
+            let term = result[i];
+            termTermMapping[term.term] = term;
         }
-        return termIdMapping;
+        return termTermMapping;
     };
 
 

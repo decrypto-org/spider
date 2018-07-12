@@ -226,13 +226,13 @@ async function storeResult(cleanString, language, originContentId) {
     let contentInstance = await targetDb.cleanContent.create({
         cleanContent: cleanString,
         rawContentId: originContentId,
-        languageLanguageId: languageIdsByISOString[language]
+        languageLanguageId: languageIdsByISOString[language],
     });
     let emptyContainedList = cleanString.split(/[\s\\/:.@]/);
     let termList = [];
     for (let i = 0; i < emptyContainedList.length; i++) {
         let term = emptyContainedList[i];
-        if (term != ""){
+        if (term != "") {
             termList.push(term);
         }
     }
@@ -253,13 +253,12 @@ async function storeResult(cleanString, language, originContentId) {
             dict[term] = [i];
         }
     }
-    let termIdByTerm = await targetDb.term.bulkUpsert(stemmedTerms).catch((err) => {
+    let termObjByTerm = await targetDb.term.bulkUpsert(stemmedTerms).catch(
+        (err) => {
         console.error("An error occured while inserting terms in the database");
         console.error("This occured most likely due to a connection issue");
         finalErrorHandler(err);
     });
-
-
 }
 /* eslint-enable no-unused-vars */
 

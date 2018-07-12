@@ -144,7 +144,7 @@ class Network {
                 "url": url,
                 "path": dbResult.path,
                 "body": "",
-                "statusCode": 400,
+                "statusCode": -1,
                 "mimeType": "[ NO CONTENT TYPE HEADER PROVIDED ]",
                 "startTime": 0,
             };
@@ -372,7 +372,7 @@ class Network {
                 );
                 logger.error(err.stack);
                 return {
-                    "statusCode": 400,
+                    "statusCode": -1,
                     "headers": {
                         "content-type": null,
                     },
