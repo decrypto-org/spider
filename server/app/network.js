@@ -360,7 +360,7 @@ class Network {
                         + " Unknown Error"
                     );
                     return {
-                        "statusCode": 400,
+                        "statusCode": -1,
                         "headers": {
                             "content-type": null,
                         },
@@ -520,7 +520,7 @@ class Network {
                     // is not on our whitelist, we'll proceed as above
                     // in the else if case
                     if (contentType === "[ NO CONTENT TYPE HEADER PROVIDED ]") {
-                        let contentType = await this.detectMimeType(
+                        contentType = await this.detectMimeType(
                             Buffer.from(rawData, "utf8")
                         ).catch(
                             (err) => {

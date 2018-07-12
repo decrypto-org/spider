@@ -35,9 +35,9 @@ module.exports = (sequelize, DataTypes) => {
         timestamps: true,
     });
     Term.associate = function(models) {
-        Term.belongsTo(models.postings, {
-            onDelete: "CASCADE",
-            onUpdate: "CASCADE",
+        Term.belongsToMany(models.cleanContent, {
+            through: "postings",
+            foreignKey: "termId"
         });
     };
 
@@ -79,7 +79,10 @@ DO UPDATE SET \n\
 RETURNING \"termId\", \"term\"";
         let result = await sequelize.query(
             termInsertString,
-            {replacements: replacementsForTermInsertion}
+            {
+                replacements: replacementsForTermInsertion,
+                model: Term
+            }
         );
         // We do not catch any exception here, since the client should deal
         // with this kind of error

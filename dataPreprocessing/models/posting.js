@@ -8,15 +8,9 @@ module.exports = (sequelize, DataTypes) => {
         },
     });
     Postings.associate = function(models) {
-        Postings.belongsToMany(models.cleanContent, {
-            onDelete: "CASCADE",
-            onUpdate: "CASCADE",
-        });
-        Postings.hasOne(models.term, {
-            onDelete: "CASCADE",
-            onUpdate: "CASCADE",
-        });
-        Postings.hasMany(models.position, {
+        Postings.belongsToMany(models.position, {
+            through: "postingPosition",
+            foreignKey: "postingId",
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });

@@ -222,6 +222,12 @@ async function storeResult(cleanString, language, originContentId) {
     // 1. punctuation removal
     // 2. tokenization (extract terms in order)
     // 3. stem (e.g. for english languages)
+
+    let contentInstance = await targetDb.cleanContent.create({
+        cleanContent: cleanString,
+        rawContentId: originContentId,
+        languageLanguageId: languageIdsByISOString[language]
+    });
     let emptyContainedList = cleanString.split(/[\s\\/:.@]/);
     let termList = [];
     for (let i = 0; i < emptyContainedList.length; i++) {
@@ -252,6 +258,8 @@ async function storeResult(cleanString, language, originContentId) {
         console.error("This occured most likely due to a connection issue");
         finalErrorHandler(err);
     });
+
+
 }
 /* eslint-enable no-unused-vars */
 
