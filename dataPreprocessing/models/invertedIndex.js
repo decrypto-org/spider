@@ -1,25 +1,25 @@
 "use strict";
 module.exports = (sequelize, DataTypes) => {
-    const InvertedIndex = sequelize.define("invertedIndex", {
-        indexId: {
+    const Postings = sequelize.define("postings", {
+        postingId: {
             type: DataTypes.UUID,
             defaultValue: DataTypes.UUIDV4,
             primaryKey: true,
         },
     });
-    InvertedIndex.associate = function(models) {
-        InvertedIndex.hasMany(models.cleanContent, {
+    Postings.associate = function(models) {
+        Postings.belongsToMany(models.cleanContent, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
-        InvertedIndex.hasOne(models.term, {
+        Postings.hasOne(models.term, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
-        InvertedIndex.hasMany(models.position, {
+        Postings.hasMany(models.position, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
     };
-    return InvertedIndex;
+    return Postings;
 };

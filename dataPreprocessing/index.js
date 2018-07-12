@@ -20,87 +20,99 @@ if (isNaN(limit) || limit <= 0) {
 }
 
 let languagesToBeInserted = [
-    { language: "cmn", numberOfDOcuments: 0 },
-    { language: "spa", numberOfDOcuments: 0 },
-    { language: "eng", numberOfDOcuments: 0 },
-    { language: "rus", numberOfDOcuments: 0 },
-    { language: "arb", numberOfDOcuments: 0 },
-    { language: "ben", numberOfDOcuments: 0 },
-    { language: "hin", numberOfDOcuments: 0 },
-    { language: "por", numberOfDOcuments: 0 },
-    { language: "ind", numberOfDOcuments: 0 },
-    { language: "jpn", numberOfDOcuments: 0 },
-    { language: "fra", numberOfDOcuments: 0 },
-    { language: "deu", numberOfDOcuments: 0 },
-    { language: "jav", numberOfDOcuments: 0 },
-    { language: "kor", numberOfDOcuments: 0 },
-    { language: "tel", numberOfDOcuments: 0 },
-    { language: "vie", numberOfDOcuments: 0 },
-    { language: "mar", numberOfDOcuments: 0 },
-    { language: "ita", numberOfDOcuments: 0 },
-    { language: "tam", numberOfDOcuments: 0 },
-    { language: "tur", numberOfDOcuments: 0 },
-    { language: "urd", numberOfDOcuments: 0 },
-    { language: "guj", numberOfDOcuments: 0 },
-    { language: "pol", numberOfDOcuments: 0 },
-    { language: "ukr", numberOfDOcuments: 0 },
-    { language: "fas", numberOfDOcuments: 0 },
-    { language: "kan", numberOfDOcuments: 0 },
-    { language: "mai", numberOfDOcuments: 0 },
-    { language: "mal", numberOfDOcuments: 0 },
-    { language: "mya", numberOfDOcuments: 0 },
-    { language: "ori", numberOfDOcuments: 0 },
-    { language: "gax", numberOfDOcuments: 0 },
-    { language: "swh", numberOfDOcuments: 0 },
-    { language: "sun", numberOfDOcuments: 0 },
-    { language: "ron", numberOfDOcuments: 0 },
-    { language: "pan", numberOfDOcuments: 0 },
-    { language: "bho", numberOfDOcuments: 0 },
-    { language: "amh", numberOfDOcuments: 0 },
-    { language: "hau", numberOfDOcuments: 0 },
-    { language: "fuv", numberOfDOcuments: 0 },
-    { language: "bos", numberOfDOcuments: 0 },
-    { language: "hrv", numberOfDOcuments: 0 },
-    { language: "nld", numberOfDOcuments: 0 },
-    { language: "srp", numberOfDOcuments: 0 },
-    { language: "tha", numberOfDOcuments: 0 },
-    { language: "ckb", numberOfDOcuments: 0 },
-    { language: "yor", numberOfDOcuments: 0 },
-    { language: "uzn", numberOfDOcuments: 0 },
-    { language: "zlm", numberOfDOcuments: 0 },
-    { language: "ibo", numberOfDOcuments: 0 },
-    { language: "nep", numberOfDOcuments: 0 },
-    { language: "ceb", numberOfDOcuments: 0 },
-    { language: "skr", numberOfDOcuments: 0 },
-    { language: "tgl", numberOfDOcuments: 0 },
-    { language: "hun", numberOfDOcuments: 0 },
-    { language: "azj", numberOfDOcuments: 0 },
-    { language: "sin", numberOfDOcuments: 0 },
-    { language: "koi", numberOfDOcuments: 0 },
-    { language: "ell", numberOfDOcuments: 0 },
-    { language: "ces", numberOfDOcuments: 0 },
-    { language: "run", numberOfDOcuments: 0 },
-    { language: "bel", numberOfDOcuments: 0 },
-    { language: "plt", numberOfDOcuments: 0 },
-    { language: "qug", numberOfDOcuments: 0 },
-    { language: "mad", numberOfDOcuments: 0 },
-    { language: "nya", numberOfDOcuments: 0 },
-    { language: "zyb", numberOfDOcuments: 0 },
-    { language: "pbu", numberOfDOcuments: 0 },
-    { language: "kin", numberOfDOcuments: 0 },
-    { language: "zul", numberOfDOcuments: 0 },
-    { language: "bul", numberOfDOcuments: 0 },
-    { language: "swe", numberOfDOcuments: 0 },
-    { language: "lin", numberOfDOcuments: 0 },
-    { language: "som", numberOfDOcuments: 0 },
-    { language: "hms", numberOfDOcuments: 0 },
-    { language: "hnj", numberOfDOcuments: 0 },
-    { language: "ilo", numberOfDOcuments: 0 },
-    { language: "kaz", numberOfDOcuments: 0 },
-    { language: "und", numberOfDOcuments: 0 }
+    {language: "cmn", numberOfDOcuments: 0},
+    {language: "spa", numberOfDOcuments: 0},
+    {language: "eng", numberOfDOcuments: 0},
+    {language: "rus", numberOfDOcuments: 0},
+    {language: "arb", numberOfDOcuments: 0},
+    {language: "ben", numberOfDOcuments: 0},
+    {language: "hin", numberOfDOcuments: 0},
+    {language: "por", numberOfDOcuments: 0},
+    {language: "ind", numberOfDOcuments: 0},
+    {language: "jpn", numberOfDOcuments: 0},
+    {language: "fra", numberOfDOcuments: 0},
+    {language: "deu", numberOfDOcuments: 0},
+    {language: "jav", numberOfDOcuments: 0},
+    {language: "kor", numberOfDOcuments: 0},
+    {language: "tel", numberOfDOcuments: 0},
+    {language: "vie", numberOfDOcuments: 0},
+    {language: "mar", numberOfDOcuments: 0},
+    {language: "ita", numberOfDOcuments: 0},
+    {language: "tam", numberOfDOcuments: 0},
+    {language: "tur", numberOfDOcuments: 0},
+    {language: "urd", numberOfDOcuments: 0},
+    {language: "guj", numberOfDOcuments: 0},
+    {language: "pol", numberOfDOcuments: 0},
+    {language: "ukr", numberOfDOcuments: 0},
+    {language: "fas", numberOfDOcuments: 0},
+    {language: "kan", numberOfDOcuments: 0},
+    {language: "mai", numberOfDOcuments: 0},
+    {language: "mal", numberOfDOcuments: 0},
+    {language: "mya", numberOfDOcuments: 0},
+    {language: "ori", numberOfDOcuments: 0},
+    {language: "gax", numberOfDOcuments: 0},
+    {language: "swh", numberOfDOcuments: 0},
+    {language: "sun", numberOfDOcuments: 0},
+    {language: "ron", numberOfDOcuments: 0},
+    {language: "pan", numberOfDOcuments: 0},
+    {language: "bho", numberOfDOcuments: 0},
+    {language: "amh", numberOfDOcuments: 0},
+    {language: "hau", numberOfDOcuments: 0},
+    {language: "fuv", numberOfDOcuments: 0},
+    {language: "bos", numberOfDOcuments: 0},
+    {language: "hrv", numberOfDOcuments: 0},
+    {language: "nld", numberOfDOcuments: 0},
+    {language: "srp", numberOfDOcuments: 0},
+    {language: "tha", numberOfDOcuments: 0},
+    {language: "ckb", numberOfDOcuments: 0},
+    {language: "yor", numberOfDOcuments: 0},
+    {language: "uzn", numberOfDOcuments: 0},
+    {language: "zlm", numberOfDOcuments: 0},
+    {language: "ibo", numberOfDOcuments: 0},
+    {language: "nep", numberOfDOcuments: 0},
+    {language: "ceb", numberOfDOcuments: 0},
+    {language: "skr", numberOfDOcuments: 0},
+    {language: "tgl", numberOfDOcuments: 0},
+    {language: "hun", numberOfDOcuments: 0},
+    {language: "azj", numberOfDOcuments: 0},
+    {language: "sin", numberOfDOcuments: 0},
+    {language: "koi", numberOfDOcuments: 0},
+    {language: "ell", numberOfDOcuments: 0},
+    {language: "ces", numberOfDOcuments: 0},
+    {language: "run", numberOfDOcuments: 0},
+    {language: "bel", numberOfDOcuments: 0},
+    {language: "plt", numberOfDOcuments: 0},
+    {language: "qug", numberOfDOcuments: 0},
+    {language: "mad", numberOfDOcuments: 0},
+    {language: "nya", numberOfDOcuments: 0},
+    {language: "zyb", numberOfDOcuments: 0},
+    {language: "pbu", numberOfDOcuments: 0},
+    {language: "kin", numberOfDOcuments: 0},
+    {language: "zul", numberOfDOcuments: 0},
+    {language: "bul", numberOfDOcuments: 0},
+    {language: "swe", numberOfDOcuments: 0},
+    {language: "lin", numberOfDOcuments: 0},
+    {language: "som", numberOfDOcuments: 0},
+    {language: "hms", numberOfDOcuments: 0},
+    {language: "hnj", numberOfDOcuments: 0},
+    {language: "ilo", numberOfDOcuments: 0},
+    {language: "kaz", numberOfDOcuments: 0},
+    {language: "und", numberOfDOcuments: 0},
 ];
 
 let languageIdsByISOString = {};
+
+/**
+ * Just print post script after a fatal error and exit the program as needed.
+ * @param  {Exception} err Exception object used to print message/stack trace
+ */
+function finalErrorHandler(err) {
+    console.error("For more information check the error message below:");
+    console.error(err.message);
+    console.error(err.stack);
+    console.error("Leaving now... Bye bye");
+    process.exit(-1);
+}
 
 /**
  * Run the data normalization process and stop if no more contents
@@ -120,26 +132,25 @@ async function run() {
     // First check if languages are already available. Since we use franc-min,
     // it should exactly contain 82. Otherwise: Warning and terminate, user
     // has to decide what should happen
-    let numberOfAvailableLanguages = await targetDb.language.count();
-    if (numberOfAvailableLanguages == 0){
+    let returnedRows = await targetDb.language.findAll();
+    if (returnedRows.length == 0) {
         // Insert languages
-        let returnedRows = await targetDb.language.bulkCreate(
+        returnedRows = await targetDb.language.bulkCreate(
             languagesToBeInserted,
             {
-                returning: true
+                returning: true,
             }
         );
-        for(let i = 0; i < returnedRows.length; i++){
-            let language = returnedRows[i].dataValues;
-            languageIdsByISOString[language.language] = language.languageId;
-        }
-    } else if (numberOfAvailableLanguages < 78) {
+    } else if (returnedRows.length < 78) {
         console.warn("Not all languages are available in the database.");
         console.error("This requires manual cleanup.");
         console.error("Leaving...");
         process.exit(-1);
     } // else: Nothing to do
-    
+    for (let i = 0; i < returnedRows.length; i++) {
+        let language = returnedRows[i].dataValues;
+        languageIdsByISOString[language.language] = language.languageId;
+    }
     // Offset within the content table of
     let offset = await targetDb.cleanContent.count();
     let queryResults = [];
@@ -173,6 +184,9 @@ async function run() {
                 err=true;
             });
             if (err) {
+                console.warn("Could not extract content from");
+                console.warn(rawContent.content);
+                console.warn("Ignoring this, continuing with next");
                 continue;
             }
             let language = franc(cleanContent);
@@ -182,6 +196,7 @@ async function run() {
                 countsByLanguage[language] = 1;
             }
             console.log("language: " + language);
+            storeResult(cleanContent, language, rawContent.contentId);
             // Write back to db:
             // First: Clean result, language, then insert terms and
             // add links over invertedIndex as well as insert positions
@@ -207,21 +222,36 @@ async function storeResult(cleanString, language, originContentId) {
     // 1. punctuation removal
     // 2. tokenization (extract terms in order)
     // 3. stem (e.g. for english languages)
-    let termList = cleanString.match("[\\p{L}0-9'@]+]");
+    let emptyContainedList = cleanString.split(/[\s\\/:.@]/);
+    let termList = [];
+    for (let i = 0; i < emptyContainedList.length; i++) {
+        let term = emptyContainedList[i];
+        if (term != ""){
+            termList.push(term);
+        }
+    }
+    termList = removeStopWords(termList, language);
     let dict = {};
-    let termList = removeStopWords(termList, language)
-    for(let i = 0; i < termList.length; i++) {
+    let stemmedTerms = [];
+    for (let i = 0; i < termList.length; i++) {
         let term = termList[i];
         if (language === "eng") {
             term = stemmer(term);
         }
-        if (dict.hasOwnProperty(term)){
+        if ( stemmedTerms.indexOf(term) == -1 ) {
+            stemmedTerms.push(term);
+        }
+        if (dict.hasOwnProperty(term)) {
             dict[term].push(i);
         } else {
             dict[term] = [i];
         }
     }
-    
+    let termIdByTerm = await targetDb.term.bulkUpsert(stemmedTerms).catch((err) => {
+        console.error("An error occured while inserting terms in the database");
+        console.error("This occured most likely due to a connection issue");
+        finalErrorHandler(err);
+    });
 }
 /* eslint-enable no-unused-vars */
 
@@ -255,7 +285,7 @@ async function storeResult(cleanString, language, originContentId) {
  * @return {Array.<string>}           The result is a list of words, without
  *                                    the stop words of the input
  */
-function removeStopWords (wordsList, language) {
+function removeStopWords(wordsList, language) {
     let stopWordsLang = undefined;
     switch (language) {
         case "arb":
@@ -305,7 +335,6 @@ function removeStopWords (wordsList, language) {
             break;
         default:
             return wordsList;
-            break;
     }
     // stopWordsLang is now defined and can be used for stop word removal
     return stopword.removeStopwords(

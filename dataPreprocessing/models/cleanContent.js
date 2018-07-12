@@ -12,16 +12,16 @@ module.exports = (sequelize, DataTypes) => {
         },
         rawContentId: {
             type: DataTypes.UUID,
-            allowNull: false
-        }
+            allowNull: false,
+        },
     });
     CleanContent.associate = function(models) {
-        CleanContent.hasOne(models.language, {
+        CleanContent.belongsTo(models.language, {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
-        CleanContent.hasOne(models.label, {
-            as: "PrimaryLabel",
+        CleanContent.belongsTo(models.label, {
+            as: "primaryLabel",
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
