@@ -25,12 +25,6 @@ module.exports = (sequelize, DataTypes) => {
             onDelete: "CASCADE",
             onUpdate: "CASCADE",
         });
-        CleanContent.belongsToMany(models.term, {
-            through: "postings",
-            foreignKey: "cleanContentId",
-            onDelete: "CASCADE",
-            onUpdate: "CASCADE",
-        });
     };
     return CleanContent;
 };

@@ -4,6 +4,7 @@ let variableExpansion = require("dotenv-expand");
 let franc = require("franc-min");
 let stopword = require("stopword");
 let stemmer = require("stemmer");
+let uuidv4 = require("uuid/v4");
 let Sequelize = require("sequelize");
 let Op = Sequelize.Op;
 
@@ -222,12 +223,6 @@ async function storeResult(cleanString, language, originContentId) {
     // 1. punctuation removal
     // 2. tokenization (extract terms in order)
     // 3. stem (e.g. for english languages)
-
-    let contentInstance = await targetDb.cleanContent.create({
-        cleanContent: cleanString,
-        rawContentId: originContentId,
-        languageLanguageId: languageIdsByISOString[language],
-    });
     let emptyContainedList = cleanString.split(/[\s\\/:.@]/);
     let termList = [];
     for (let i = 0; i < emptyContainedList.length; i++) {
@@ -253,12 +248,62 @@ async function storeResult(cleanString, language, originContentId) {
             dict[term] = [i];
         }
     }
-    let termObjByTerm = await targetDb.term.bulkUpsert(stemmedTerms).catch(
+    let contentInstance = await targetDb.cleanContent.create({
+        cleanContent: cleanString,
+        rawContentId: originContentId,
+        languageLanguageId: languageIdsByISOString[language],
+    });
+    let terms = await targetDb.term.bulkUpsert(stemmedTerms).catch(
         (err) => {
         console.error("An error occured while inserting terms in the database");
         console.error("This occured most likely due to a connection issue");
         finalErrorHandler(err);
     });
+    if(terms.length != stemmedTerms.length) {
+        console.error("Not all terms were correctly inserted into the DB");
+        console.error("Aborting process...");
+        console.error("Bye bye...");
+        process.exit(-1);
+    }
+    for (let i = 0; i < stemmedTerms.length; i++) {
+        let termObj = terms[i];
+        let term = stemmedTerms[i];
+        let postingId = uuidv4();
+        let posting = await targetDb.posting.create({
+            postingId
+        }).catch(
+        (err) => {
+            console.error("An error occured while creating a posting");
+            console.error("This occured most likely due to a connection issue");
+            finalErrorHandler(err);
+        });
+        // Side effect: not only associated but also stored on db
+        await posting.setCleanContent(contentInstance).catch(
+        (err) => {
+            console.error("An error occured while updating a posting -Content");
+            console.error("This occured most likely due to a connection issue");
+            finalErrorHandler(err);
+        });
+        await posting.setTerm(termObj).catch(
+        (err) => {
+            console.error("An error occured while updating a posting -Term");
+            console.error("This occured most likely due to a connection issue");
+            finalErrorHandler(err);
+        });
+        let positions = await targetDb.position.bulkUpsert(dict[term]).catch(
+        (err) => {
+            console.error("An error occured while upserting positions");
+            console.error("This occured most likely due to a connection issue");
+            finalErrorHandler(err);
+        });
+        await posting.addPositions(positions).catch(
+        (err) => {
+            console.error("An error occured while updating a posting -pos");
+            console.error("This occured most likely due to a connection issue");
+            finalErrorHandler(err);
+        });
+    }
+    console.log(terms);
 }
 /* eslint-enable no-unused-vars */
 
