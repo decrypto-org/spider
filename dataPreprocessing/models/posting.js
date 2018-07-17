@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
         });
         Postings.belongsToMany(models.position, {
             through: "postingPosition",
-            foreignKey: "postingId"
+            foreignKey: "postingId",
         });
     };
     return Postings;

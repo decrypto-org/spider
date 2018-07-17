@@ -11,13 +11,23 @@ module.exports = (sequelize, DataTypes) => {
         position: {
             type: DataTypes.BIGINT,
             defaultValue: 0,
-            unique: true
+            unique: true,
         },
+        createdAt: {
+            type: DataTypes.DATE,
+            defaultValue: sequelize.literal("NOW()"),
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            defaultValue: sequelize.literal("NOW()"),
+        },
+    }, {
+        timestamps: true,
     });
     Position.associate = function(models) {
         Position.belongsToMany(models.posting, {
             through: "postingPosition",
-            foreignKey: "positionId"
+            foreignKey: "positionId",
         });
     };
 
@@ -62,7 +72,7 @@ RETURNING \"positionId\", \"position\"";
             positionInsertString,
             {
                 replacements: replacementsForPositions,
-                model: Position
+                model: Position,
             }
         );
     };

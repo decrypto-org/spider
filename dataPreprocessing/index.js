@@ -232,6 +232,11 @@ async function storeResult(cleanString, language, originContentId) {
         }
     }
     termList = removeStopWords(termList, language);
+    if (termList.length == 0) {
+        console.warn("Terms list empty, input did only contain stop words");
+        console.warn("Inserting empty string");
+        termList.push("[EMPTY]");
+    }
     let dict = {};
     let stemmedTerms = [];
     for (let i = 0; i < termList.length; i++) {
@@ -259,7 +264,7 @@ async function storeResult(cleanString, language, originContentId) {
         console.error("This occured most likely due to a connection issue");
         finalErrorHandler(err);
     });
-    if(terms.length != stemmedTerms.length) {
+    if (terms.length != stemmedTerms.length) {
         console.error("Not all terms were correctly inserted into the DB");
         console.error("Aborting process...");
         console.error("Bye bye...");
@@ -270,7 +275,7 @@ async function storeResult(cleanString, language, originContentId) {
         let term = stemmedTerms[i];
         let postingId = uuidv4();
         let posting = await targetDb.posting.create({
-            postingId
+            postingId,
         }).catch(
         (err) => {
             console.error("An error occured while creating a posting");
@@ -303,7 +308,6 @@ async function storeResult(cleanString, language, originContentId) {
             finalErrorHandler(err);
         });
     }
-    console.log(terms);
 }
 /* eslint-enable no-unused-vars */
 
