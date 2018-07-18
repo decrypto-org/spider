@@ -12,6 +12,7 @@ services:
   db:
     image: postgres:10
     restart: always
+    command: postgres -N 300
     environment:
       POSTGRES_PASSWORD: $TDSE_DB_PASSWORD
       POSTGRES_USER: $TDSE_DB_USER
