@@ -12,6 +12,8 @@ RUN npm install
 
 COPY ./dataPreprocessing .
 
+RUN apt update
+
 RUN apt install -y -qq antiword
 
 RUN apt install -y -qq xpdf

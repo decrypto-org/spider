@@ -299,6 +299,9 @@ class Conductor {
                 networkResponse.body,
                 networkResponse.mimeType
             ).catch((err) => {
+                console.warn("Could not extract text");
+                console.warn(err.message);
+                console.warn(err.stack);
                 logger.warn("Content cannot be extracted");
                 logger.warn("Ignoring path " + dbResult.path);
                 logger.warn("Error: " + err);
@@ -319,12 +322,6 @@ class Conductor {
             || bodyToBeInserted == ""
             || !successful
         ) {
-            if (successful) {
-                console.error(
-                    "Body is empty for dbResult " + JSON.stringify(dbResult)
-                    + "\nnetworkResponse: " + JSON.stringify(networkResponse)
-                );
-            }
             return;
         }
 
