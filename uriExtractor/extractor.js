@@ -194,13 +194,8 @@ async function orchestrateExtraction() {
         "    INNER JOIN \"baseUrls\" ON \"baseUrls\".\"baseUrlId\" = " +
         "paths.\"baseUrlBaseUrlId\"\n" +
         "WHERE\n" +
-        "    paths.\"lastSuccessfulTimestamp\" > 0\n" +
-        "    AND contents.content != '404'\n" +
-        "    AND contents.content != ''\n" +
-        "    AND contents.\"contentType\" = 'text/html'" +
-        "    AND contents.\"contentType\" = 'application/xhtml'" +
-        "    AND contents.\"contentType\" = 'application/xhtml+xml'" +
-        "    AND contents.\"contentType\" = 'text/xhtml'" +
+        "    contents.\"statusCode\" < 400\n" +
+        "    AND contents.\"statusCode\" > 0\n" +
         "ORDER BY paths.\"lastSuccessfulTimestamp\" ASC\n" +
         "LIMIT 2000\n" +
         "OFFSET ?";
