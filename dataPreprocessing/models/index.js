@@ -15,7 +15,7 @@ let db = {};
  */
 function logForSequelize(value) {
     // Ignore DB log for now - this only logs the sql queries that were made
-    // console.log(value);
+    console.log(value);
     return;
 }
 

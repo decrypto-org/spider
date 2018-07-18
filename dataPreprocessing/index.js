@@ -157,6 +157,8 @@ async function run() {
     let queryResults = [];
     let countsByLanguage = {};
     let parser = new Parser();
+    let asyncStores = {};
+    let promiseCounter = 0;
     do {
         queryResults = await sourceDb.content.findAll({
             where: {
@@ -197,13 +199,25 @@ async function run() {
                 countsByLanguage[language] = 1;
             }
             console.log("language: " + language);
-            storeResult(cleanContent, language, rawContent.contentId);
+            let promise = storeResult(
+                cleanContent,
+                language,
+                rawContent.contentId,
+                promiseCounter
+            );
+            promise.index = promiseCounter;
+            asyncStores[promiseCounter] = promise;
+            promise.catch(function(){}).then(function (taskId) {
+                delete asyncStores[taskId];
+            });
+            promiseCounter += 1;
             // Write back to db:
             // First: Clean result, language, then insert terms and
             // add links over invertedIndex as well as insert positions
             // Probably do this also in a separate method
         }
     } while (queryResults.length > 0 && offset < 20000);
+    await Promise.all(Object.values(asyncStores));
     console.log("Statistics: " + JSON.stringify(countsByLanguage));
     console.log("Did not retrieve more contents. Finished.");
     console.log("Restart the process after you've added more contents");
@@ -213,12 +227,19 @@ async function run() {
 /* eslint-disable no-unused-vars */
 /**
  * Normalize the inputs and store them back onto the database
- * @param  {string} cleanString Cleaned (Stripped) content string
- * @param  {string} language    ISO 639 language string (3 chars)
+ * @param {string} cleanString Cleaned (Stripped) content string
+ * @param {string} language    ISO 639 language string (3 chars)
  * @param {UUIDv4} originContentId The id of the raw content string, used
- *                                 as link to all the other structures stored
+ *                                 as link to all the other structures stored   
+ * @param {number} id              The id of the async task. When resolved, this
+ *                                 id is returned
  */
-async function storeResult(cleanString, language, originContentId) {
+async function storeResult(
+    cleanString,
+    language,
+    originContentId,
+    id
+) {
     // IF english ==> apply:
     // 1. punctuation removal
     // 2. tokenization (extract terms in order)
@@ -308,6 +329,7 @@ async function storeResult(cleanString, language, originContentId) {
             finalErrorHandler(err);
         });
     }
+    return id;
 }
 /* eslint-enable no-unused-vars */
 
