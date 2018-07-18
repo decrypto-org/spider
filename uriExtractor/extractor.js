@@ -195,7 +195,7 @@ async function orchestrateExtraction() {
         "paths.\"baseUrlBaseUrlId\"\n" +
         "WHERE\n" +
         "    contents.\"statusCode\" < 400\n" +
-        "    contents.\"statusCode\" > 0\n" +
+        "    AND contents.\"statusCode\" > 0\n" +
         "ORDER BY paths.\"lastSuccessfulTimestamp\" ASC\n" +
         "LIMIT 2000\n" +
         "OFFSET ?";
