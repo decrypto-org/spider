@@ -293,7 +293,7 @@ class Network {
         while (
             this.waitingForData.length > 0 && maxNumOfDownloadersToCall > 0
         ) {
-            callback = this.waitingForData.pop();
+            callback = this.waitingForData.shift();
             if (callback != null) {
                 callback();
                 maxNumOfDownloadersToCall -= 1;

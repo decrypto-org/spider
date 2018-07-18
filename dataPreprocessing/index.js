@@ -15,9 +15,14 @@ let Parser = require("../server/app/parser");
 
 let sourceDb = require("../server/app/models");
 let targetDb = require("./models");
-let limit = parseInt(process.env.NETWORK_MAX_POOL_SIZE, 10);
+let waitingForDbConnection = [];
+let limit = parseInt(process.env.PREPROCESSOR_MAX_POOL_SIZE, 10);
+let dbConnections = parseInt(process.env.PREPROCESSOR_MAX_DB_CONNECTIONS, 10);
 if (isNaN(limit) || limit <= 0) {
     limit = 2000;
+}
+if (isNaN(dbConnections) || limit <= 0) {
+    dbConnections = 25;
 }
 
 let languagesToBeInserted = [
@@ -199,6 +204,10 @@ async function run() {
                 countsByLanguage[language] = 1;
             }
             console.log("language: " + language);
+            await getDbInstanceForStorage().catch((err) => {
+                console.err("getDbInstanceForStorage timed out. Giving up");
+                process.exit(-1);
+            });
             let promise = storeResult(
                 cleanContent,
                 language,
@@ -207,7 +216,17 @@ async function run() {
             );
             promise.index = promiseCounter;
             asyncStores[promiseCounter] = promise;
-            promise.catch(function(){}).then(function (taskId) {
+            promise.catch(() => {}).then((taskId) => {
+                let callback = null;
+                while (callback == null && waitingForDbConnection.length > 0) {
+                    callback = waitingForDbConnection.shift();
+                    if(callback != null){
+                        callback();
+                        delete asyncStores[taskId];
+                        return;
+                    }
+                }
+                dbConnections += 1;
                 delete asyncStores[taskId];
             });
             promiseCounter += 1;
@@ -222,6 +241,28 @@ async function run() {
     console.log("Did not retrieve more contents. Finished.");
     console.log("Restart the process after you've added more contents");
     process.exit(0);
+}
+
+/**
+ * Returns only, if a db connection is available, otherwise blocks.
+ * Acts a bit like a semaphore.
+ */
+async function getDbInstanceForStorage() {
+    if (dbConnections > 0) {
+        dbConnections -= 1;
+        return;
+    }
+    return new Promise((resolve, reject) => {
+        let pos = waitingForDbConnection.push(() => {
+            resolve();
+            return;
+        });
+        setTimeout(() => {
+            waitingForDbConnection[pos] = null;
+            reject("getDbInstanceForStorage timed out");
+            return;
+        }, 120000);
+    });
 }
 
 /* eslint-disable no-unused-vars */

@@ -28,7 +28,7 @@ let sequelize = new Sequelize(
         port: process.env.DB_PORT,
         dialect: "postgres",
         pool: {
-            max: process.env.DB_MAX_CONNECTIONS,
+            max: process.env.PREPROCESSOR_MAX_DB_CONNECTIONS,
             min: process.env.DB_MIN_CONNECTIONS,
             idle: 60000,
             acquire: 120000,
