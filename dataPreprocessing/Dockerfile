@@ -2,8 +2,6 @@ FROM robrunne/tdse-dependencies:1.0.0
 
 WORKDIR /usr/src/tdse/spider/dataPreprocessing
 
-COPY ./server/.env ./
-
 COPY ./dataPreprocessing/package*.json ./
 
 RUN npm install ../../textract
@@ -17,6 +15,8 @@ RUN apt update
 RUN apt install -y -qq antiword
 
 RUN apt install -y -qq xpdf
+
+COPY ./server/.env ./
 
 # Connection to the database
 EXPOSE 10864

@@ -4,11 +4,11 @@ WORKDIR /usr/src/tdse/spider/extractor
 
 COPY ./uriExtractor/package*.json ./
 
-COPY ./server/.env ./
-
 RUN npm install
 
 COPY ./uriExtractor .
+
+COPY ./server/.env ./
 
 # Connection to the database
 EXPOSE 10864

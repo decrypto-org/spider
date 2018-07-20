@@ -17,7 +17,7 @@ let sourceDb = require("../server/app/models");
 let targetDb = require("./models");
 let waitingForDbConnection = [];
 let limit = parseInt(process.env.PREPROCESSOR_MAX_POOL_SIZE, 10);
-let dbConnections = parseInt(process.env.PREPROCESSOR_MAX_DB_CONNECTIONS, 10);
+let dbConnections = parseInt(process.env.PREPROCESSOR_MAX_PARALLEL, 10);
 if (isNaN(limit) || limit <= 0) {
     limit = 2000;
 }
@@ -204,8 +204,8 @@ async function run() {
                 countsByLanguage[language] = 1;
             }
             console.log("language: " + language);
-            await getDbInstanceForStorage().catch((err) => {
-                console.err("getDbInstanceForStorage timed out. Giving up");
+            await getDbConnection().catch((err) => {
+                console.error("getDbConnection timed out. Giving up");
                 process.exit(-1);
             });
             let promise = storeResult(
@@ -219,11 +219,10 @@ async function run() {
             promise.catch(() => {}).then((taskId) => {
                 let callback = null;
                 while (callback == null && waitingForDbConnection.length > 0) {
-                    callback = waitingForDbConnection.shift();
+                    callback = waitingForDbConnection.pop();
                     if(callback != null){
                         callback();
                         delete asyncStores[taskId];
-                        return;
                     }
                 }
                 dbConnections += 1;
@@ -247,7 +246,7 @@ async function run() {
  * Returns only, if a db connection is available, otherwise blocks.
  * Acts a bit like a semaphore.
  */
-async function getDbInstanceForStorage() {
+async function getDbConnection() {
     if (dbConnections > 0) {
         dbConnections -= 1;
         return;
@@ -259,9 +258,9 @@ async function getDbInstanceForStorage() {
         });
         setTimeout(() => {
             waitingForDbConnection[pos] = null;
-            reject("getDbInstanceForStorage timed out");
+            reject("getDbConnection timed out");
             return;
-        }, 120000);
+        }, 180000);
     });
 }
 

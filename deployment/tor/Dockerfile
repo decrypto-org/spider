@@ -1,5 +1,6 @@
-# We now only need this in order to not have to change
-# the start parameters in the library code but in our codebase
+# Not actually needed anymore... Keeping, since we have set up everything
+# with it already and it may come in handy later, if we want to change
+# or add components to the image. For now it is just here
 
 FROM robrunne/tor-router:1.0.0
 

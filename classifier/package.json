@@ -1,0 +1,29 @@
+{
+  "name": "classifier",
+  "version": "1.0.0",
+  "description": "Classifies web content with provided  labels. Uses semisupervised active learning in order to work better on small datasets.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/decrypto-org/spider.git"
+  },
+  "keywords": [
+    "classification",
+    "web",
+    "sites",
+    "content",
+    "bag",
+    "of",
+    "words",
+    "svm"
+  ],
+  "author": "Roman Brunner, robrunne@student.ethz.ch",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/decrypto-org/spider/issues"
+  },
+  "homepage": "https://github.com/decrypto-org/spider#readme"
+}
