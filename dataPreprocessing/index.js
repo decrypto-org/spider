@@ -256,11 +256,6 @@ async function getDbConnection() {
             resolve();
             return;
         });
-        setTimeout(() => {
-            waitingForDbConnection[pos] = null;
-            reject("getDbConnection timed out");
-            return;
-        }, 180000);
     });
 }
 
