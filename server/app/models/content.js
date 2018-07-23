@@ -28,6 +28,37 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATE,
             defaultValue: sequelize.literal("NOW()"),
         },
+    }, {
+        indexes: [
+            {
+                unique: true,
+                fields: [
+                    {attribute: "contentId", order: "DESC"},
+                ],
+            },
+            {
+                unique: true,
+                fields: [
+                    {attribute: "pathPathId", order: "DESC"},
+                ],
+            },
+        ]
     });
+    /**
+     * Get contents not yet preprocessed, one per not fully preprocessed
+     * host, ordered lexicographically. 
+     * @param {number} limit You can give an upper limit in the number of
+     *                       returned contents
+     * @return {Promise} If resolved, it returns an array of conten object,
+     *                   in order to preprocess them. If an error occurs, the
+     *                   promise is rejected with an error message string
+     */
+    Content.getContentsToProcess = function(limit) {
+        if (this.offset == undefined) {
+            this.offset = 0;
+        }
+
+        let getContentsQueryString = ""
+    }
     return Content;
 };

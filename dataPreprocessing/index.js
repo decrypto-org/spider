@@ -165,7 +165,7 @@ async function run() {
     let asyncStores = {};
     let promiseCounter = 0;
     do {
-        queryResults = await sourceDb.content.findAll({
+        queryResults = await sourceDb.content.getContentsToProcess({
             where: {
                 statusCode: {
                     [Op.lt]: 400,

@@ -6,8 +6,8 @@
   "private": true,
   "scripts": {
     "test": "mocha",
-    "start": "node index.js",
-    "runHost": "cp ../server/.env . && node index.js",
+    "start": "node --max-old-space-size=4096 index.js",
+    "runHost": "cp ../server/.env . && node --max-old-space-size=4096 index.js",
     "debugHost": "cp ../server/.env . && export DEBUG=true && node --inspect-brk=0.0.0.0:9100 index.js",
     "debugVirt": "export DEBUG=true && node --inspect-brk=0.0.0.0:65001 index.js"
   },

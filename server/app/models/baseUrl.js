@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
             {
                 unique: true,
                 fields: [
-                    {attribute: "baseUrl", sorted: "ASC"},
+                    {attribute: "baseUrl", order: "ASC"},
                 ],
             },
         ],

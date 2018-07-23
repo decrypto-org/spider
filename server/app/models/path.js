@@ -75,7 +75,7 @@ module.exports = (sequelize, DataTypes) => {
             },
             {
                 fields: [
-                    {attribute: "pathId"},
+                    {attribute: "pathId", order: "DESC"},
                 ],
             },
             {
@@ -86,6 +86,11 @@ module.exports = (sequelize, DataTypes) => {
                     {attribute: "subdomain"},
                 ],
             },
+            {
+                fields: [
+                    {attribute: "baseUrlBaseUrlId", order: "ASC"},
+                ]
+            }
         ],
         timestamps: true,
     });

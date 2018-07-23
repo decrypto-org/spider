@@ -14,6 +14,15 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.UUID,
             allowNull: false,
         },
+    }, {
+        indexes: [
+            {
+                unique: true,
+                fields: [
+                    {attribute: "rawContentId", order: "DESC"},
+                ],
+            },
+        ]
     });
     CleanContent.associate = function(models) {
         CleanContent.belongsTo(models.language, {
