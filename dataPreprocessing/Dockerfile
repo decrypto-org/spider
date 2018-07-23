@@ -1,4 +1,4 @@
-FROM robrunne/tdse-dependencies:1.0.0
+FROM robrunne/tdse-prepbase:1.0.0
 
 WORKDIR /usr/src/tdse/spider/dataPreprocessing
 
@@ -9,12 +9,6 @@ RUN npm install ../../textract
 RUN npm install
 
 COPY ./dataPreprocessing .
-
-RUN apt update
-
-RUN apt install -y -qq antiword
-
-RUN apt install -y -qq xpdf
 
 COPY ./server/.env ./
 

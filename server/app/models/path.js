@@ -89,8 +89,8 @@ module.exports = (sequelize, DataTypes) => {
             {
                 fields: [
                     {attribute: "baseUrlBaseUrlId", order: "ASC"},
-                ]
-            }
+                ],
+            },
         ],
         timestamps: true,
     });

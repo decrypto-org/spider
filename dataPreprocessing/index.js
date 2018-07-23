@@ -165,8 +165,20 @@ async function run() {
     let asyncStores = {};
     let promiseCounter = 0;
     do {
-        queryResults = await sourceDb.content.getContentsToProcess({
-            limit
+        queryResults = await sourceDb.content.findAll({
+            where: {
+                statusCode: {
+                    [Op.lt]: 400,
+                },
+                [Op.and]: [
+                    {content: {[Op.ne]: ""}},
+                    {content: {[Op.ne]: "404"}},
+                    {content: {[Op.ne]: "[MISSING]"}},
+                ],
+            },
+            offset: offset,
+            limit: limit,
+            order: [["createdAt", "ASC"]],
         });
         offset += queryResults.length;
         for (let i = 0; i < queryResults.length; i++) {
@@ -208,7 +220,7 @@ async function run() {
                 let callback = null;
                 while (callback == null && waitingForDbConnection.length > 0) {
                     callback = waitingForDbConnection.pop();
-                    if(callback != null){
+                    if (callback != null) {
                         callback();
                         delete asyncStores[taskId];
                     }
@@ -217,12 +229,8 @@ async function run() {
                 delete asyncStores[taskId];
             });
             promiseCounter += 1;
-            // Write back to db:
-            // First: Clean result, language, then insert terms and
-            // add links over invertedIndex as well as insert positions
-            // Probably do this also in a separate method
         }
-    } while (queryResults.length > 0 && offset < 20000);
+    } while (queryResults.length > 0 && offset < 450000);
     await Promise.all(Object.values(asyncStores));
     console.log("Statistics: " + JSON.stringify(countsByLanguage));
     console.log("Did not retrieve more contents. Finished.");
@@ -233,6 +241,7 @@ async function run() {
 /**
  * Returns only, if a db connection is available, otherwise blocks.
  * Acts a bit like a semaphore.
+ * @return {Promise} Promise is resolved as soon as a DB connection is available
  */
 async function getDbConnection() {
     if (dbConnections > 0) {
@@ -240,7 +249,9 @@ async function getDbConnection() {
         return;
     }
     return new Promise((resolve, reject) => {
-        let pos = waitingForDbConnection.push(() => {
+        // We do not timeout, therefor we do not have to store the position
+        // to remove the "callback"
+        waitingForDbConnection.push(() => {
             resolve();
             return;
         });
@@ -253,9 +264,13 @@ async function getDbConnection() {
  * @param {string} cleanString Cleaned (Stripped) content string
  * @param {string} language    ISO 639 language string (3 chars)
  * @param {UUIDv4} originContentId The id of the raw content string, used
- *                                 as link to all the other structures stored   
+ *                                 as link to all the other structures stored
  * @param {number} id              The id of the async task. When resolved, this
  *                                 id is returned
+ * @return {number} Store task id is returned when finished. This is useful
+ *                  in order to remove the corresponding promise from the array,
+ *                  which is needed, otherwise we'd fill up the memory with
+ *                  resolved promises.
  */
 async function storeResult(
     cleanString,
