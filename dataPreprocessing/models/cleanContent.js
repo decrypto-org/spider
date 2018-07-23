@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.UUID,
             allowNull: false,
         },
+        pathPathId: {
+            type: DataTypes.UUID,
+            allowNull: false,
+        }
     }, {
         indexes: [
             {

@@ -166,19 +166,7 @@ async function run() {
     let promiseCounter = 0;
     do {
         queryResults = await sourceDb.content.getContentsToProcess({
-            where: {
-                statusCode: {
-                    [Op.lt]: 400,
-                },
-                [Op.and]: [
-                    {content: {[Op.ne]: ""}},
-                    {content: {[Op.ne]: "404"}},
-                    {content: {[Op.ne]: "[MISSING]"}},
-                ],
-            },
-            offset: offset,
-            limit: limit,
-            order: [["createdAt", "ASC"]],
+            limit
         });
         offset += queryResults.length;
         for (let i = 0; i < queryResults.length; i++) {
