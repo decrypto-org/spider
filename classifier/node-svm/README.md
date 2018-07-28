@@ -1,3 +1,5 @@
+This is a fork of https://github.com/nicolaspanel/node-svm. 
+
 # node-svm
 
 Support Vector Machine (SVM) library for [nodejs](http://nodejs.org/) & [io.js](https://iojs.org/en/index.html) .
