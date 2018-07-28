@@ -1,5 +1,6 @@
 "use strict";
 let uuidv4 = require("uuid/v4");
+let truncate = require("truncate-utf8-bytes");
 
 module.exports = (sequelize, DataTypes) => {
     const Term = sequelize.define("term", {
@@ -63,6 +64,14 @@ VALUES\n";
             let newTermId = uuidv4();
             let term = terms[i];
             let value = "   (?, ?)";
+            if (Buffer.from(term).length >= 2711) {
+                console.warn("Truncating too large term to 2710 bytes");
+                console.warn("Postgres indexes uses a b tree");
+                console.warn("The b tree supports only content of max 2710B");
+                console.warn("Term was: " + term);
+                term = truncate(term, 2710);
+                console.warn("Term is now: " + term);
+            }
             replacementsForTermInsertion.push(newTermId);
             replacementsForTermInsertion.push(term);
             if ( i == terms.length - 1 ) {
@@ -85,6 +94,5 @@ RETURNING \"termId\", \"term\"";
             }
         );
     };
-
     return Term;
 };

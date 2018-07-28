@@ -1,0 +1,277 @@
+{
+	"labels": [
+		{
+
+			"label": "Activism",
+
+			"id": "7d85eb746c71480e8a5fb6ab026f8ff3"
+
+		},
+		{
+
+			"label": "Adult",
+
+			"id": "5fd67ff6832b4b0fbe5c7aa84d3d630d"	
+
+		},
+		{
+
+			"label": "Anonymity",
+
+			"id": "a03896ddc35743cc93d9872d9e2b20f8"
+
+		},
+		{
+
+			"label": "Art",
+
+			"id": "41be560c40264c05bf4a64eaba6fdf5d"
+
+		},
+		{
+
+			"label": "Chat",
+
+			"id": "7175e088c6914bc18358698ed4640ec6"
+
+		},
+		{
+
+			"label": "Pedophilic",
+
+			"id": "73ee959e612446eab60b6cf23b886b02"
+
+		},
+		{
+
+			"label": "Closed",
+
+			"id": "f0860afab36a498482e9fc39790891b9"
+
+		},
+		{
+
+			"label": "Counterfeit",
+
+			"id": "ed023e9e43ed4dd5b79872690ba4e3ca"
+
+		},
+		{
+
+			"label": "Deanonimization",
+
+			"id": "7a337fd8ccdb4c93a48bc533a2a6c9c2"
+
+		},
+		{
+
+			"label": "Development",
+
+			"id": "9c6b393ef780464199d0fb70e0356a82"
+
+		},
+		{
+
+			"label": "Down",
+
+			"id": "829e528243c540e2aea14150d3deefa8"
+
+		},
+		{
+
+			"label": "Drugs",
+
+			"id": "21a47fb397ab48669139547dbcd81518"
+
+		},
+		{
+
+			"label": "Empty",
+
+			"id": "787a67e6ee06456fa1102531ac9c25ce"
+
+		},
+		{
+
+			"label": "Error",
+
+			"id": "ac673027793f41659f41de4b6bd5ce52"
+
+		},
+		{
+
+			"label": "Event",
+
+			"id": "65b860bbdebb4d00a530b088ce7b3b98"
+
+		},
+		{
+
+			"label": "Exchange",
+
+			"id": "d8ca133df6fe4ead88f0f120513e032c"
+
+		},
+		{
+
+			"label": "Forum",
+
+			"id": "ef6e30b57c09472dad956d5dfd674fbf"
+
+		},
+		{
+
+			"label": "Gambling",
+
+			"id": "10d66e9a99fb47f4819b66257d12afe4"
+
+		},
+		{
+
+			"label": "Hacking",
+
+			"id": "a8883b44c9034f8d98b0e0b883587926"
+
+		},
+		{
+
+			"label": "Hosting",
+
+			"id": "a2c1071d007e4a3d87d55d54fe0e3b7e"
+
+		},
+		{
+
+			"label": "Laundry",
+
+			"id": "0257ad1c718a459fb00b5db888a66631"
+
+		},
+		{
+
+			"label": "Linkhub",
+
+			"id": "4aaa4bdcce854100a3f1c0a051187514"
+
+		},
+		{
+
+			"label": "Mail",
+
+			"id": "a69b579d9f4d4e41ae35caf7e3852caf"
+
+		},
+		{
+
+			"label": "Blog",
+
+			"id": "64028b4f495c4747b2777f0612abfbba"
+
+		},
+		{
+
+			"label": "Phishing",
+
+			"id": "dd8a7a40035d4efba8fdf072a5a7564c"
+
+		},
+		{
+
+			"label": "Pirating",
+
+			"id": "6894afd6fb4f4a22bf0fba10b7e976f6"
+
+		},
+		{
+
+			"label": "Placeholder",
+
+			"id": "df1a4d08006340e098281b90263fcf0f"
+
+		},
+		{
+
+			"label": "Fraud",
+
+			"id": "53b7271f102c4f5687ca0908d4cd9510"
+
+		},
+		{
+
+			"label": "Searchengine",
+
+			"id": "fef747bc92c24a08b66e293cf1e0f6c1"
+
+		},
+		{
+
+			"label": "Security",
+
+			"id": "906976828bef44959c256f0ed05f4aef"
+
+		},
+		{
+
+			"label": "Service",
+
+			"id": "8d82bb6e0ed546308549624696da9104"
+
+		},
+		{
+
+			"label": "Sharing",
+
+			"id": "35f93f87a5fd4e74b41989447f9d3f4c"
+
+		},
+		{
+
+			"label": "Market",
+
+			"id": "db5b135a48904d2ba90c86065fed4de5"
+
+		},
+		{
+
+			"label": "Social Network",
+
+			"id": "96dd510a7c344f2b86ff9286aa6a6445"
+
+		},
+		{
+
+			"label": "Software",
+
+			"id": "2c8220cb95f24d3e962f492c5ba97e28"
+
+		},
+		{
+
+			"label": "Terrorism",
+
+			"id": "45ae12082b144a7ca5d434f7ef621fa9"
+
+		},
+		{
+
+			"label": "Weapons",
+
+			"id": "2c231b2de9e94b9ba8a7c6842b5c59aa"
+
+		},
+		{
+
+			"label": "Whistleblowing",
+
+			"id": "3a3bf706c3ba4c4e8b6303501e4802d7"
+
+		},
+		{
+
+			"label": "Wiki",
+
+			"id": "ca24ef1c09674c59b5cddbc63d8f06f6"
+
+		}
+	]
+}

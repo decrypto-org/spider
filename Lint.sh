@@ -39,4 +39,8 @@ printf "Linting dataPreprocessing.models\n"
 eslint --config .eslintrc.js --fix dataPreprocessing/models/**
 printf "Linting dataPreprocessing.index\n"
 eslint --config .eslintrc.js --fix dataPreprocessing/index.js
+printf "Linting classifier.index\n"
+eslint --config .eslintrc.js --fix classifier/index.js
+printf "Linting classifier.models\n"
+eslint --config .eslintrc.js --fix classifier/models/**
 printf "Completed - Code adheres to standard\n"

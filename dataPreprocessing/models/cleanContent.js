@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.UUID,
             allowNull: false,
         },
+        legal: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: true
+        },
     }, {
         indexes: [
             {

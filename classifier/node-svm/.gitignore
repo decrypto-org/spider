@@ -1,0 +1,24 @@
+lib-cov
+*.seed
+*.log
+*.csv
+*.dat
+*.out
+*.pid
+*.gz
+
+pids
+logs
+results
+tmp
+
+npm-debug.log
+node_modules
+build
+.idea
+
+# vagrant
+Vagrantfile
+.vagrant
+
+coverage/
