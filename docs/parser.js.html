@@ -32,6 +32,8 @@ let {logger} = require("./library/logger");
 /* eslint-enable no-unused-vars */
 let cheerio = require("cheerio");
 
+let textract = require("textract");
+
 /**
  * This module handels the parsing of the responses. This
  * is necessary to extract the information needed to keep the
@@ -54,22 +56,22 @@ class Parser {
         // We are matching as broad as possible.
         /* eslint-disable max-len, no-useless-escape */
         this.globalOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www.)?(?:([-a-z0-9.]+[.]){0,242}([-a-z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+.~#?&amp;\/=|$]+)?",
-            "gi"
+            "(?:http(s)?:\/\/)?(?:www\\.)?((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?(\/[^\"\'\\s&lt;]*)?",
+            "ugi"
         );
         this.globalBaseUrlMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www.)?([-a-z0-9=]{15,256}\.onion)",
-            "gi"
+            "(?:http(s)?:\/\/)?(?:www\\.)?((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)",
+            "ugi"
         );
         this.singleOnionRegexMatch = new RegExp(
-            "(?:http(s)?:\/\/)?(?:www\.)?(?:([-a-z0-9\.]+[.]){0,242}([-a-zA-Z0-9=]{15,256}\.onion)(?::[0-9]{1,6})?)(\/[-a-z0-9@:%_+\.~#?&amp;\/=]*)?",
-            "i"
+            "(?:http(s)?:\/\/)?(?:www\\.)?((?:[-a-z0-9]+\\.){0,242})((?:[a-z2-7]{16}|[a-z2-7]{56})\\.onion)(?::[0-9]{1,6})?(\/[^\"\'\\s&lt;]*)?",
+            "ui"
         );
 
         // Note: We only keep sites that have textual data encoded, the rest
         // will be discarded as of now.
         this.base64Regex = new RegExp(
-            /\s*data:([^tex]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&amp;\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/i
+            /\s*data:((?!text)[a-z0-9]+\/[a-z+-0-9]+(;[a-z0-9\-]+\=[a-z0-9\-]+)?)?(;base64)?,[a-z0-9\!\$\&amp;\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*/gi
         );
         /* eslint-enable max-len, no-useless-escape */
     }
@@ -80,17 +82,49 @@ class Parser {
      * Direct Link: https://gist.github.com/bgrins/6194623
      * @param {string} stringToTest - This string will be tested against the
      *                                regex.
-     * @return {boolean} The return value indicates whether the passed string
+     * @return {string} The return value indicates whether the passed string
      *                   contained any base64 data (true) or not (false).
      */
-    matchBase64Media(stringToTest) {
-        let result = this.base64Regex.test(stringToTest);
+    removeBase64Media(stringToTest) {
+        let result = stringToTest.replace(
+            this.base64Regex,
+            "[OMITTED MEDIA DATA]"
+        );
         if (result) {
             logger.warn(
-                "[CONTAINS MEDIA DATA] Discarding " + stringToTest.slice(0, 100)
+                "[CONTAINS MEDIA DATA] Replacing " + stringToTest.slice(0, 10)
             );
         }
         return result;
+    }
+
+    /**
+     * Extracts text from the given string using textract. This needs
+     * to know the mimetype, in order to select the correct extractor.
+     * Since the mimeType is stored within the database, this is not an issue
+     * @param  {string} rawString The string from which the text should be
+     *                            extracted
+     * @param  {string} mimeType  The mime type of the passed string. This will
+     *                            usually be a text/html or plain text format
+     * @return {Promise}          Resolved with the extracted text, otherwise
+     *                            rejected with a string error message
+     */
+    async extractText(rawString, mimeType) {
+        return new Promise((resolve, reject) => {
+            textract.fromBufferWithMime(
+                mimeType,
+                Buffer.from(rawString, "utf8"),
+                (error, text) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    } else {
+                        resolve(text);
+                        return;
+                    }
+                }
+            );
+        });
     }
 
     /**
@@ -130,6 +164,7 @@ class Parser {
 
         let results = [];
         let $ = cheerio.load(contentString);
+        let relativeBaseUrl = fromEntry.url;
         let baseUrlSet = new Set();
         if (isHtmlString) {
             $("a").each((i, elem) => {
@@ -145,15 +180,39 @@ class Parser {
                 } else if (uri.startsWith("/") &amp;&amp; fromEntry != {}) {
                     // we are working with a relative url. Get baseurl
                     // from the fromEntry
-                    let baseUrl = $("base").attr("href") || fromEntry.url;
                     results.push({
                         secure: fromEntry.secure || false,
                         subdomain: fromEntry.subdomain || "",
-                        baseUrl: baseUrl,
+                        baseUrl: relativeBaseUrl,
                         path: uri,
                     });
                     return true;
                 } else if (uri.startsWith("/") &amp;&amp; fromEntry == {}) {
+                    if (relativeBaseUrl) {
+                        results.push({
+                            secure: fromEntry.secure || false,
+                            subdomain: fromEntry.subdomain || "",
+                            baseUrl: relativeBaseUrl,
+                            path: uri,
+                        });
+                        return true;
+                    }
+                    logger.warn(
+                        "[PARSER]\n"
+                        + "Found relative URI, but no fromEntry was specified\n"
+                        + "Ignoring this entry."
+                    );
+                    return true;
+                } else if (uri.startsWith("?")) {
+                    if (relativeBaseUrl) {
+                        results.push({
+                            secure: fromEntry.secure || false,
+                            subdomain: fromEntry.subdomain || "",
+                            baseUrl: relativeBaseUrl,
+                            path: uri,
+                        });
+                        return true;
+                    }
                     logger.warn(
                         "[PARSER]\n"
                         + "Found relative URI, but no fromEntry was specified\n"
@@ -182,7 +241,7 @@ class Parser {
             let baseUrl;
             do {
                 baseUrl = this.globalBaseUrlMatch.exec(contentString);
-                if (baseUrl &amp;&amp; !baseUrlSet.has(baseUrl[2])) {
+                if (baseUrl &amp;&amp; !baseUrlSet.has(baseUrl[3])) {
                     let secure = false;
                     if (baseUrl[1] === "s") {
                         secure = true;
@@ -190,32 +249,39 @@ class Parser {
                     results.push({
                         secure: secure,
                         subdomain: "",
-                        baseUrl: baseUrl[2],
+                        baseUrl: baseUrl[3],
                         path: "",
                     });
-                    baseUrlSet.add(baseUrl[2]);
+                    baseUrlSet.add(baseUrl[3]);
                 }
             } while (baseUrl);
         } else {
             // fallback to slow regex
-            let m;
-            do {
-                m = this.globalOnionRegexMatch.exec(contentString);
-                if (m) {
-                    let secure = false;
-                    if (m[1] === "s") {
-                        secure = true;
-                    }
-                    /** @type{ParseResult} */
-                    let result = {
-                        secure: secure,
-                        subdomain: m[2] || "",
-                        baseUrl: m[3],
-                        path: m[4] || "",
-                    };
-                    results.push(result);
+            let splittedStrings = contentString.split(/\r?\n/);
+            for (let i = 0; i &lt; splittedStrings.length; i++) {
+                let splitString = splittedStrings[i];
+                if (!splitString.includes(".onion")) {
+                    continue;
                 }
-            } while (m);
+                let m;
+                do {
+                    m = this.globalOnionRegexMatch.exec(splitString);
+                    if (m) {
+                        let secure = false;
+                        if (m[1] === "s") {
+                            secure = true;
+                        }
+                        /** @type{ParseResult} */
+                        let result = {
+                            secure: secure,
+                            subdomain: m[2] || "",
+                            baseUrl: m[3],
+                            path: m[4] || "",
+                        };
+                        results.push(result);
+                    }
+                } while (m);
+            }
         }
         return results;
     }
@@ -232,13 +298,13 @@ module.exports = Parser;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#DATA_ADDED_TO_POOL">DATA_ADDED_TO_POOL</a></li><li><a href="global.html#logForSequelize">logForSequelize</a></li><li><a href="global.html#NEW_NETWORK_DATA_AVAILABLE">NEW_NETWORK_DATA_AVAILABLE</a></li><li><a href="global.html#POOL_LOW">POOL_LOW</a></li><li><a href="global.html#SLOT_FREED_UP">SLOT_FREED_UP</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#executeQuery">executeQuery</a></li><li><a href="global.html#logForSequelize">logForSequelize</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Wed May 16 2018 23:13:33 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Jul 29 2018 22:19:43 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>

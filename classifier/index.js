@@ -1,3 +1,5 @@
+let dotenv = require("dotenv");
+let variableExpansion = require("dotenv-expand");
 let svm = require("./node-svm/lib");
 let commandLineArgs = require("command-line-args");
 let csvjson = require("csvjson");
@@ -5,6 +7,9 @@ let fs = require("fs");
 let path = require("path");
 let db = require("./models");
 let Op = db.Sequelize.Op;
+
+let classifierEnv = dotenv.config();
+variableExpansion(classifierEnv);
 
 // Read input - if we have any: this should be a manually labelled dataset
 // mode supports either train, apply or insert
@@ -17,8 +22,8 @@ const commandLineOptions = commandLineArgs([
     {name: "class_model", alias: "c", type: String},
     {name: "output_dir", alias: "o", type: String},
     {name: "mode", alias: "m", type: String},
-    {name: "quantile", alias: "q", type: String},
-    {name: "limit", alias: "k", type: String}
+    {name: "quantile", alias: "q", type: Number},
+    {name: "limit", alias: "k", type: Number},
 ]);
 
 let labelModelsByLabel;
@@ -56,7 +61,7 @@ function loadModels() {
         } else {
             rawPath = path.join(
                 __dirname,
-                "legalModel.json"
+                "outputModels/legalModel.json"
             );
         }
 
@@ -96,7 +101,10 @@ function storeModels() {
     } else if (destinationPath) {
         destinationPath.normalize(destinationPath);
     } else {
-        destinationPath = __dirname;
+        destinationPath = path.join(
+            __dirname,
+            "outputModels"
+        );
     }
     let legalModelDestPath = path.join(
         destinationPath,
@@ -123,7 +131,7 @@ async function upsertLabels() {
     );
     let labelString = fs.readFileSync(labelsPath);
     let labelsRawObject = JSON.parse(labelString);
-    let labels = db.label.bulkUpsert(labelsRawObject);
+    let labels = await db.label.bulkUpsert(labelsRawObject);
     let result = {};
     for ( let i = 0; i < labels.length; i++ ) {
         result[labels[i].label] = labels[i];
@@ -201,12 +209,32 @@ async function addTrainData() {
  *                                  class id.
  */
 async function trainModel(dataset) {
-    // body...
+    let clf = new svm.C_SVC({
+        kFold: 4,
+        normalize: true,
+        reduce: true,
+        cacheSize: 1024,
+        shrinking: true,
+        probability: true,
+    });
+
+    clf
+        .train(dataset)
+        .progress((rate) => {
+            // log to stdout
+        })
+        .spread((model, report) => {
+            // log report
+            // store model
+            // go ahead and apply model ==> should be handled by the run func
+            // this is only the backbone structure
+        });
 }
 
 /**
  * Apply the model to the provided dataset. The function does not return
- * anything, but updates the models in the global variables.
+ * anything, but updates the entries directly on the database (e.g. set
+ * primary label and legal status).
  * @param  {Arra.<Object>} dataset The objects contain a clean content model and
  *                                 a BoW vector. The estimated labels and
  *                                 certainties can then be directly written
@@ -217,28 +245,23 @@ async function applyModel(dataset) {
     // body...
 }
 
-// let clf = new svm.C_SVC({
-//     kFold: 4,
-//     normalize: true,
-//     reduce: true,
-//     cacheSize: 1024,
-//     shrinking: true,
-//     probability: true,
-// });
 
-// clf
-//     .train(dataset)
-//     .progress((rate) => {
-//         // log to stdout
-//     })
-//     .spread((model, report) => {
-//         // log report
-//         // store model
-//         // go ahead and apply model
-//         // this is only the backbone structure
-//     });
-
-async function run () {
+/**
+ * Run the whole process and keeps track of the state of the classifier. Manages
+ * the control flow ("Controller function")
+ */
+async function run() {
+    process
+    .on("unhandledRejection", (reason, p) => {
+        storeModels();
+        console.error(reason, "Unhandled Rejection at Promise", p);
+        process.exit(-1);
+    })
+    .on("uncaughtException", (err) => {
+        storeModels();
+        console.error(err, "Uncaught Exception thrown");
+        process.exit(-1);
+    });
     // first check the mode we should run in...
     // mode supports either train, apply or insert
     // train: train the classifier on the training data available from the db
@@ -248,6 +271,7 @@ async function run () {
     //      no train file specified: apply
     //      train specified: insert, then train
     await loadModels();
+    labelModelsByLabel = await upsertLabels();
     let mode = commandLineOptions.mode;
     if ( !mode ) {
         if ( commandLineOptions.labelled_dataset ) {
@@ -255,6 +279,7 @@ async function run () {
         } else if ( legalModel != {} && classModel != {} ) {
             mode = "apply";
         } else {
+            // No need to store models here, since they are empty (default)
             console.log("Cannot apply empty model. Please train first");
             process.exit(-1);
         }
@@ -264,6 +289,7 @@ async function run () {
             && legalModel == {}
             && classModel == {}
         ) {
+            // No need to store models here, since they are empty (default)
             console.log("Cannot apply empty model. Please train first");
             process.exit(-1);
         }
@@ -271,14 +297,28 @@ async function run () {
     if ( commandLineOptions.labelled_dataset ) {
         await addTrainData();
     }
-    let quantile = ; 
-    let limit = ;
+    let quantile =
+        commandLineOptions.quantile
+        || Number.parseFloat(process.env.CLASSIFIER_QUANTILE)
+        || 0.001;
+    let limit =
+        commandLineOptions.limit
+        || Number.parseInt(process.env.CLASSIFIER_LIMIT)
+        || 10000;
     if (mode === "train") {
         let dataset = await db.cleanContent.getTrainingData(limit, quantile);
         await trainModel(dataset);
+        storeModels();
+        do {
+            dataset = await db.cleanContent.getLabellingData(limit, quantile);
+            await applyModel(dataset);
+        } while (dataset.length >= limit);
     } else if (mode === "apply") {
-        let dataset = await db.cleanContent.getLabellingData(limit, quantile);
-        await applyModel(dataset);
+        let dataset;
+        do {
+            dataset = await db.cleanContent.getLabellingData(limit, quantile);
+            await applyModel(dataset);
+        } while (dataset.length >= limit);
     }
 }
 

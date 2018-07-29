@@ -1,10 +1,15 @@
 {
   "name": "classifier",
   "version": "1.0.0",
-  "description": "Classifies web content with provided  labels. Uses semisupervised active learning in order to work better on small datasets.",
+  "description": "Classifies web content with provided labels. Uses semisupervised active learning in order to work better on small datasets.",
+  "private": true,
   "main": "index.js",
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "start": "node --use_strict --max-old-space-size=4096 index.js",
+    "runHost": "cp ../server/.env . && node --max-old-space-size=4096 index.js",
+    "debugHost": "cp ../server/.env . && export DEBUG=true && node --inspect-brk=0.0.0.0:65101 --use_strict index.js",
+    "debugVirt": "export DEBUG=true && node --inspect-brk=0.0.0.0:65001 --use_strict index.js"
   },
   "repository": {
     "type": "git",
@@ -12,15 +17,11 @@
   },
   "keywords": [
     "classification",
-    "web",
-    "sites",
-    "content",
-    "bag",
-    "of",
-    "words",
+    "content analysis",
+    "bag of words",
     "svm"
   ],
-  "author": "Roman Brunner, robrunne@student.ethz.ch",
+  "author": "Roman Brunner (robrunne@student.ethz.ch)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/decrypto-org/spider/issues"
@@ -28,6 +29,8 @@
   "homepage": "https://github.com/decrypto-org/spider#readme",
   "dependencies": {
     "command-line-args": "^5.0.2",
-    "csvjson": "^5.0.0"
+    "csvjson": "^5.0.0",
+    "dotenv": "^6.0.0",
+    "dotenv-expand": "^4.2.0"
   }
 }

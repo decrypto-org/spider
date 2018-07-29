@@ -143,7 +143,7 @@ Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line58">line 58</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line33">line 33</a>
     </li></ul></dd>
     
 
@@ -205,7 +205,7 @@ Can be set by setting the NETWORK_MAX_POOL_SIZE environment variable.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line36">line 36</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line11">line 11</a>
     </li></ul></dd>
     
 
@@ -268,260 +268,7 @@ Can be set by setting the NETWORK_MIN_POOL_SIZE environment variable.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line46">line 46</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="DATA_ADDED_TO_POOL"><span class="type-signature"></span>DATA_ADDED_TO_POOL<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is thrown everytime data is added to the pool (not for every
-entry added but for every update of the pool)
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line23">line 23</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="NEW_NETWORK_DATA_AVAILABLE"><span class="type-signature"></span>NEW_NETWORK_DATA_AVAILABLE<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is thrown everytime the downloader has finished a request.
-Is used to notify the client, that new data is available to process
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line17">line 17</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="POOL_LOW"><span class="type-signature"></span>POOL_LOW<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is emitted as long as the pool is below its minimum defined
-size. This can be used by a client to add new data to the pool.
-One argument should be passed, indicating how many entries are available
-to the pool max.
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line31">line 31</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="SLOT_FREED_UP"><span class="type-signature"></span>SLOT_FREED_UP<span class="type-signature"></span></h4>
-
-
-
-
-<div class="description">
-    This event is thrown everytime a slot is freed-up
-</div>
-
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line11">line 11</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line21">line 21</a>
     </li></ul></dd>
     
 
@@ -542,6 +289,189 @@ to the pool max.
 
     
         <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="executeQuery"><span class="type-signature">(async) </span>executeQuery<span class="signature">(queryString, replacements)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Executes a raw query with the provided string.
+Used to enable retries
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>queryString</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">String</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">The SQL query string with placeholders
+                              that should be used for the query</td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>replacements</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;(String|number|boolean)></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last">Replacements for the
+                                                     placeholders</td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line74">line 74</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Returns the raw returnvalue of the db
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
 
         
             
@@ -1039,7 +969,7 @@ was suggested as workaround.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line447">line 447</a>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line509">line 509</a>
     </li></ul></dd>
     
 
@@ -1212,7 +1142,7 @@ was suggested as workaround.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line432">line 432</a>
+        <a href="models_index.js.html">models/index.js</a>, <a href="models_index.js.html#line494">line 494</a>
     </li></ul></dd>
     
 
@@ -1518,7 +1448,7 @@ was suggested as workaround.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="network.js.html">network.js</a>, <a href="network.js.html#line368">line 368</a>
+        <a href="network.js.html">network.js</a>, <a href="network.js.html#line304">line 304</a>
     </li></ul></dd>
     
 
@@ -1700,7 +1630,7 @@ was suggested as workaround.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="parser.js.html">parser.js</a>, <a href="parser.js.html#line68">line 68</a>
+        <a href="parser.js.html">parser.js</a>, <a href="parser.js.html#line102">line 102</a>
     </li></ul></dd>
     
 
@@ -1730,13 +1660,13 @@ was suggested as workaround.
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#DATA_ADDED_TO_POOL">DATA_ADDED_TO_POOL</a></li><li><a href="global.html#logForSequelize">logForSequelize</a></li><li><a href="global.html#NEW_NETWORK_DATA_AVAILABLE">NEW_NETWORK_DATA_AVAILABLE</a></li><li><a href="global.html#POOL_LOW">POOL_LOW</a></li><li><a href="global.html#SLOT_FREED_UP">SLOT_FREED_UP</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#executeQuery">executeQuery</a></li><li><a href="global.html#logForSequelize">logForSequelize</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Wed May 16 2018 23:13:33 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Jul 29 2018 22:19:43 GMT+0200 (CEST)
 </footer>
 
 <script> prettyPrint(); </script>
