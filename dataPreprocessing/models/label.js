@@ -1,5 +1,4 @@
 "use strict";
-let uuidv4 = require("uuid/v4");
 
 module.exports = (sequelize, DataTypes) => {
     const Label = sequelize.define("label", {
@@ -14,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         },
         numberOfDocs: {
             type: DataTypes.BIGINT,
-            defaultValue: 1
+            defaultValue: 1,
         },
     }, {
         indexes: [
@@ -35,12 +34,14 @@ module.exports = (sequelize, DataTypes) => {
     /**
      * Insert multiple labels into the label table. If the label already existed
      * the found model is returned.
-     * @param  {Array.<string>} labels All labels which should be inserted
+     * @param  {Array.<Object>} labels All labels which should be inserted,
+     *                                 each object consisting of a label and an
+     *                                 id (keys: )
      * @return {Array.<object>}        An array of all created label models
      */
     Label.bulkUpsert = async function(labels) {
+        /* eslint-disable no-multi-str */
         let labelInsertString = "\
-LOCK TABLE ONLY \"labels\" IN SHARE ROW EXCLUSIVE MODE;\n\
 INSERT INTO \"labels\"\n\
     (\n\
         \"labelId\",\n\
@@ -49,10 +50,9 @@ INSERT INTO \"labels\"\n\
 VALUES\n";
         let replacementsForLabelInsert = [];
         for ( let i = 0; i < labels.length; i++ ) {
-            let newLabelId = uuidv4();
-            let label = labels[i];
+            let label = labels[i].label;
             let value = "   (?, ?)";
-            replacementsForLabelInsert.push(newLabelId);
+            replacementsForLabelInsert.push(labels[i].id);
             replacementsForLabelInsert.push(label);
             if ( i == labels.length - 1 ) {
                 value += "\n";
@@ -66,11 +66,12 @@ ON CONFLICT(\"label\")\n\
 DO UPDATE SET \n\
     \"numberOfDocs\" = \"labels\".\"numberOfDocs\" + 1\n\
 RETURNING \"labelId\", \"label\"";
+        /* eslint-enable no-multi-str */
         return await sequelize.query(
             labelInsertString,
             {
                 replacements: replacementsForLabelInsert,
-                model: Label
+                model: Label,
             }
         );
     };

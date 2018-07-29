@@ -282,7 +282,7 @@ async function storeResult(
     // 1. punctuation removal
     // 2. tokenization (extract terms in order)
     // 3. stem (e.g. for english languages)
-    let emptyContainedList = cleanString.split(/[\s\\/:.@]/);
+    let emptyContainedList = cleanString.split(/[\s\\/:.@"]/);
     let termList = [];
     for (let i = 0; i < emptyContainedList.length; i++) {
         let term = emptyContainedList[i];

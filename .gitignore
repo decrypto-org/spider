@@ -284,3 +284,8 @@ TSWLatexianTemp*
 
 # generated if using elsarticle.cls
 *.spl
+
+# excluding labelling files: Those are helper files to ease the manual labelling
+# The data is available over the database, no need to commit them to the
+# repo (since they are specific to a run of the whole project)
+classifier/data
