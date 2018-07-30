@@ -5,11 +5,13 @@ let commandLineArgs = require("command-line-args");
 let csvjson = require("csvjson");
 let fs = require("fs");
 let path = require("path");
-let db = require("./models");
-let Op = db.Sequelize.Op;
 
 let classifierEnv = dotenv.config();
 variableExpansion(classifierEnv);
+
+// We need the env loaded first ^v
+let db = require("./models");
+let Op = db.Sequelize.Op;
 
 // Read input - if we have any: this should be a manually labelled dataset
 // mode supports either train, apply or insert
@@ -24,7 +26,40 @@ const commandLineOptions = commandLineArgs([
     {name: "mode", alias: "m", type: String},
     {name: "quantile", alias: "q", type: Number},
     {name: "limit", alias: "k", type: Number},
+    {name: "help", alias: "h", type: Boolean}
 ]);
+
+if (commandLineOptions.help) {
+    /* eslint-disable no-multi-str*/
+    console.log("\
+-d, --labelled_dataset      Training dataset or the form\n\
+                            cleanContentId;legal;label\n\
+                            408751f4-4dab-46a3-a6e1-110b32e9e98b;legal;Mail\n\
+                            32713375-1ae0-42ef-867a-eb855069ab30;legal;Adult\n\
+-l, --legal_model           Specify a model file to be used for the legal\
+ model.\n\
+                            If no model is specified, the default model is\
+ used.\n\
+-l, --legal_model           Specify a model file to be used for the class\
+ model.\n\
+                            If no model is specified, the default model is\
+ used.\n\
+-o, --output_dir            Specify where the model files should be stored.\n\
+                            Default: ./outputModels\n\
+-m, --mode                  train: train the classifier on the training data\
+ available from the db\n\
+                            apply: apply the model to the not yet classified\
+ entries\n\
+                            insert: only insert manuall labelled content, do\
+ nothing else\n\
+-q, --quantile              How certain must an entry be in order to belong to\
+ the training set\n\
+-k, --limit                 How many entries should be used for training or\
+ in each labelling step\n\
+-h, --help                  Show this help menu");
+    /* eslint-enable no-multi-str */
+    process.exit(0);
+}
 
 let labelModelsByLabel;
 
@@ -131,7 +166,7 @@ async function upsertLabels() {
     );
     let labelString = fs.readFileSync(labelsPath);
     let labelsRawObject = JSON.parse(labelString);
-    let labels = await db.label.bulkUpsert(labelsRawObject);
+    let labels = await db.label.bulkUpsert(labelsRawObject.labels);
     let result = {};
     for ( let i = 0; i < labels.length; i++ ) {
         result[labels[i].label] = labels[i];
@@ -186,8 +221,18 @@ async function addTrainData() {
         let classCertainty = 1.0;
         let label = labelledData[i].label || "";
         let legal = "legal" == labelledData[i].legal;
-        db.cleanContent.update({
-            primaryLabel: labelModelsByLabel[label],
+        let primaryLabelId;
+        try {
+            primaryLabelId = labelModelsByLabel[label].labelId;
+        } catch (e) {
+            // statements
+            console.log("PANIC");
+        }
+        if (!primaryLabelId) {
+            console.error("PANIC");
+        }
+        await db.cleanContent.update({
+            primaryLabelLabelId: primaryLabelId,
             legal: legal,
             legalCertainty: legalCertainty,
             classCertainty: classCertainty,
@@ -262,6 +307,7 @@ async function run() {
         console.error(err, "Uncaught Exception thrown");
         process.exit(-1);
     });
+    await db.sequelize.sync();
     // first check the mode we should run in...
     // mode supports either train, apply or insert
     // train: train the classifier on the training data available from the db
@@ -310,16 +356,18 @@ async function run() {
         await trainModel(dataset);
         storeModels();
         do {
-            dataset = await db.cleanContent.getLabellingData(limit, quantile);
+            dataset = await db.cleanContent.getLabellingData(limit);
             await applyModel(dataset);
         } while (dataset.length >= limit);
     } else if (mode === "apply") {
         let dataset;
         do {
-            dataset = await db.cleanContent.getLabellingData(limit, quantile);
+            dataset = await db.cleanContent.getLabellingData(limit);
             await applyModel(dataset);
         } while (dataset.length >= limit);
     }
+    console.log("Finished. Bye bye ...");
+    process.exit(0);
 }
 
 run();

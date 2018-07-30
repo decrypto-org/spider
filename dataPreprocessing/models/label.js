@@ -15,6 +15,14 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.BIGINT,
             defaultValue: 1,
         },
+        createdAt: {
+            type: DataTypes.DATE,
+            defaultValue: sequelize.literal("NOW()"),
+        },
+        updatedAt: {
+            type: DataTypes.DATE,
+            defaultValue: sequelize.literal("NOW()"),
+        },
     }, {
         indexes: [
             {
@@ -30,6 +38,7 @@ module.exports = (sequelize, DataTypes) => {
                 ],
             },
         ],
+        timestamps: true,
     });
     /**
      * Insert multiple labels into the label table. If the label already existed
