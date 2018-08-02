@@ -16,13 +16,6 @@
 		},
 		{
 
-			"label": "Anonymity",
-
-			"id": "80cba94b-cc17-4bb6-9e42-53cb45973a40"
-
-		},
-		{
-
 			"label": "Art",
 
 			"id": "37f84556-1c0a-4adc-b807-5e1db62e6435"
@@ -30,7 +23,14 @@
 		},
 		{
 
-			"label": "Chat",
+			"label": "Blog",
+
+			"id": "1dc23206-ba2b-4c0d-8078-9815a9f35d16"
+
+		},
+		{
+
+			"label": "Forum",
 
 			"id": "f347d51a-8ae9-4049-86d4-29888819e39e"
 
@@ -44,7 +44,7 @@
 		},
 		{
 
-			"label": "Closed",
+			"label": "Seized",
 
 			"id": "d594f6f7-5de5-4702-bf53-eb795ec151ac"
 
@@ -59,21 +59,14 @@
 		},
 		{
 
-			"label": "Deanonimization",
-
-			"id": "53f7e8d3-56a4-48e9-a57f-1b2c3e111962"
-
-		},
-		{
-
-			"label": "Development",
+			"label": "Software Development",
 
 			"id": "94470fa2-5e26-41fd-ac1f-94fac719fe58"
 
 		},
 		{
 
-			"label": "Down",
+			"label": "Empty",
 
 			"id": "bd4e49f4-6c0b-4cd3-9eb4-fadb3c49f31a"
 
@@ -87,27 +80,6 @@
 		},
 		{
 
-			"label": "Empty",
-
-			"id": "7d3239e3-8741-42db-9a97-d4fd2bff32c8"
-
-		},
-		{
-
-			"label": "Error",
-
-			"id": "ad3ba38d-8f54-491e-b06f-a863d24a1e0a"
-
-		},
-		{
-
-			"label": "Event",
-
-			"id": "bec76f94-16d3-41f2-8427-2f89d77ce8f9"
-
-		},
-		{
-
 			"label": "Exchange",
 
 			"id": "3daea02e-7363-4866-8219-b705d040fa10"
@@ -115,7 +87,7 @@
 		},
 		{
 
-			"label": "Forum",
+			"label": "Fraud",
 
 			"id": "54b1cdc9-1bba-405a-bff4-0560f0ff40ff"
 
@@ -164,13 +136,6 @@
 		},
 		{
 
-			"label": "Blog",
-
-			"id": "54ccfdb6-7166-41f9-88a9-1107cfd59a26"
-
-		},
-		{
-
 			"label": "Phishing",
 
 			"id": "3c4741b8-102d-4c74-9303-1731be42a165"
@@ -178,28 +143,7 @@
 		},
 		{
 
-			"label": "Pirating",
-
-			"id": "addc5b7d-4098-4750-9572-b6416c6f70a9"
-
-		},
-		{
-
-			"label": "Placeholder",
-
-			"id": "a7a5626f-48fa-459b-af95-1d50bb3d1a17"
-
-		},
-		{
-
-			"label": "Fraud",
-
-			"id": "8afb857d-620d-4e91-80c5-06a003a83cba"
-
-		},
-		{
-
-			"label": "Searchengine",
+			"label": "Search Engine",
 
 			"id": "f6547364-d9ea-42fd-ad7c-c44d0169bba7"
 
@@ -241,17 +185,15 @@
 		},
 		{
 
-			"label": "Software",
-
-			"id": "1cee3f51-19b6-4beb-a147-f7abfd827ace"
-
-		},
-		{
-
 			"label": "Terrorism",
 
 			"id": "36f5ff52-f3a1-430f-84ac-f339ef056894"
 
+		},
+		{
+			"label": "Murder",
+
+			 "id": "ed16b761-1f0c-4b53-a5de-d4e17b571edb"
 		},
 		{
 
@@ -265,13 +207,6 @@
 			"label": "Whistleblowing",
 
 			"id": "e7ae3a4d-b5fe-4ce5-89ec-b3467e4085ef"
-
-		},
-		{
-
-			"label": "Wiki",
-
-			"id": "7b821ae0-8796-4f8f-85e4-72e98a7d257c"
 
 		}
 	]
