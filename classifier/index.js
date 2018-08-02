@@ -26,7 +26,7 @@ const commandLineOptions = commandLineArgs([
     {name: "mode", alias: "m", type: String},
     {name: "quantile", alias: "q", type: Number},
     {name: "limit", alias: "k", type: Number},
-    {name: "help", alias: "h", type: Boolean}
+    {name: "help", alias: "h", type: Boolean},
 ]);
 
 if (commandLineOptions.help) {
@@ -68,6 +68,8 @@ let labelModelsByLabel;
 // and the storeModel function.
 let classModel;
 let legalModel;
+let labelIdByClassId = {};
+let classIdByLabelId = {};
 
 /**
  * Check if model files are available or specified on startup and load the
@@ -115,6 +117,11 @@ function loadModels() {
 
     legalModel = loader(commandLineOptions.legal_model);
     classModel = loader(commandLineOptions.class_model);
+    labelIdByClassId = classModel.labelIdByClassId || {};
+    classIdByLabelId = classModel.classIdByLabelId || {};
+    // Now we need to set the classModel to the trained model only, without
+    // ID mapping
+    classModel = classModel.model;
 }
 
 /**
@@ -124,6 +131,9 @@ function loadModels() {
  */
 function storeModels() {
     let destinationPath = commandLineOptions.output_dir;
+    if (!destinationPath) {
+        destinationPath = process.env.CLASSIFIER_OUTPUT_DIR;
+    }
     if (
         destinationPath &&
         !path.isAbsolute(destinationPath)
@@ -132,9 +142,9 @@ function storeModels() {
             __dirname,
             destinationPath
         );
-        destinationPath.normalize(destinationPath);
+        destinationPath = path.normalize(destinationPath);
     } else if (destinationPath) {
-        destinationPath.normalize(destinationPath);
+        destinationPath = path.normalize(destinationPath);
     } else {
         destinationPath = path.join(
             __dirname,
@@ -150,7 +160,16 @@ function storeModels() {
         destinationPath,
         "classModel.json"
     );
-    fs.writeFileSync(classModelDestPath, JSON.stringify(classModel), "utf-8");
+    let storeClassModel = {
+        labelIdByClassId: labelIdByClassId,
+        classIdByLabelId: classIdByLabelId,
+        model: classModel
+    }
+    fs.writeFileSync(
+        classModelDestPath,
+        JSON.stringify(storeClassModel),
+        "utf-8"
+    );
 }
 
 /**
@@ -254,25 +273,71 @@ async function addTrainData() {
  *                                  class id.
  */
 async function trainModel(dataset) {
-    let clf = new svm.C_SVC({
+    /**
+     * Print progress updates and state updates to stdout
+     * @param  {?} rate The rate arg provided by the svm lib used - TODO: see
+     *                  what it contains
+     */
+    function printProgress(rate) {
+        process.stdout.clearLine();
+        process.stdout.cursorTo(0);
+        process.stdout.write("[Training model] Progress: " + rate);
+    }
+    // First train class model
+    console.log("\nTrain class model");
+    let trainDataset = [];
+    let currentClassId = 0;
+    for (let i = 0; i < dataset.length; i++) {
+        let labelId = dataset[i].model.primaryLabelLabelId;
+        if(Object.keys(classIdByLabelId).indexOf(labelId) <= 0) {
+            classIdByLabelId[labelId] = currentClassId;
+            labelIdByClassId[currentClassId] = labelId;
+            currentClassId += 1;
+        }
+        let row = [dataset[i].wordVec, classIdByLabelId[labelId]];
+        trainDataset.push(row);
+    }
+    let clf = new svm.CSVC({
         kFold: 4,
         normalize: true,
         reduce: true,
         cacheSize: 1024,
         shrinking: true,
         probability: true,
+        gamma: [0.00001, 1, 10, 1000],
     });
 
     clf
-        .train(dataset)
+        .train(trainDataset)
         .progress((rate) => {
-            // log to stdout
+            printProgress(rate);
         })
         .spread((model, report) => {
+            classModel = model;
+            storeModels();
             // log report
             // store model
             // go ahead and apply model ==> should be handled by the run func
             // this is only the backbone structure
+        });
+    let llf = new svm.C_SVC({
+        kFold: 4,
+        normalize: true,
+        reduce: true,
+        cacheSize: 1024,
+        shrinking: true,
+        probability: true,
+        gamma: [0.5, 1, 5, 10],
+    });
+
+    llf
+        .train(trainDataset)
+        .progress((rate) => {
+            printProgress(rate);
+        })
+        .spread((model, report) => {
+            legalModel = model;
+            storeModels();
         });
 }
 

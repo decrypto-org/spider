@@ -134,8 +134,10 @@ services:
     networks:
       backend:
     volumes:
-      - $TDSE_HOST_SPIDER/classifier/outputModels:/home/node/outputModels
+      - $TDSE_HOST_SPIDER_REPO/classifier/outputModels:/home/node/outputModels
     command: bash
+    ports:
+      - "65000-65100:65000-65100"
     depends_on:
       - "db"
     stdin_open: true

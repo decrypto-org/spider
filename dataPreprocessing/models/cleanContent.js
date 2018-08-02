@@ -72,12 +72,12 @@ FROM\n\
             postings\n\
             RIGHT OUTER JOIN terms ON terms.\"termId\" = \
             postings.\"termTermId\" AND postings.\"cleanContentCleanContentId\"\
-             = 'ab294f59-c8ed-4f45-b4a6-dff6d6f109a2'\n\
+             = '" + cleanContentId + "'\n\
         GROUP BY terms.\"termId\"\n\
     ) boolean\n\
     LEFT OUTER JOIN postings ON postings.\"termTermId\" = boolean.\"termId\"\
      AND postings.\"cleanContentCleanContentId\" =\
-      'ab294f59-c8ed-4f45-b4a6-dff6d6f109a2'\n\
+      '" + cleanContentId + "'\n\
     LEFT OUTER JOIN \"postingPositions\" ON postings.\"postingId\"\
      = \"postingPositions\".\"postingId\"\n\
 GROUP BY boolean.\"termId\"\n\
@@ -85,7 +85,7 @@ ORDER BY boolean.\"termId\" ASC\n";
         let queryResults = await sequelize.query(queryString);
         queryResults = queryResults[0];
         let result = [];
-        for( let i = 0; i < queryResults.length; i++ ) {
+        for ( let i = 0; i < queryResults.length; i++ ) {
             let queryResult = queryResults[i];
             result.push(queryResult.count);
         }
@@ -110,13 +110,13 @@ FROM\n\
     postings\n\
     RIGHT OUTER JOIN terms ON terms.\"termId\" = postings.\"termTermId\" AND \
     postings.\"cleanContentCleanContentId\" = \
-    'ab294f59-c8ed-4f45-b4a6-dff6d6f109a2'\n\
+'" + cleanContentId + "'\n\
 GROUP BY terms.\"termId\"\n\
 ORDER BY terms.\"termId\" ASC\n";
         let queryResults = await sequelize.query(queryString);
         queryResults = queryResults[0];
         let result = [];
-        for( let i = 0; i < queryResults.length; i++ ) {
+        for ( let i = 0; i < queryResults.length; i++ ) {
             let queryResult = queryResults[i];
             result.push(queryResult.count);
         }
@@ -140,6 +140,15 @@ ORDER BY terms.\"termId\" ASC\n";
      *                          long as it is always the same)
      */
     CleanContent.getTrainingData = async function( limit, quantile, mode ) {
+        /**
+         * Print progress updates to stdout
+         * @param  {number} percentage The percentage to use
+         */
+        function printProgress(percentage) {
+            process.stdout.clearLine();
+            process.stdout.cursorTo(0);
+            process.stdout.write("[Gathering data] Progress: " + percentage);
+        }
         if (!mode) {
             mode = "bow";
         }
@@ -151,12 +160,25 @@ ORDER BY terms.\"termId\" ASC\n";
                 quantile
             ),
             order: [
-                [Sequelize.literal('random()')]
+                [Sequelize.literal("random()")],
             ],
             limit: limit,
         });
         let results = [];
+        // TODO: Split up cleanContents to #processes shards, then run the
+        // loop in each of them, join the results afterwards
+        // So:
+        // 1. Fork here #process child processes, +1 supervisor (parent) process
+        // 2. Instantiate message handler to receive the result
+        //    => Merge results into final result list
+        // 3. Instantiate exit handler to receive when a child died or finished
+        //    (Can be distinguished by the parameters passed and whether we have
+        //    a result or not)
+        let percentage = 0;
+        let percentPerContent = 100./cleanContents.length;
         for ( let i = 0; i < cleanContents.length; i++ ) {
+            printProgress(percentage);
+            percentage += percentPerContent;
             let cleanContent = cleanContents[i];
             let cleanContentId = cleanContent.cleanContentId;
             let wordVector;
@@ -177,6 +199,8 @@ ORDER BY terms.\"termId\" ASC\n";
                 wordVec: wordVector,
             });
         }
+        // 4. Wait for all childs to finish/exit
+        //    => Now return the finally merged result list
         return results;
         /* eslint-enable no-multi-str */
     };

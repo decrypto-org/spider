@@ -10,6 +10,8 @@ RUN npm install
 
 COPY ./classifier .
 
+COPY ./dataPreprocessing/models ./models
+
 COPY ./server/.env ./
 
 # Node JS Debug Port

@@ -167,9 +167,10 @@ async function run() {
     do {
         queryResults = await sourceDb.content.findAll({
             where: {
-                statusCode: {
-                    [Op.lt]: 400,
-                },
+                [Op.and]: [
+                    {statusCode: {[Op.lt]: 400}},
+                    {statusCode: {[Op.gt]: -1}},
+                ],
                 [Op.and]: [
                     {content: {[Op.ne]: ""}},
                     {content: {[Op.ne]: "404"}},
