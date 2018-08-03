@@ -156,6 +156,8 @@ To speed up the scraping process, we ran 100 concurrent requests to the Tor netw
 \section{Conclusion}
 
 \CONTENT{Summarize our results and discuss directions for future work.}
+One issue with the proposed method is the high volatility of the network. We found that up to 30\% of the found hosts switch from being online to offline and vice versa in only a week. This circumstance could be faced by adding a temporal resolution to the data gathering process.
+The provided code already supports temporal resolutions for the hosts and paths, however, one has to match the links by timestamp.One addition could be that along the existing data collection, one also stores to which round of rescraping any entry (whether it now be a host, a path or a link) belongs.
 
 \section{Editorial Policy}
 
