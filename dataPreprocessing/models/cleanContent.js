@@ -24,7 +24,7 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DOUBLE,
             defaultValue: 0,
         },
-        classCertainty: {
+        labelCertainty: {
             type: DataTypes.DOUBLE,
             defaultValue: 0,
         },
@@ -155,7 +155,7 @@ ORDER BY terms.\"termId\" ASC\n";
         let cleanContents = await CleanContent.findAll({
             where: Sequelize.where(
                 Sequelize.literal("\"cleanContent\".\"legalCertainty\" +\
-                \"cleanContent\".\"classCertainty\""),
+                \"cleanContent\".\"labelCertainty\""),
                 ">",
                 quantile
             ),

@@ -21,7 +21,7 @@ let Op = db.Sequelize.Op;
 const commandLineOptions = commandLineArgs([
     {name: "labelled_dataset", alias: "d", type: String, defaultOption: true},
     {name: "legal_model", alias: "l", type: String},
-    {name: "class_model", alias: "c", type: String},
+    {name: "label_model", alias: "c", type: String},
     {name: "output_dir", alias: "o", type: String},
     {name: "mode", alias: "m", type: String},
     {name: "quantile", alias: "q", type: Number},
@@ -66,17 +66,17 @@ let labelModelsByLabel;
 // MODEL variable is instantiated here, in order to save it to disk
 // in case of a crash. Every crash handler has access to the model
 // and the storeModel function.
-let classModel;
+let labelModel;
 let legalModel;
 let labelIdByClassId = {};
 let classIdByLabelId = {};
 
 /**
  * Check if model files are available or specified on startup and load the
- * corresponding models. The file names are classModel.json and legalModel.json.
+ * corresponding models. The file names are labelModel.json and legalModel.json.
  * If none available, initialize the models as null model.
  * The function does not return anything but makes the models available in the
- * respective global variables classModel and legalModel.
+ * respective global variables labelModel and legalModel.
  */
 function loadModels() {
     /**
@@ -116,12 +116,12 @@ function loadModels() {
     }
 
     legalModel = loader(commandLineOptions.legal_model);
-    classModel = loader(commandLineOptions.class_model);
-    labelIdByClassId = classModel.labelIdByClassId || {};
-    classIdByLabelId = classModel.classIdByLabelId || {};
-    // Now we need to set the classModel to the trained model only, without
+    labelModel = loader(commandLineOptions.label_model);
+    labelIdByClassId = labelModel.labelIdByClassId || {};
+    classIdByLabelId = labelModel.classIdByLabelId || {};
+    // Now we need to set the labelModel to the trained model only, without
     // ID mapping
-    classModel = classModel.model;
+    labelModel = labelModel.model;
 }
 
 /**
@@ -156,17 +156,17 @@ function storeModels() {
         "legalModel.json"
     );
     fs.writeFileSync(legalModelDestPath, JSON.stringify(legalModel), "utf-8");
-    let classModelDestPath = path.join(
+    let labelModelDestPath = path.join(
         destinationPath,
-        "classModel.json"
+        "labelModel.json"
     );
     let storeClassModel = {
         labelIdByClassId: labelIdByClassId,
         classIdByLabelId: classIdByLabelId,
-        model: classModel
+        model: labelModel
     }
     fs.writeFileSync(
-        classModelDestPath,
+        labelModelDestPath,
         JSON.stringify(storeClassModel),
         "utf-8"
     );
@@ -237,7 +237,7 @@ async function addTrainData() {
     labelledData = csvjson.toObject(csvData, csvOptions);
     for ( let i = 0; i < labelledData.length; i++ ) {
         let legalCertainty = 1.0;
-        let classCertainty = 1.0;
+        let labelCertainty = 1.0;
         let label = labelledData[i].label || "";
         let legal = "legal" == labelledData[i].legal;
         let primaryLabelId;
@@ -254,7 +254,7 @@ async function addTrainData() {
             primaryLabelLabelId: primaryLabelId,
             legal: legal,
             legalCertainty: legalCertainty,
-            classCertainty: classCertainty,
+            labelCertainty: labelCertainty,
         }, {
             where: {
                 cleanContentId: {
@@ -313,7 +313,7 @@ async function trainModel(dataset) {
             printProgress(rate);
         })
         .spread((model, report) => {
-            classModel = model;
+            labelModel = model;
             storeModels();
             // log report
             // store model
@@ -387,7 +387,7 @@ async function run() {
     if ( !mode ) {
         if ( commandLineOptions.labelled_dataset ) {
             mode = "train";
-        } else if ( legalModel != {} && classModel != {} ) {
+        } else if ( legalModel != {} && labelModel != {} ) {
             mode = "apply";
         } else {
             // No need to store models here, since they are empty (default)
@@ -398,7 +398,7 @@ async function run() {
         if (
             mode === "apply"
             && legalModel == {}
-            && classModel == {}
+            && labelModel == {}
         ) {
             // No need to store models here, since they are empty (default)
             console.log("Cannot apply empty model. Please train first");
