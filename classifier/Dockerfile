@@ -2,17 +2,23 @@ FROM robrunne/tdse-dependencies:1.0.0
 
 WORKDIR /usr/src/tdse/spider/classifier
 
-COPY ./classifier/package*.json ./
+COPY ./classifier .
 
 RUN npm install ../../textract
 
 RUN npm install
 
-COPY ./classifier .
+RUN mkdir models
 
 COPY ./dataPreprocessing/models ./models
 
 COPY ./server/.env ./
+
+WORKDIR /usr/src/tdse/spider/classifier/node-svm
+
+RUN npm install
+
+WORKDIR /usr/src/tdse/spider/classifier
 
 # Node JS Debug Port
 EXPOSE 9101
