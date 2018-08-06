@@ -288,6 +288,7 @@ async function addTrainData() {
             primaryLabelId = labelModelsByLabel[label].labelId;
         } catch (e) {
             // statements
+	    console.log("Label; " + label);
             console.log("PANIC");
         }
         if (!primaryLabelId) {
@@ -347,8 +348,9 @@ async function trainModel(dataset) {
         cacheSize: 1024,
         shrinking: true,
         probability: true,
-        gamma: [0.00001, 1, 10, 1000],
-        c: [0.1, 1, 10, 100, 1000],
+	kernelType: "RBF",
+        gamma: 10,
+        c: 10000,
         eps: 10,
     });
     let model;
