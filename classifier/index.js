@@ -25,6 +25,7 @@ const commandLineOptions = commandLineArgs([
     {name: "output_dir", alias: "o", type: String},
     {name: "mode", alias: "m", type: String},
     {name: "quantile", alias: "q", type: Number},
+    {name: "min_doc_frequency", alias: "f", type: Number},
     {name: "limit", alias: "k", type: Number},
     {name: "help", alias: "h", type: Boolean},
 ]);
@@ -36,26 +37,30 @@ if (commandLineOptions.help) {
                             cleanContentId;legal;label\n\
                             408751f4-4dab-46a3-a6e1-110b32e9e98b;legal;Mail\n\
                             32713375-1ae0-42ef-867a-eb855069ab30;legal;Adult\n\
--l, --legal_model           Specify a model file to be used for the legal\
- model.\n\
-                            If no model is specified, the default model is\
- used.\n\
--l, --legal_model           Specify a model file to be used for the class\
- model.\n\
-                            If no model is specified, the default model is\
- used.\n\
+-l, --legal_model           Specify a model file to be used for the legal\n\
+                            model. If no model is specified, the default\n\
+                            model is used.\n\
+-c, --label_model           Specify a model file to be used for the label\n\
+                            model. If no model is specified, the default\n\
+                            model is used.\n\
 -o, --output_dir            Specify where the model files should be stored.\n\
                             Default: ./outputModels\n\
--m, --mode                  train: train the classifier on the training data\
- available from the db\n\
-                            apply: apply the model to the not yet classified\
- entries\n\
-                            insert: only insert manuall labelled content, do\
- nothing else\n\
--q, --quantile              How certain must an entry be in order to belong to\
- the training set\n\
--k, --limit                 How many entries should be used for training or\
- in each labelling step\n\
+-m, --mode                  train: train the classifier on the training data\n\
+                            available from the db\n\
+                            apply: apply the model to the not yet classified\n\
+                            entries\n\
+                            insert: only insert manuall labelled content, do\n\
+                            nothing else\n\
+-q, --quantile              How certain must an entry be in order to belong\n\
+                            to the training set\n\
+-f, --min_doc_frequency     Lower bound for the df of every term. If it is\n\
+                            below the bound, it won't be returned in the\n\
+                            bow/sow. Note that if you train a model with a\n\
+                            given min_doc_frequency, that you need to apply\n\
+                            the model to contents with the same\n\
+                            min_doc_frequency\n\
+-k, --limit                 How many entries should be used for training or\n\
+                            in each labelling step\n\
 -h, --help                  Show this help menu");
     /* eslint-enable no-multi-str */
     process.exit(0);
@@ -163,8 +168,8 @@ function storeModels() {
     let storeClassModel = {
         labelIdByClassId: labelIdByClassId,
         classIdByLabelId: classIdByLabelId,
-        model: labelModel
-    }
+        model: labelModel,
+    };
     fs.writeFileSync(
         labelModelDestPath,
         JSON.stringify(storeClassModel),
@@ -289,7 +294,7 @@ async function trainModel(dataset) {
     let currentClassId = 0;
     for (let i = 0; i < dataset.length; i++) {
         let labelId = dataset[i].model.primaryLabelLabelId;
-        if(Object.keys(classIdByLabelId).indexOf(labelId) <= 0) {
+        if (Object.keys(classIdByLabelId).indexOf(labelId) <= 0) {
             classIdByLabelId[labelId] = currentClassId;
             labelIdByClassId[currentClassId] = labelId;
             currentClassId += 1;
@@ -305,6 +310,8 @@ async function trainModel(dataset) {
         shrinking: true,
         probability: true,
         gamma: [0.00001, 1, 10, 1000],
+        c: [0.1, 1, 10, 100, 1000],
+        eps: 10
     });
 
     clf
@@ -408,6 +415,9 @@ async function run() {
     if ( commandLineOptions.labelled_dataset ) {
         await addTrainData();
     }
+    let dfQuantile = commandLineOptions.min_doc_frequency
+        || Number.parseFloat(process.env.CLASSIFIER_MIN_DF_FREQ)
+        || 0;
     let quantile =
         commandLineOptions.quantile
         || Number.parseFloat(process.env.CLASSIFIER_QUANTILE)
@@ -417,17 +427,30 @@ async function run() {
         || Number.parseInt(process.env.CLASSIFIER_LIMIT)
         || 10000;
     if (mode === "train") {
-        let dataset = await db.cleanContent.getTrainingData(limit, quantile);
+        let dataset = await db.cleanContent.getTrainingData(
+            limit,
+            quantile,
+            "bow", /* mode */
+            dfQuantile
+        );
         await trainModel(dataset);
         storeModels();
         do {
-            dataset = await db.cleanContent.getLabellingData(limit);
+            dataset = await db.cleanContent.getLabellingData(
+                limit,
+                "bow", /* mode */
+                dfQuantile
+            );
             await applyModel(dataset);
         } while (dataset.length >= limit);
     } else if (mode === "apply") {
         let dataset;
         do {
-            dataset = await db.cleanContent.getLabellingData(limit);
+            dataset = await db.cleanContent.getLabellingData(
+                limit,
+                "bow", /* mode */
+                dfQuantile
+            );
             await applyModel(dataset);
         } while (dataset.length >= limit);
     }

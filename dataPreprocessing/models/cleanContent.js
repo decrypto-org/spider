@@ -1,5 +1,8 @@
 "use strict";
 let Sequelize = require("sequelize");
+// Note: named mathjs to try reduce Math/mathjs confusion -- Those are NOT
+// the same.
+const mathjs = require("mathjs");
 
 module.exports = (sequelize, DataTypes) => {
     const CleanContent = sequelize.define("cleanContent", {
@@ -56,12 +59,19 @@ module.exports = (sequelize, DataTypes) => {
      * I do not see a good option yet
      * @param  {UUIDv4} cleanContentId The clean content id for which the BoW
      *                                 should be built
+     * @param {number} dfCutoff        The cutoff value for how in how many
+     *                                 docs a term must occure to be considered.
+     *                                 This is useful, since we need to reduce
+     *                                 the dimensionality of the vector as well
+     *                                 as rare terms are mostly misleading.
+     *                                 Further we try to avoid overfitting with
+     *                                 such an approach.
      * @return {Array.<number>}        Returns the BoW as JSON array, which can
      *                                 be interpreted as rudimentary vector.
      *                                 This representation is sufficient for the
      *                                 used SVM library
      */
-    async function getBagOfWords(cleanContentId) {
+    async function getBagOfWords(cleanContentId, dfCutoff) {
         /* eslint-disable no-multi-str */
         let queryString = "\
 SELECT COUNT(\"postingPositions\".\"positionId\")\n\
@@ -73,6 +83,7 @@ FROM\n\
             RIGHT OUTER JOIN terms ON terms.\"termId\" = \
             postings.\"termTermId\" AND postings.\"cleanContentCleanContentId\"\
              = '" + cleanContentId + "'\n\
+        WHERE terms.\"documentFrequency\" > " + dfCutoff + " \n\
         GROUP BY terms.\"termId\"\n\
     ) boolean\n\
     LEFT OUTER JOIN postings ON postings.\"termTermId\" = boolean.\"termId\"\
@@ -89,6 +100,14 @@ ORDER BY boolean.\"termId\" ASC\n";
             let queryResult = queryResults[i];
             result.push(queryResult.count);
         }
+        // Now we can normalize the result before returning:
+        // a) center mean around 0
+        // b) divide by std => std(result) = 1
+        let mean = mathjs.mean(result);
+        let std = mathjs.std(result);
+        result = result.map((elem) => {
+            return (elem - mean) / std
+        })
         return result;
     }
 
@@ -98,12 +117,19 @@ ORDER BY boolean.\"termId\" ASC\n";
      * I do not see a good option yet
      * @param  {UUIDv4} cleanContentId The clean content id for which the SoW
      *                                 should be built
+     * @param {number} dfCutoff        The cutoff value for how in how many
+     *                                 docs a term must occure to be considered.
+     *                                 This is useful, since we need to reduce
+     *                                 the dimensionality of the vector as well
+     *                                 as rare terms are mostly misleading.
+     *                                 Further we try to avoid overfitting with
+     *                                 such an approach.
      * @return {Array.<number>}        Returns the SoW as JSON array, which can
      *                                 be interpreted as rudimentary vector.
      *                                 This representation is sufficient for the
      *                                 used SVM library
      */
-    async function getSetOfWords(cleanContentId) {
+    async function getSetOfWords(cleanContentId, dfCutoff) {
         let queryString = "\
 SELECT COUNT(postings.\"termTermId\")\n\
 FROM\n\
@@ -111,6 +137,7 @@ FROM\n\
     RIGHT OUTER JOIN terms ON terms.\"termId\" = postings.\"termTermId\" AND \
     postings.\"cleanContentCleanContentId\" = \
 '" + cleanContentId + "'\n\
+WHERE terms.\"documentFrequency\" > " + dfCutoff + "\n\
 GROUP BY terms.\"termId\"\n\
 ORDER BY terms.\"termId\" ASC\n";
         let queryResults = await sequelize.query(queryString);
@@ -120,6 +147,15 @@ ORDER BY terms.\"termId\" ASC\n";
             let queryResult = queryResults[i];
             result.push(queryResult.count);
         }
+        // Now we can normalize the result before returning:
+        // a) center mean around 0
+        // b) divide by std => std(result) = 1
+        let mean = mathjs.mean(result);
+        let std = mathjs.std(result);
+        result = result.map((elem) => {
+            return (elem - mean) / std
+        })
+        return result;
         return result;
     }
 
@@ -131,6 +167,15 @@ ORDER BY terms.\"termId\" ASC\n";
      *                          Quantile is in the range of [0, 1]
      * @param {string} mode="bow" Specify whether you want a BoW (default) or a
      *                            SoW as result. {"bow", "sow"}
+     * @param {number} dfQuantile Acts as a cutoff value and bounds the df from
+     *                            below. This ensures that very rare terms are
+     *                            not represented in the result vectors. This is
+     *                            important in different ways. Once to not
+     *                            overfit during training (e.g. if a NN is used)
+     *                            and for the other to reduce dimensionality
+     *                            with words that are not learnable for our
+     *                            system (e.g. a word that only appears in one
+     *                            document).
      * @return {Array.<Object>} Contains a cleanContent model and a bag of words
      *                          vector. The results are contained in the
      *                          cleanContent model already (legal&primaryLabel).
@@ -139,7 +184,12 @@ ORDER BY terms.\"termId\" ASC\n";
      *                          and in fact the sorting does not matter, as
      *                          long as it is always the same)
      */
-    CleanContent.getTrainingData = async function( limit, quantile, mode ) {
+    CleanContent.getTrainingData = async function(
+        limit,
+        quantile,
+        mode,
+        dfQuantile
+    ) {
         /**
          * Print progress updates to stdout
          * @param  {number} percentage The percentage to use
@@ -147,11 +197,19 @@ ORDER BY terms.\"termId\" ASC\n";
         function printProgress(percentage) {
             process.stdout.clearLine();
             process.stdout.cursorTo(0);
-            process.stdout.write("[Gathering data] Progress: " + percentage);
+            process.stdout.write(
+                "[Gathering data] Progress: " + percentage + "%"
+            );
         }
         if (!mode) {
             mode = "bow";
         }
+        // Calculating in how many docs a term has to appear to be over
+        // the dfQuantile threshold
+        let cleanContentsCount = await CleanContent.count();
+        let dfCutoff = cleanContentsCount * dfQuantile;
+
+        // get cleanContents for which we calculate the bow/sow
         let cleanContents = await CleanContent.findAll({
             where: Sequelize.where(
                 Sequelize.literal("\"cleanContent\".\"legalCertainty\" +\
@@ -183,9 +241,9 @@ ORDER BY terms.\"termId\" ASC\n";
             let cleanContentId = cleanContent.cleanContentId;
             let wordVector;
             if (mode === "bow") {
-                wordVector = await getBagOfWords(cleanContentId);
+                wordVector = await getBagOfWords(cleanContentId, dfCutoff);
             } else if (mode === "sow") {
-                wordVector = await getSetOfWords(cleanContentId);
+                wordVector = await getSetOfWords(cleanContentId, dfCutoff);
             } else {
                 console.error("mode " + mode + " unknown");
                 console.error(
@@ -207,16 +265,25 @@ ORDER BY terms.\"termId\" ASC\n";
 
     /**
      * Get data to apply the model on
-     * @param  {number} limit    The number of entries that should be retrieved
-     *                           from the database
-     * @param {string} model="bow" Specify whether you want a BoW (default) or a
-     *                             SoW as result. {"bow", "sow"}
-     * @return {Array.<Object>}  Contains a cleanContent model and a bag of
-     *                           words vector. The words in the bag of word
-     *                           vector are always sorted alphabetically
+     * @param  {number} limit     The number of entries that should be retrieved
+     *                            from the database
+     * @param {string} mode="bow" Specify whether you want a BoW (default) or a
+     *                            SoW as result. {"bow", "sow"}
+     * @param {number} dfQuantile Acts as a cutoff value and bounds the df from
+     *                            below. This ensures that very rare terms are
+     *                            not represented in the result vectors. This is
+     *                            important in different ways. Once to not
+     *                            overfit during training (e.g. if a NN is used)
+     *                            and for the other to reduce dimensionality
+     *                            with words that are not learnable for our
+     *                            system (e.g. a word that only appears in one
+     *                            document).
+     * @return {Array.<Object>}   Contains a cleanContent model and a bag of
+     *                            words vector. The words in the bag of word
+     *                            vector are always sorted alphabetically
      */
-    CleanContent.getLabellingData = async function( limit, model ) {
-        return await CleanContent.getTrainingData(limit, 0, model);
+    CleanContent.getLabellingData = async function( limit, mode, dfQuantile ) {
+        return await CleanContent.getTrainingData(limit, 0, mode, dfQuantile);
     };
 
     return CleanContent;

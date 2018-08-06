@@ -32,6 +32,7 @@
     "csvjson": "^5.0.0",
     "dotenv": "^6.0.0",
     "dotenv-expand": "^4.2.0",
+    "mathjs": "^5.0.4",
     "pg": "^7.4.3",
     "sequelize": "^4.38.0",
     "truncate-utf8-bytes": "^1.0.2"

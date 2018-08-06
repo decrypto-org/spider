@@ -160,7 +160,7 @@ class Conductor {
                     excludedHosts: Object.keys(excludeKeyObj),
                 });
                 break;
-            case "combined":
+            case "combined": {
                 let [unscrapedDbResults, newAvailable] =
                 await db.getNeverScrapedEntries(
                     limit,
@@ -191,6 +191,7 @@ class Conductor {
                 dbResults.push(...randomizedDbResults);
                 available = randAvailable && prioAvailable && newAvailable;
                 break;
+            }
             case "inverse":
                 inverse = true;
             case "recursive":
