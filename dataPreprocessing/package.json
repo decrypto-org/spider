@@ -33,6 +33,7 @@
     "dotenv-expand": "^4.2.0",
     "franc": "^4.0.0",
     "franc-min": "^4.0.0",
+    "mathjs": "^5.0.4",
     "pg": "^7.4.3",
     "sequelize": "^4.38.0",
     "stemmer": "^1.0.2",
