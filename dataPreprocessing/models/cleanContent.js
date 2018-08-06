@@ -106,8 +106,8 @@ ORDER BY boolean.\"termId\" ASC\n";
         let mean = mathjs.mean(result);
         let std = mathjs.std(result);
         result = result.map((elem) => {
-            return (elem - mean) / std
-        })
+            return (elem - mean) / std;
+        });
         return result;
     }
 
@@ -153,9 +153,8 @@ ORDER BY terms.\"termId\" ASC\n";
         let mean = mathjs.mean(result);
         let std = mathjs.std(result);
         result = result.map((elem) => {
-            return (elem - mean) / std
-        })
-        return result;
+            return (elem - mean) / std;
+        });
         return result;
     }
 

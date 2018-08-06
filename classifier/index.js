@@ -77,6 +77,15 @@ let labelIdByClassId = {};
 let classIdByLabelId = {};
 
 /**
+ * Return a human readable timestamp without whitespaces. This way it is useful
+ * for filenames, folders as well as log output.
+ * @return {String} A string of the current timestamp. Precision: seconds
+ */
+function getTimestamp() {
+    return new Date(Date.now()).toUTCString().replace(/[\s,:]+/g, "-");
+}
+
+/**
  * Check if model files are available or specified on startup and load the
  * corresponding models. The file names are labelModel.json and legalModel.json.
  * If none available, initialize the models as null model.
@@ -130,11 +139,10 @@ function loadModels() {
 }
 
 /**
- * Store the currently trained model into model.json file. This is necessary in
- * order to not loose the progress made so far. That way we can train further
- * from run to run
+ * Return the path to the destination folder for all outputs of the classifier.
+ * @return {String} The path to the destination folder
  */
-function storeModels() {
+function getStorePath() {
     let destinationPath = commandLineOptions.output_dir;
     if (!destinationPath) {
         destinationPath = process.env.CLASSIFIER_OUTPUT_DIR;
@@ -156,6 +164,16 @@ function storeModels() {
             "outputModels"
         );
     }
+    return destinationPath;
+}
+
+/**
+ * Store the currently trained model into model.json file. This is necessary in
+ * order to not loose the progress made so far. That way we can train further
+ * from run to run
+ */
+function storeModels() {
+    let destinationPath = getStorePath();
     let legalModelDestPath = path.join(
         destinationPath,
         "legalModel.json"
@@ -173,6 +191,26 @@ function storeModels() {
     fs.writeFileSync(
         labelModelDestPath,
         JSON.stringify(storeClassModel),
+        "utf-8"
+    );
+}
+
+/**
+ * Store a report of the learning algorithm in a file persistently, to revisit
+ * the results of the process. This includes all necessary measurement scores
+ * to evaluate the quality of the trained classifier.
+ * @param  {Object} report Object which contains all the evaluation scores
+ */
+function storeReport(report) {
+    let filename = "Report_" + getTimestamp();
+    let destPath = getStorePath();
+    let fullPath = path.join(
+        destPath,
+        filename
+    );
+    fs.writeFileSync(
+        fullPath,
+        JSON.stringify(report),
         "utf-8"
     );
 }
@@ -286,7 +324,7 @@ async function trainModel(dataset) {
     function printProgress(rate) {
         process.stdout.clearLine();
         process.stdout.cursorTo(0);
-        process.stdout.write("[Training model] Progress: " + rate);
+        process.stdout.write("[Training model] Progress: " + rate + "%");
     }
     // First train class model
     console.log("\nTrain class model");
@@ -311,41 +349,52 @@ async function trainModel(dataset) {
         probability: true,
         gamma: [0.00001, 1, 10, 1000],
         c: [0.1, 1, 10, 100, 1000],
-        eps: 10
+        eps: 10,
     });
+    let model;
+    let report;
+    try {
+        [model, report] = clf
+            .train(trainDataset)
+            .progress((percent) => {
+                printProgress(percent*100);
+            });
+        storeReport(report);
+    } catch (e) {
+        console.error("CLF Training failed with");
+        console.log(e);
+        model = {};
+    }
+    labelModel = model;
+    storeModels();
 
-    clf
-        .train(trainDataset)
-        .progress((rate) => {
-            printProgress(rate);
-        })
-        .spread((model, report) => {
-            labelModel = model;
-            storeModels();
-            // log report
-            // store model
-            // go ahead and apply model ==> should be handled by the run func
-            // this is only the backbone structure
-        });
-    let llf = new svm.C_SVC({
+    let llf = new svm.CSVC({
         kFold: 4,
         normalize: true,
         reduce: true,
         cacheSize: 1024,
         shrinking: true,
         probability: true,
-        gamma: [0.5, 1, 5, 10],
+        gamma: [0.00001, 1, 10, 1000],
+        c: [0.1, 1, 10, 100, 1000],
+        eps: 10,
     });
 
-    llf
-        .train(trainDataset)
-        .progress((rate) => {
-            printProgress(rate);
-        })
-        .spread((model, report) => {
-            legalModel = model;
-            storeModels();
-        });
+    try {
+        [model, report] = llf
+            .train(trainDataset)
+            .progress((rate) => {
+                printProgress(rate);
+            });
+        storeReport(report);
+    } catch (e) {
+        console.error("LLF Training failed with: ");
+        console.log(e);
+        model = {};
+    }
+
+    legalModel = model;
+    storeModels();
 }
 
 /**
@@ -370,13 +419,13 @@ async function applyModel(dataset) {
 async function run() {
     process
     .on("unhandledRejection", (reason, p) => {
-        storeModels();
         console.error(reason, "Unhandled Rejection at Promise", p);
+        storeModels();
         process.exit(-1);
     })
     .on("uncaughtException", (err) => {
-        storeModels();
         console.error(err, "Uncaught Exception thrown");
+        storeModels();
         process.exit(-1);
     });
     await db.sequelize.sync();

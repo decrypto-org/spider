@@ -20,6 +20,8 @@ RUN npm install
 
 WORKDIR /usr/src/tdse/spider/classifier
 
+RUN chown -R node:node /usr/src/tdse/spider/classifier/outputModels
+
 # Node JS Debug Port
 EXPOSE 9101
 EXPOSE 5858
