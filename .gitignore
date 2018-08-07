@@ -289,3 +289,4 @@ TSWLatexianTemp*
 # The data is available over the database, no need to commit them to the
 # repo (since they are specific to a run of the whole project)
 classifier/data
+classifier/outputModels

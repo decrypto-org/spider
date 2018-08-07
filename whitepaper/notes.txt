@@ -1,0 +1,11 @@
+1. motivation: what and why we do it 
+2. previous work
+	a) Compare to previous work
+3. describe in detail what we do
+	a) if more detailed, compare here
+4. Split chapter 2 into Scraping and Classifying
+5.  a) Ethical => Tor project
+	b) Political => Legality
+6. 	a) Least possible: What we did (Reformed introduction)
+	b) Open question that arise from the work/future work
+ToDo: Ch. 2-4, Intro: to be readable, but not loose time on this (has to revisited anyway)
