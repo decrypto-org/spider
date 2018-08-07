@@ -6,8 +6,8 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha",
-    "start": "node --use_strict --max-old-space-size=16384 index.js",
-    "runHost": "cp ../dataPreprocessing/models ./models && cp ../server/.env . && node --max-old-space-size=16384 index.js",
+    "start": "node --use_strict --max-old-space-size=8192 index.js",
+    "runHost": "cp ../dataPreprocessing/models ./models && cp ../server/.env . && node --max-old-space-size=8192 index.js",
     "debugHost": "cp ../dataPreprocessing/models ./models && cp ../server/.env . && export DEBUG=true && node --inspect-brk=0.0.0.0:65101 --use_strict index.js",
     "debugVirt": "export DEBUG=true && node --inspect-brk=0.0.0.0:65001 --use_strict index.js"
   },

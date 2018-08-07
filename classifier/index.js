@@ -28,6 +28,21 @@ const commandLineOptions = commandLineArgs([
     {name: "min_doc_frequency", alias: "f", type: Number},
     {name: "limit", alias: "k", type: Number},
     {name: "help", alias: "h", type: Boolean},
+    {name: "svmType", type: String},
+    {name: "kernelType", type: String},
+    {name: "cost", type: Number},
+    {name: "nu", type: Number},
+    {name: "degree", type: Number},
+    {name: "gamma", type: Number},
+    {name: "rp", type: Number},
+    {name: "kfold", type: Number},
+    {name: "normalize", type: Boolean},
+    {name: "reduce", type: Boolean},
+    {name: "retainedvariance", type: Number},
+    {name: "eps", type: Number},
+    {name: "cacheSize", type: Number},
+    {name: "shrinking", type: Boolean},
+    {name: "probability", type: Boolean},
 ]);
 
 if (commandLineOptions.help) {
@@ -61,7 +76,25 @@ if (commandLineOptions.help) {
                             min_doc_frequency\n\
 -k, --limit                 How many entries should be used for training or\n\
                             in each labelling step\n\
--h, --help                  Show this help menu");
+-h, --help                  Show this help menu\n\n\
+Settings for the classifier itself:\n\
+--svmType                   Possible values: C_SVC, NU_SVC, ONE_CLASS\n\
+--kernelType                Possile values: LINEAR, POLY, RBF, SIGMOID\n\
+--cost                      Can be a number or an array of numbers\n\
+--nu                        For NU_SVC or ONE_CLASS. Can be a number or\n\
+                            an array of numbers\n\
+--degree                    For POLY kernel, number or array of numbers\n\
+--gamma                     For POLY, RBF and SIGMOID\n\
+--rp                        For Poly and SIGMOID\n\
+--kfold                     Parameter for k-fold cross validation\n\
+--normalize                 Whether to use mean normalization during\n\
+                            data preprocessing\n\
+--reduce                    Whether to use PCA to reduce dimensionality\n\
+--retainedvariance          Define acceptable impact on data integrity (PCA)\n\
+--eps                       Tolerance of termination criterion\n\
+--cacheSize                 Cach size in MB\n\
+--shrinking                 Whether to use the shrinking heuristics\n\
+--probability               Train model for probability estimates");
     /* eslint-enable no-multi-str */
     process.exit(0);
 }
@@ -288,7 +321,7 @@ async function addTrainData() {
             primaryLabelId = labelModelsByLabel[label].labelId;
         } catch (e) {
             // statements
-	    console.log("Label; " + label);
+        console.log("Label; " + label);
             console.log("PANIC");
         }
         if (!primaryLabelId) {
@@ -322,14 +355,15 @@ async function trainModel(dataset) {
      * @param  {?} rate The rate arg provided by the svm lib used - TODO: see
      *                  what it contains
      */
-    function printProgress(rate) {
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-        process.stdout.write("[Training model] Progress: " + rate + "%");
-    }
+    // function printProgress(rate) {
+    //     process.stdout.clearLine();
+    //     process.stdout.cursorTo(0);
+    //     process.stdout.write("[Training model] Progress: " + rate + "%");
+    // }
     // First train class model
     console.log("\nTrain class model");
-    let trainDataset = [];
+    let classDataset = [];
+    let legalDataset = [];
     let currentClassId = 0;
     for (let i = 0; i < dataset.length; i++) {
         let labelId = dataset[i].model.primaryLabelLabelId;
@@ -339,29 +373,66 @@ async function trainModel(dataset) {
             currentClassId += 1;
         }
         let row = [dataset[i].wordVec, classIdByLabelId[labelId]];
-        trainDataset.push(row);
+        classDataset.push(row);
+        row = [dataset[i].wordVec, dataset[i].model.legal];
+        legalDataset.push(row);
     }
-    let clf = new svm.CSVC({
-        kFold: 4,
-        normalize: true,
-        reduce: true,
-        cacheSize: 1024,
-        shrinking: true,
-        probability: true,
-	kernelType: "RBF",
-        gamma: 10,
-        c: 10000,
-        eps: 10,
+    let clf = new svm.SVM({
+        svmType: commandLineOptions.svmType
+            || process.env.CLASSIFIER_SVM_TYPE
+            || "C_SVC",
+        c: commandLineOptions.cost
+            || Number.parseInt(process.env.CLASSIFIER_COST, 10)
+            || 1,
+        // kernels parameters
+        kernelType: commandLineOptions.kernelType
+            || process.env.CLASSIFIER_KERNEL_TYPE
+            || "RBF",
+        nu: commandLineOptions.nu
+            || Number.parseFloat(process.env.CLASSIFIER_NU)
+            || [0.01, 0.125, 0.5, 1],
+        gamma: commandLineOptions.gamma
+            || Number.parseFloat(process.env.CLASSIFIER_GAMMA)
+            || [0.03125, 0.125, 0.5, 2, 8],
+        degree: commandLineOptions.degree
+            || Number.parseInt(process.env.CLASSIFIER_DEGREE, 10)
+            || [2, 3, 4],
+        r: commandLineOptions.rp
+            || Number.parseFloat(process.env.CLASSIFIER_R)
+            || [0.125, 0.5, 0, 1],
+        // training options
+        kFold: commandLineOptions.kfold
+            || Number.parseInt(process.env.CLASSIFIER_KFOLD, 10)
+            || 4,
+        normalize: commandLineOptions.normalize
+            || process.env.CLASSIFIER_NORMALIZE === "true"
+            || true,
+        reduce: commandLineOptions.reduce
+            || process.env.CLASSIFIER_REDUCE === "true"
+            || true,
+        retainedVariance: commandLineOptions.retainedvariance
+            || Number.parseFloat(process.env.CLASSIFIER_RETAINED_VARIANCE)
+            || 0.99,
+        eps: commandLineOptions.eps
+            || Number.parseFloat(process.env.CLASSIFIER_EPS)
+            || 0.001,
+        cacheSize: commandLineOptions.cacheSize
+            || Number.parseInt(process.env.CLASSIFIER_CACHE_SIZE, 10)
+            || 200,
+        shrinking: commandLineOptions.shrinking
+            || process.env.CLASSIFIER_SHRINKING === "true"
+            || true,
+        probability: commandLineOptions.probability
+            || process.env.CLASSIFIER_PROBABILITY === "true"
+            || false,
     });
     let model;
     let report;
     try {
-        [model, report] = clf
-            .train(trainDataset)
-            .progress((percent) => {
-                printProgress(percent*100);
-            });
+        [model, report] = await clf.train(classDataset);
         storeReport(report);
+        console.log("Report: ");
+        console.log(JSON.stringify(report));
     } catch (e) {
         console.error("CLF Training failed with");
         console.log(e);
@@ -370,6 +441,7 @@ async function trainModel(dataset) {
     labelModel = model;
     storeModels();
 
+    console.log("Train legal model");
     let llf = new svm.CSVC({
         kFold: 4,
         normalize: true,
@@ -377,24 +449,21 @@ async function trainModel(dataset) {
         cacheSize: 1024,
         shrinking: true,
         probability: true,
-        gamma: [0.00001, 1, 10, 1000],
-        c: [0.1, 1, 10, 100, 1000],
+        gamma: 2,
+        c: 10,
         eps: 10,
     });
 
     try {
-        [model, report] = llf
-            .train(trainDataset)
-            .progress((rate) => {
-                printProgress(rate);
-            });
+        [model, report] = await llf.train(legalDataset);
         storeReport(report);
+        console.log("Report:");
+        console.log(JSON.stringify(report));
     } catch (e) {
         console.error("LLF Training failed with: ");
         console.log(e);
         model = {};
     }
-
     legalModel = model;
     storeModels();
 }
