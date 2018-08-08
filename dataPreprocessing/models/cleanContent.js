@@ -175,6 +175,10 @@ ORDER BY terms.\"termId\" ASC\n";
      *                            with words that are not learnable for our
      *                            system (e.g. a word that only appears in one
      *                            document).
+     * @param {Array.<String>} languageIds LanguageId to specify which languages
+     *                                     should be contained in the training
+     *                                     set. If the param is undefined, all
+     *                                     languages are returned.
      * @return {Array.<Object>} Contains a cleanContent model and a bag of words
      *                          vector. The results are contained in the
      *                          cleanContent model already (legal&primaryLabel).
@@ -187,7 +191,8 @@ ORDER BY terms.\"termId\" ASC\n";
         limit,
         quantile,
         mode,
-        dfQuantile
+        dfQuantile,
+        languageIds
     ) {
         /**
          * Print progress updates to stdout
@@ -208,14 +213,29 @@ ORDER BY terms.\"termId\" ASC\n";
         let cleanContentsCount = await CleanContent.count();
         let dfCutoff = cleanContentsCount * dfQuantile;
 
-        // get cleanContents for which we calculate the bow/sow
-        let cleanContents = await CleanContent.findAll({
-            where: Sequelize.where(
+        let where = Sequelize.where(
+            Sequelize.literal("\"cleanContent\".\"legalCertainty\" +\
+            \"cleanContent\".\"labelCertainty\""),
+            ">",
+            quantile
+        );
+        if(languageIds) {
+            where = Sequelize.where(
                 Sequelize.literal("\"cleanContent\".\"legalCertainty\" +\
                 \"cleanContent\".\"labelCertainty\""),
                 ">",
-                quantile
-            ),
+                quantile,
+                "AND",
+                "\"cleanContent\".\"languageLanguageId\"",
+                "IN",
+                languageIds
+            );
+        }
+
+
+        // get cleanContents for which we calculate the bow/sow
+        let cleanContents = await CleanContent.findAll({
+            where: where,
             order: [
                 [Sequelize.literal("random()")],
             ],
@@ -234,8 +254,6 @@ ORDER BY terms.\"termId\" ASC\n";
         let percentage = 0;
         let percentPerContent = 100./cleanContents.length;
         for ( let i = 0; i < cleanContents.length; i++ ) {
-            printProgress(percentage);
-            percentage += percentPerContent;
             let cleanContent = cleanContents[i];
             let cleanContentId = cleanContent.cleanContentId;
             let wordVector;
@@ -251,10 +269,15 @@ ORDER BY terms.\"termId\" ASC\n";
                 );
                 throw new Error("mode " + mode + " not supported");
             }
+            if (i == 0) {
+                console.log("Feature vector dimensions: " + wordVector.length);
+            }
             results.push({
                 model: cleanContent,
                 wordVec: wordVector,
             });
+            printProgress(percentage);
+            percentage += percentPerContent;
         }
         // 4. Wait for all childs to finish/exit
         //    => Now return the finally merged result list
@@ -277,12 +300,27 @@ ORDER BY terms.\"termId\" ASC\n";
      *                            with words that are not learnable for our
      *                            system (e.g. a word that only appears in one
      *                            document).
+     * @param {Array.<String>} languageIds LanguageId to specify which languages
+     *                                     should be contained in the training
+     *                                     set. If the param is undefined, all
+     *                                     languages are returned.
      * @return {Array.<Object>}   Contains a cleanContent model and a bag of
      *                            words vector. The words in the bag of word
      *                            vector are always sorted alphabetically
      */
-    CleanContent.getLabellingData = async function( limit, mode, dfQuantile ) {
-        return await CleanContent.getTrainingData(limit, 0, mode, dfQuantile);
+    CleanContent.getLabellingData = async function(
+        limit,
+        mode,
+        dfQuantile,
+        languageIds
+    ) {
+        return await CleanContent.getTrainingData(
+            limit,
+            0,
+            mode,
+            dfQuantile,
+            languageIds
+        );
     };
 
     return CleanContent;

@@ -535,6 +535,18 @@ async function run() {
     if ( commandLineOptions.labelled_dataset ) {
         await addTrainData();
     }
+    let language = commandLineOptions.language
+        || process.env.CLASSIFIER_LANGUAGE;
+    let languageId;
+    if ( language && language != "all" ) {
+        let languageModel = await db.language.findAll({
+            limit: 1,
+            where: {
+                language: language
+            }
+        });
+        languageId = languageModel[0].languageId;
+    }
     let dfQuantile = commandLineOptions.min_doc_frequency
         || Number.parseFloat(process.env.CLASSIFIER_MIN_DF_FREQ)
         || 0;
@@ -551,7 +563,8 @@ async function run() {
             limit,
             quantile,
             "bow", /* mode */
-            dfQuantile
+            dfQuantile,
+            languageId
         );
         await trainModel(dataset);
         storeModels();
@@ -559,7 +572,8 @@ async function run() {
             dataset = await db.cleanContent.getLabellingData(
                 limit,
                 "bow", /* mode */
-                dfQuantile
+                dfQuantile,
+                languageId
             );
             await applyModel(dataset);
         } while (dataset.length >= limit);
@@ -569,7 +583,8 @@ async function run() {
             dataset = await db.cleanContent.getLabellingData(
                 limit,
                 "bow", /* mode */
-                dfQuantile
+                dfQuantile,
+                languageId
             );
             await applyModel(dataset);
         } while (dataset.length >= limit);

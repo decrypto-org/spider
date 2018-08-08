@@ -7,6 +7,7 @@ networks:
 volumes:
   postgres-vol:
   log-vol:
+  model-vol:
 
 services:
   db:
@@ -134,7 +135,7 @@ services:
     networks:
       backend:
     volumes:
-      - $TDSE_HOST_SPIDER_REPO/classifier/outputModels:/home/node/outputModels
+      - model-vol:/home/node/outputModels
     command: bash
     ports:
       - "65000-65100:65000-65100"
