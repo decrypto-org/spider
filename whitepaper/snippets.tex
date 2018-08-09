@@ -1,0 +1,69 @@
+
+\CONTENT{Describe the scope of the project, refer to previous work (e.g., contrast with Nicolas Christin’s work on Silk Road as well as the work where they ran their own relays to collect content). Clearly state our contributions. Summarize the methodology and results.}
+\NOTE{Introduce visible vs invisible part of the darknet}
+Visible part: the one that can be accessed using the Tor network without any further information needed. Invisible part: the ones that require authentication or any other knowledge to be found. We classify what a normal Tor user can find on the network. Of course, this does not cover all possible usages of the Tor network, but as more users access the tor network, we can be sure that most of them will stay in the visible part (therefor this is relevant)
+
+Ok, here a short summary and why we are making something different than the linked articles/blogs: \\
+*https://www.hyperiongray.com/dark-web-map/* : Displays 6.6k websites in a "map". However, the map is sorted by structural similarity and many of the displayed pages are either offline (E.g. taken offline by law enforcement, by the hoster itself (only displays a notice) or are not yet setup ("I congratulate you! You have made a site on the dark side (onion)"). I think it's clear that this is not what we are doing\\
+*TERBIUM LABS* Work (I assume 2016 from the files name, but is not stated clearly): Reviewed a sample of 400 URLs, collected by their crawler, classified into one of the following categories\\
+•Legal\\
+•Explicit\\
+•Drugs\\
+•Pharmaceuticals\\
+•Fraud\\
+•Multiple Categories (Illicit)\\
+•Falsified Documents & Counterfeits\\
+•Exploitation\\
+•Hacking & Exploits\\
+•Weapons\\
+•Extremism\\
+•Weapons of Mass Destruction\\
+•Other Illicit Activity \\
+•Unknown/Site Down\\
+•Downloadable File\\
+They come to the conclusion that the darknet is mainly legal, however their work is based on a very small sample size\\
+Interesting sections for us: "Handling Illegal Content and Exploitation", "Why we used a Random Sample"\\
+*Empirical analysis of Tor Hidden Services* (ET Information Security, 2015): They collected their data by running a large number of Tor nodes for 6 months and collected 80'000 hidden services that way. They did a size estimation and a content categorization, results seem to approximately match up with \textit{Content and popularity analysis ofTor hidden services}. Since they operated Tor nodes, they also collected which category produces what amount of traffic. They have a small section on Darknet connectivity and found that 59\% of the pages do only link to itself.
+Topic pretty similar to ours, but the approach is different \\   
+*Content and popularity analysis of Tor hidden services* (2014): They used a flaw in the Tor Protocol to gather their data. That way they collected 39800 pages. They propose how one can deanonymise clients of HS, they did a content analysis as well and they looked at the open ports of the found hosts. This enabled them to give an overview of which software is used to deliver the HS.
+Topic also pretty similar to ours, but again, our approach is differen.
+
+Conclusion: \textit{Empirical analysis of Tor Hidden Services} and \textit{Content and popularity analysis of Tor hidden services} do a pretty similar analysis on their data, but\\
+a) The papers are at least 3 years old \\
+b) They either cracked the Tor protocol or used Tor nodes to discover their data. We do our work on the "visible" part of the darknet and therefor do not acces any data the is not meant to be public (or only by human error - however, we are not the ones to blame for)\\
+c) As far as I know there does not exist any work that has tried to apply a scraper to the darknet for classification (except terbium labs, but this is commercial and there paper only looked at 400 random samples by manual inspection. Our proposed technique allows for continuously scraping and classifying the content, which also allows to catch temporal changes in the topology of the network itself)\\
+In short: our contribution: Tested the effectiveness of scraping, a non intrusive, non-deanonymizing technique to gather data from the Tor network. Further it would allow to capture temporal changes in the network. Since we can only look at publicly available pages, we do not compromise any data security or similar.
+
+
+\begin{itemize}
+  \item Scraper:
+    \begin{itemize}
+      \item The scraper itself consists of a conductor, network module, parser module and a db connector.
+      \item While running the scraper we only use a small and fast, but not very precise uri extractor to get uris from downloaded content to scrape further (Based on cheerio for html files and RegEx for other text files).
+      \item Sends a request over the TOR proxy and receives the response
+      \item Upon response, we first check if this data type even is of interest to us. If not the data is discarded right away
+      \item If it might be of interest, we first run it through the fast uri extractor, which then gets the base urls and paths for most of the links on the page
+      \item To ensure we never have to wait on the database (since disk speed is typically higher than network speed of the TOR network, we want to maximize on used network), we keep a pool of downloadable URIs (size of pool can be configured specifically to the needed setting). These uris can be dispatched as soon as a download finished.
+      \item We found that we need different prioritization schemes in order to decide which uri should be dispatched next. The first used scheme just retrieved new URIs inserted into the database ordered by insertion time. This type of prioritization has several shortcommings. For one, it might be exploring a small space of the darknet for a long time, since some pages link millions of times to themselves or we found clusters of scamming pages linking to each other in order to give themselves credibility (probably not yet jump to conclusions...). This lead not only to performance issues (not exploring new space) but also to technical issues: We did not want to DoS our targets nor overload the circuits, therefor we needed to limit the concurrent connections to the same host. Typical values are between 2 to 8 (http://www.stevesouders.com/blog/2008/03/20/roundup-on-parallel-connections/, needs better resource to cite), rfc 2616 even dicdates 2 (https://www.w3.org/Protocols/rfc2616/rfc2616-sec8.html#sec8.1.4). However, most modern browsers do not comply with the limit of 2 anymore, therefor 4 seemed to be a sensible choice. After introducing the rate limiting we soon discovered that there are pages like bitcoin explorers, listing every transaction, block and so on ever made. This resulted in a huge increase in memory usage, since we cached uris that could not yet be sent due to too many in progress connections. These circumstances led to the development of the following prioritization schemes ( + reasons why we needed those/initially introduced them)
+      \begin{itemize}
+        \item random: Was the first approach to mitigat the issue with too many concurrent connections. Fast we found, that at some point during the scraping process, a large amount of the available uris were pointing to only a few hosts (If we look at the bitcoin explorer example: a page there has roughly 100 links to the same host, which results in an exponential grow of available paths of those hosts. The same holds true for libraries, where each page of a book is the linked individually)
+        \item new: Only get uris from hosts that were never scraped before. This works extremly well if we have a large collections of not yet explored links and does advance very fast through the network. However, often the page we found first for a host was not the most interesting or contained a lot of links to other hosts. Therefor this only works well for seed generation but not for data collection.
+        \item prioritized: Along each uri, we stored how often we already found an uri pointing to this (from any host) as well as from distinct hosts (So if we find an uri twice on two pages of the same host, this counts only once towards the count). It seemed that the more links from distinc pages a page has, the more important it might be. In general this holds true and gives a nice powerlaw distribution [-- see powerLawAbnormality.png], however, we see a few abnormalities. The most obivious one stems from bitcoin scamming pages linking to a bitcoin explorer, trying to prove that they are credible. Therefor, it only works for a few pages, after that, we had a large number of not actually important uris that had the same priority and in the worst case even were uris of the same host.
+        \item recursive: One of the most advanced strategies, therefor it also is one of the most computing intensive (Multiple complex sql queries needed in order to gather all necessary information). The idea behind this prioritization scheme is to solve all of the above mentioned problems at the expense of a bit more computation time needed. The idea goes as follows: We check all available hosts and get one path for each host that has one available (e.g. not yet in progress and has unscraped hosts). Therefor we will make equally progress on all available hosts and newly available hosts are considered as soon as the pool is repopulated. Since a chosen host may have multiple paths available for download, we have to specify how we chose the path. We decided to again look at the number of hits a path has. There one can either take the path with the maximum or the minimum of hits. This is why there exists the inverse strategy, it prioritizes the path with the lowest number of hits.
+        \item inverse: Is basically the same as recursive, but with inversed prioritization (prioritize paths with a low number of hits over the ones with high numbers of hits).
+        \item combined: Combines the techniques above and tries to fit the current situation the best. So first it scrapes one path for each host (only unscraped hosts), if we do not have any (or enough, to repopulate the pool) unscraped hosts remaining, it switches to the prioritized Algorithm. If this does not return enough uris (e.g. because it is stuck in a step and only finds uris we already have too many connections to the same host), it uses the randomized approach to get more entries to the pool. 
+        This is an approximation to the recursive strategy. It is faster and uses less computational resources, however, it is not as precise as the recursive strategy. (Although it solves some of the weaknesses of its parts, it cannot solve them all, especially in the last fallback of the random algorithm, it cannot solve the issues of this particular algorithm)
+      \end{itemize}
+
+    \end{itemize}
+  \item URI extractor: This is run alongside the scraper and rescans the downloaded contents for new (not yet found by the small/fast extractor) base urls (= new hosts) and paths of such hosts. This one needs to only run once through all the downloaded contents
+  \item DB: The DB needs to store all the information needed for the scraper to find which entries were already scraped and which ones should be scraped next. For this we have a baseUrl table, a path table (a host has one baseUrl but can have multiple paths) and a contents table, where the downloaded contents are stored. For classification we needed to clean up the content. The cleaned up contents then are stored in the clenContents table. to classify we built an inverted positional index which consisted of a posting, a term and a position table. Further a language table was required to assign each content a language (via foreign key). Last we have a labels table, which stores the class labels.
+  \item TOR proxy: In order to speed up the scraping process, multiple tor instances were used, which were handled by a tor proxy server (https://github.com/znetstar/tor-router). Round robin distribution was used to distribute the download jobs to the multiple instances. The number of instances is configurable, in order to address different network performances for given machines.
+  \item Data preprocessor: The datapreprocessor extracted text only from html and other textual representations. The extracted text then was split up into terms and inserted into the positional index. Further the language was guessed and referenced in the clean contents table.
+  \item Classifier: A basic bag of words approach was used along with an SVM. In order to make training as efficient as possible, an active learning approach was used, where we first only manually classified a small dataset and then incrementally classified the entries for which the trained algorithm was most unsure. After that we retrained the algorithm and rerun it until we reached [F1 score, precision ... whatever quality measure we'll have]
+\end{itemize}
+
+\subsection{Structure of the spider}
+
+The spider itself is written in Javascript and relies on NodeJS as the runtime environment. NodeJS was used since the spider is waiting most of the time for requests to return, be that to the database or to a hidden website. Therefor the NodeJS event loop came in handy and did not add a lot of overhead in development due to task or process handling. To store the data, we used PostgresDB \TODO{Insert schema}, which not only had to store the downloaded content but also all the links that were not yet visited.
+To access the Tor network we needed to add a Tor proxy in front of the spider itself.
