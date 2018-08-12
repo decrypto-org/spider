@@ -26,7 +26,7 @@ import json
 import logging
 
 load_dotenv()
-logLocation = os.environ["LOG_LOCATION"]
+logLocation = os.environ["TDSE_LOG_LOCATION"]
 logFile = logLocation + "/classifier.log"
 if not os.path.exists(logLocation):
 	os.makedirs(logLocation)
@@ -268,7 +268,8 @@ def run():
 		labelClf = restoreModel(labelPath, "LabelClassifier")
 		labelClfTrained = True
 	except Exception as e:
-		logger.exception(str(e))
+		logger.warning(str(e))
+		logger.warning("Cannot restore previous label classifier - creating new one")
 		try:
 			labelClf = Classifier.fromParams(
 				svmType=svmType,
@@ -294,7 +295,8 @@ def run():
 		legalClf = restoreModel(legalPath, "LegalClassifier")
 		legalClfTrained = True
 	except Exception as e:
-		logger.exception(str(e))
+		logger.warning(str(e))
+		logger.warning("Cannot restore previous label classifier - creating new one")
 		try:
 			legalClf = Classifier.fromParams(
 				svmType=svmType,
@@ -342,7 +344,7 @@ def run():
 		labelModelsByLabel[label.label] = label
 	mode = args.mode;
 	if not mode:
-		if args.labelledDataset:
+		if args.datasetPath:
 			mode = "train"
 		elif labelClfTrained and legalClfTrained:
 			mode = "apply"

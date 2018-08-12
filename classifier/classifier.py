@@ -1,4 +1,6 @@
 from sklearn import svm
+from sklearn.utils import shuffle
+from sklearn.model_selection import cross_val_score
 import logging
 
 class Classifier(object):
@@ -6,7 +8,7 @@ class Classifier(object):
 	def __init__(self, clf, name="Classifier"):
 		super(Classifier, self).__init__()
 		self.logger = logging.getLogger("classifier.{name}".format(name=name))
-		self.clf = None
+		self.clf = clf
 
 		self.logger.info("Up and ready")
 
@@ -84,8 +86,13 @@ class Classifier(object):
 			raise Exception("Unknown SVM type: {svmType}".format(svmType=svmType))
 		return(cls(clf, name))
 
-	def train(datacolumns, targetcolumn):
+	def train(self, datacolumns, targetcolumn):
 		self.logger.info("Training...")
+		result = self.clf.fit(datacolumns, targetcolumn)
+		self.logger.info("Training finished: {output}".format(output=result))
+		result = cross_val_score(self.clf, datacolumns, targetcolumn, scoring="accuracy")
+		self.logger.info("Cross validation score: {result}".format(result=result))
 
-	def apply(datacolumns):
+	def apply(self, datacolumns):
 		self.logger.info("Applying...")
+		return self.clf.predict(datacolumns)

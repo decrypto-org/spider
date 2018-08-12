@@ -9,6 +9,10 @@ COPY ./server/.env ./
 
 RUN chown -R node:node /usr/src/tdse/spider/classifier/outputModels
 
+RUN mkdir /home/node/log
+
+RUN chown -R node:node /home/node/log
+
 # Node JS Debug Port
 EXPOSE 9101
 EXPOSE 5858
