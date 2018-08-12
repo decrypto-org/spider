@@ -135,6 +135,7 @@ services:
     networks:
       backend:
     volumes:
+      - log-vol:/home/node/log
       - model-vol:/home/node/outputModels
     command: bash
     ports:

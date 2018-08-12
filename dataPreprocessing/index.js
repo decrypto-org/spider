@@ -130,8 +130,6 @@ function finalErrorHandler(err) {
  * used for machine learning
  */
 async function run() {
-    // First sync the new tables, if that has not yet happened.
-    await targetDb.sequelize.sync();
     // initialize: language table contains exactly 82 languages (the ones
     // supported by franc-min). They are inserted here and the keys are stored
     // in a mapping for later use.
