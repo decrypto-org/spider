@@ -22,6 +22,7 @@ from dbConnector import DbConnector
 from ast import literal_eval
 import numpy as np
 import os
+import csv
 import json
 import logging
 
@@ -83,6 +84,7 @@ parser.add_argument(
 	const="./outputModels",
 	help="Specify where the model files should be stored.\n\
 Default: ./outputModels\n\
+Note: the user needs to have write access on the directory\
 ")
 parser.add_argument(
 	"-m", "--mode",
@@ -240,13 +242,9 @@ def run():
 	Raises:
 	    SystemExit: Description
 	"""
-	destinationPath = args.outputDir if args.outputDir is not None else os.environ["CLASSIFIER_OUTPUT_DIR"]
-	if not destinationPath:
-		destinationPath = "./outputModels/%s"
-
-	legalPath = destinationPath + "/legalModel.clf"
-	labelPath = destinationPath + "/labelModel.clf"
-	scalePath = destinationPath + "/scaleModel.clf"
+	legalPath = args.outputDir + "/legalModel.clf"
+	labelPath = args.outputDir + "/labelModel.clf"
+	scalePath = args.outputDir + "/scaleModel.clf"
 
 	svmType = args.svmType if args.svmType is not None else os.environ["CLASSIFIER_SVM_TYPE"]
 	kernelType = args.kernelType if args.kernelType is not None else os.environ["CLASSIFIER_KERNEL_TYPE"]
@@ -399,23 +397,54 @@ def run():
 
 		storeModel(labelPath, labelClf.clf)
 		storeModel(legalPath, legalClf.clf)
+		trainingSession.commit()
+		trainingSession.close()
 	elif mode == "apply":
-		dataset, labellingSession = db.getLabellingData(
+		if not scaleModelTrained:
+			logger.error("Please first run a train run - Otherwise, classification is impossible")
+			logger.error("If you did a test run check the outputModels directory - does it contain a scaleModel.clf?")
+			raise ValueError("scale model has to be trained first")
+		first = True
+		dataset = []
+		while len(dataset) >= limit or first:
+			first = False
+			dataset, labellingSession = db.getLabellingData(
 				limit=limit,
 				mode="bow",
 				dfQuantile=dfQuantile,
-				languageId=languageId
+				languageIds=tuple([languageId])
 			)
-		while dataset.length >= limit:
-			dataset = db.getLabellingData(
-				limit=limit,
-				mode="bow",
-				dfQuantile=dfQuantile,
-				languageId=languageId,
-				session=labellingSession
-			)
-			# Todo: apply model to dataset => and write back to db
-			# Insertion via: Insert => on conflict do update legal&label => this way we get
+			X_apply = []
+			cleanContents = []
+			for dataEntry in dataset:
+				X_apply.append(dataEntry[0])
+				cleanContents.append(dataEntry[1])
+			X_apply = np.array(X_apply)
+			X_apply = scaler.transform(X_apply)
+			
+			Y_label_r = labelClf.apply(X_apply)
+			Y_legal_r = legalClf.apply(X_apply)
+
+			for idx, cleanContent in enumerate(cleanContents):
+				label = Y_label_r[idx]
+				legal = Y_legal_r[idx]
+				cleanContent.primaryLabelLabelId = label
+				cleanContent.legal = legal
+			labellingSession.commit()
+			labellingSession.close()
+			# Insertion via: Insert => on conflict do update legal&label
+			# => this way we get bulkupdate capabilities -- if needed
+	elif mode == "insert":
+		# TODO: read in specified csv file, insert those labelled entries into the db
+		# likely useful to introduce upsert behaviour
+		if not args.datasetPath:
+			logger.error("Please specify a dataset with -d if --mode insert is specified")
+			raise SystemExit(-1)
+		with open(args.datasetPath) as datasetFile:
+			reader = csv.DictReader(datasetFile)
+			a = [{k: int(v) for k, v in row.items()}
+				for row in csv.DictReader(f, skipinitialspace=True)]
+		pass
 
 
 

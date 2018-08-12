@@ -302,12 +302,10 @@ ORDER BY boolean.\"termId\" ASC\n".format(
 
 		# Gather all BoW/SoWs
 		result = []
-		percentage = 0;
-		bar = progressbar.ProgressBar(max_value=100)
+		bar = progressbar.ProgressBar(max_value=len(cleanContents))
 		bar.start()
-		bar.update(percentage)
-		percentagePerContent = 100./len(cleanContents)
-		for cleanContent in cleanContents:
+		bar.update(0)
+		for idx, cleanContent in enumerate(cleanContents):
 			if mode == "bow":
 				wordVec = self.getBagOfWords(cleanContent.cleanContentId, dfCutoff)
 			elif mode == "sow":
@@ -316,8 +314,7 @@ ORDER BY boolean.\"termId\" ASC\n".format(
 				logger.error("mode {mode} unknown".format(mode=mode))
 				logger.error("Supported modes: 'bow', 'sow'")
 				raise ValueError("Faulty mode {mode}".format(mode=mode))
-			percentage += percentagePerContent
-			bar.update(percentage)
+			bar.update(idx)
 			result.append((wordVec, cleanContent))
 		bar.finish()
 		session.commit()
