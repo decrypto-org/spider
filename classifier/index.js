@@ -473,19 +473,6 @@ async function trainModel(dataset) {
  * anything, but updates the entries directly on the database (e.g. set
  * primary label and legal status).
  * @param  {Arra.<Object>} dataset The objects contain a clean content model and
- *                                 a BoW vector. The estimated labels and
- *                                 certainties can then be directly written
- *                                 onto the clean content model to be
- *                                 persistently stored in the database
- */
-async function applyModel(dataset) {
-    // body...
-}
-
-
-/**
- * Run the whole process and keeps track of the state of the classifier. Manages
- * the control flow ("Controller function")
  */
 async function run() {
     process
