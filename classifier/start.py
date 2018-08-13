@@ -229,11 +229,18 @@ def restoreModel(path, name):
 	model = joblib.load(path)
 	return Classifier.fromModel(model, name)
 
-def loadAndInsertLabels():
+def insertLabels(db):
 	"""Summary
 	"""
+	labelsToAdd = []
 	with open("labels.json") as labelsFile:
 		data = json.load(labelsFile)
+	for entry in data["labels"]:
+		labelsToAdd.append(db.labels(label=entry["label"], labelId=entry["labelId"]))
+	insertLabelSession = db.Session()
+	insertLabelSession.add_all(labelsToAdd)
+	insertLabelSession.commit()
+	insertLabelSession.close()
 
 
 def run():
@@ -336,7 +343,8 @@ def run():
 
 	labels, labelSession = db.getAllLabels()
 	if len(labels) == 0:
-		labels = loadAndInsertLabels()
+		insertLabels(db)
+		labels, _ = db.getAllLabels(labelSession)
 	labelModelsByLabel = {}
 	for label in labels:
 		labelModelsByLabel[label.label] = label
@@ -360,6 +368,8 @@ def run():
 	if language is not None and language != "all":
 		languageModel, languageSession = db.getLanguage(language)
 		languageId = languageModel.languageId
+		languageSession.commit()
+		languageSession.close()
 	dfQuantile = args.minDocFrequency if args.minDocFrequency is not None else literal_eval(os.environ["CLASSIFIER_MIN_DF_FREQ"])
 	quantile = args.quantile if args.quantile is not None else literal_eval(os.environ["CLASSIFIER_QUANTILE"])
 	limit = args.limit if args.limit is not None else literal_eval(os.environ["CLASSIFIER_LIMIT"])
@@ -440,12 +450,32 @@ def run():
 		if not args.datasetPath:
 			logger.error("Please specify a dataset with -d if --mode insert is specified")
 			raise SystemExit(-1)
-		with open(args.datasetPath) as datasetFile:
-			reader = csv.DictReader(datasetFile)
-			a = [{k: int(v) for k, v in row.items()}
-				for row in csv.DictReader(f, skipinitialspace=True)]
-		pass
-
+		with open(args.datasetPath, ) as datasetFile:
+			reader = csv.DictReader(
+				datasetFile,
+				delimiter=";",
+				quoting=csv.QUOTE_NONE
+			)
+			insertSession = db.Session()
+			for row in reader:
+				values = {}
+				values["legalCertainty"] = 1.0
+				values["labelCertainty"] = 1.0
+				label = row["label"]
+				values["legal"] = "legal" == row["legal"]
+				try:
+					values["primaryLabelLabelId"] = labelModelsByLabel[label].labelId
+				except Exception as e:
+					logger.exception(str(e))
+					logger.error("Label: " + label)
+					raise SystemExit(-1)
+				insertSession.query(db.cleanContents).\
+					filter_by(cleanContentId = row["cleanContentId"]).\
+					update(values)
+			insertSession.commit()
+			insertSession.close()
+	labelSession.commit()
+	labelSession.close()
 
 
 try:
