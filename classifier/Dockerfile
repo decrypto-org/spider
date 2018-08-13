@@ -1,26 +1,17 @@
-FROM robrunne/tdse-dependencies:1.0.0
-
+FROM robrunne/tdse-py-dep:1.0.0
 WORKDIR /usr/src/tdse/spider/classifier
+
+RUN useradd -ms /bin/bash node
 
 COPY ./classifier .
 
-RUN npm install ../../textract
-
-RUN npm install
-
-RUN mkdir models
-
-COPY ./dataPreprocessing/models ./models
-
 COPY ./server/.env ./
 
-WORKDIR /usr/src/tdse/spider/classifier/node-svm
-
-RUN npm install
-
-WORKDIR /usr/src/tdse/spider/classifier
-
 RUN chown -R node:node /usr/src/tdse/spider/classifier/outputModels
+
+RUN mkdir /home/node/log
+
+RUN chown -R node:node /home/node/log
 
 # Node JS Debug Port
 EXPOSE 9101
