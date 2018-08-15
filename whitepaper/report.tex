@@ -14,6 +14,7 @@
 
 \newcommand\CONTENT[1]{\textcolor{blue}{#1}}
 \newcommand\NOTE[1]{\textcolor{green}{#1}}
+\newcommand{\nb}[1]{\textcolor{red}{$\blacktriangleright$}\footnote{\textcolor{blue}{[[#1]]}}}
   
 \begin{document}
  
@@ -21,7 +22,7 @@
   \author*[1]{Zeta Avarikioti}
 
   \author[2]{Roman Brunner}
-
+https://v2.overleaf.com/project/5b6c19affe683e5bba4ed91b
   \author[3]{Aggelos Kiayias}
 
   \author[4]{Roger Wattenhofer}
@@ -45,7 +46,9 @@
   %\subtitle{...}
 
   \begin{abstract}
-{We analyze the type of content present on the “dark web”, the set of websites accessible via Tor. We create a darknet spider and crawl the whole darknet by starting from a bootstrap list and recursively following links so that the whole connected component of more than X websites and Y base URLs is explored. We publish our spider as open source software. We find that the darknet is well-connected through hub websites such as wikis and forums. We perform comprehensive measurements on the content found using machine learning to analyze and categorize the various types of content. We observe that the majority of darknet content belongs to P and Q. We close by discussing the political and ethical implications of these results.}
+{We analyze the type of content present on the “dark web”, the set of websites accessible via Tor. We create a darknet spider and crawl the darknet starting from a bootstrap list and recursively following links. The whole connected component of more than X websites and Y base URLs is explored. We publish our spider as open source software. We find that the darknet is well-connected through hub websites such as wikis and forums. We perform comprehensive measurements on the content found using machine learning to analyze and categorize the various types of content. We observe that the majority of darknet content belongs to P and Q. \nb{maybe add another sentence on the results of content classification when we have them.}
+%We close by discussing the political and ethical implications of these results.
+}
 \end{abstract}
   \keywords{anonymity, tor, machine learning, scraping, spider}
 %  \classification[PACS]{}
@@ -66,26 +69,30 @@
 
 \maketitle
 \section{Introduction}
-
+When talking about the darknet, one does often think of the Tor network in particular. However, there are other so-called darknets provided by other anonymisation networks such as i2p, FreeNet or Disconnect, to name only a few. So what is the darknet and how is it defined? Let us first have a look at the whole iceberg and start with the tip of the iceberg above the surface. This part of the internet is typically referred to as the clearnet, which may be best defined as the pages that one can find directly or indirectly using their search machine of choice. The part below the surface is often called the "deep web", which contains everything that is not directly accessible without the further use of tools or knowledge. This means that only a restricted number of people can access those pages. Such areas could be a university's internal networks (may require tools (VPN) or passwords) or a personal eMail box (may require a password or card reader - and is most of the time not public). Although this is arguably a large part of the deep web, there is also a part of the deep web which requires additional software as the Tor browser to be accessed with the goal of keeping its users anonym. These parts are often called the "darknet". In this paper, we will look exclusively at the Tor network since ...[why? do we have an explanation for this]. The Tor network can be used to access any page on the internet (that is publicly available), so it is often used to access pages from the clearnet, while remaining anonymous \footnote{Anonymity also includes other behavioural and technical changes to be not tracked}. However, Tor also offers a mechanism to provide services anonymised. These services are called hidden services (HS).  In order to access an HS one has to know its exact URI, which consists of two parts: the hash of the public key of the webpage (as the hostname) and .onion as the "top-level domain". This makes it very hard to guess [How hard - I know there are papers] hostnames and nearly impossible to test all in order to brute force access hidden services. However, some of the pages actually want to be found. Therefore we can partition the network into two subgraphs - the visible part, where pages advertise its URI on link hubs and search engines and the invisible part, which contains only pages with URIs that are not publicly listed. In this paper we will only look at the visible part of the Tor network. Why should we only look into those pages, one might wonder. The point is, that the hash of a public key is computationally hard to guess and even if there exist methods to extract such not listed onion addressed [CMP previous work], we consider the information of such HS to be private and therefore should not be accessed by anyone without the consent of the owner. In addition to that, we want to classify the part of the Tor network that everybody can access without additional information. Lets put it that way: If we access HS from the invisible part, we might find and classify contents from email inboxes or address lists. If we only look at the visible part, we only find data that is publicly available. We assume that the visible part of the darknet has a similar link structure to the clear net, where pages link to each other. Therefore we describe how a scraper can be used on the darknet, which components are necessary and which information can or cannot be found. A scraper requires only few resources and reduces the impact on the network since it only acts as a regular Tor client. We compare our results to previous results, which used attacks on the Tor network or guard nodes for data collection. This indicates if a scraper works on the darknet and if the so collected dataset is representative compared to previous studies. Further, we estimate the size of the darknet (number of HS) based on the visible HS found and compare it to the estimates provided by the Tor project [https://metrics.torproject.org/hidserv-dir-onions-seen.html?start=2018-01-01&end=2018-08-15]. 
+Previous work in this field either used a large number of guard nodes, which knows the actual address of an HS. In contrast to our approach, this method will collect any found HS and cannot fully reconstruct the link structure of the Tor network since it only sees its share of the whole network. However, it allows to test how often particular pages are accessed, a measurement we cannot provide. The other paper which targets darknet content classification used a flaw in the Tor protocol in order to collect data.
+The scraper was newly developed for this work and is made public under MIT license for further use by other researchers and implements a complete data analysis chain, from collection until classification. The data collected not only contains the content of the HS but also the link structure, status information, network topology information and can be configured to store the change over time of the network. [available under ... - anonimized]. 
 
 \section{Scraping the Darknet}
 
-In order to get a complete scrape of the visible darknet, we needed at least the following functionality:
+In this section, we describe in detail the structure of the spider we built to crawl the darknet. To understand some of our design choices, we will present the problems faced and the different strategies applied to resolve those issues. \nb{can you rewrite this sentence? i cant seem to make it look nice or precise!}. Furthermore, we present some preliminary results on the darknet structure we collected from the crawling process.
+
+To get a complete scrape of the visible darknet, we needed at least the following functionalities:
 \begin{itemize}
-    \item Network module: Download any content and handle any network related exceptions and issues.
-    \item URI extractor: Parse the downloaded content and extract URIs that will be used recursively to download further content.
-    \item Database: To store content downloaded as well as the network's structure and URIs to download
-    \item Tor proxy: Since the scraper should download HS, a Tor proxy is required
+    \item Network module: The functionality of this module is to download any content and handle any network related exceptions and issues.
+    \item URI extractor: It is used to parse the downloaded content and extract URIs that will be used recursively to download further content.
+    \item Database: Stores content downloaded as well as the network's structure and URIs to download.
+    \item Tor proxy: Since the scraper should download hidden services (HS), a Tor proxy is required.
 \end{itemize}
 
-The modules depicted in Fig [] provide this functionality and are explained in more detail below.
-\subsection{The network module}
+The modules depicted in Fig [] provide this functionality and are explained below in more detail.
+\subsection{Downloading the content}
 The network module needs to connect to the Tor network, therefore needs a Tor proxy. Since the Tor network is slower than a typical network connection, we used multiple Tor instances, to increase the download performance of the scraper. The Tor proxy spins up a configurable number of Tor instances and uses a round-robin scheduler to distribute download tasks across the instances.
-Additionally, the network module has to keep track of how many connections are made to a specific host in order to prevent a DoS-like behaviour of the scraper. If it detects that there are already four requests pending to a given host, it puts the new download task into a waiting queue, which will be consumed if a connection to this host is freed up. However, the other modules have to ensure to not overload the network module with too many requests to the same host, since the memory usage of the network module increases with every request in the waiting queue. The value of four concurrent requests was chosen to be lower than the default Tor setting\footnote{Tor 7.5.6, setting network.http.max-persistent-connections-per-server}, in order to be less detectable by scraping countermeasures some hosts apply.
+Additionally, the network module has to keep track of how many connections are made to a specific host in order to prevent a DoS-like behaviour of the scraper. If it detects that there are already four requests pending to a given host, it puts the new download task into a waiting queue, which will be consumed if a connection to this host is freed up. However, the other modules have to ensure the network module is not overloaded with too many requests to the same host, since the memory usage of the network module increases with every request in the waiting queue. The value of four concurrent requests was chosen to be lower than the default Tor setting\footnote{Tor 7.5.6, setting network.http.max-persistent-connections-per-server} to be less detectable by scraping countermeasures some hosts apply.
 
-\subsection{The conductor module}
-The conductor balances the needs of the different other modules. It is the responsibility of the conductor to dispatch URIs for download to the network module and get new URIs from the DB. Since the network is typically slower than local storage (and this is especially true for the Tor network), the goal of the conductor is, that the network (as the scarce resource) never has to wait for local storage to deliver new URIs for download. In order to balance out short peaks in access time to the local storage, a pool of URIs ready to download is used. The size of the pool is configurable in order to adapt to different setups, e.g. an SSD can deliver data much faster than an HDD; therefore the pool size can be smaller, which also results in a smaller memory footprint.
-Early we discovered, that it is important, which URI to schedule next for download. It can happen that at some point during the scraping process most of the available URIs only stem from a few hosts. Since we do not want to DoS any hosts and still be able to scrape fast, we needed a way to prioritise URIs that promise a fast discovery of new hosts and paths as well as not bombarding single hosts with tons of requests. This lead to the definition of the following prioritisation schemes:
+\subsection{Orchestrating the scraping}
+The conductor balances the needs of the other modules. It is the responsibility of the conductor to dispatch URIs for download to the network module and get new URIs from the DB. Since the network is typically slower than local storage (and this is especially true for the Tor network), the goal of the conductor is to ensure that the network (as the scarce resource) never has to wait for local storage to deliver new URIs for download. To balance out short peaks in access time to the local storage, we use a pool of URIs ready to download. The size of the pool is configurable to adapt to different setups, e.g. an SSD can deliver data much faster than an HDD; therefore the pool size can be smaller, which also results in a smaller memory footprint.
+We noticed early in this work that deciding which URI to schedule next for download is important. We also observed  that at some point during the scraping process most of the available URIs only stem from a few hosts. Since we do not want to DoS any hosts and still be able to scrape fast, we require a way to prioritise URIs. The prioritisation scheme should ensure fast discovery of new hosts and paths while it avoids bombarding single hosts with tons of requests. These requirements lead to the definition of the following prioritisation schemes:
 \begin{itemize}
   \item Random: When scheduling the URIs in insertion order, it happens almost immediately, that more than the allowed number of URIs is dispatched for download. One easy and fast way to mitigate this issue is randomising the order in which the URIs are scheduled. However, this strategy breaks down when large amounts of the available URIs are pointing to only a few hosts. In such a scenario, randomised access fails, since even if the URIs are reshuffled, they still stem from the same host.
   \item New: This strategy only gets paths from hosts, for which yet no of the available paths were scraped before. This works well if the collection of not yet scraped hosts is huge since it advances very fast through the network. However, the first page downloaded from a host is not always useful for classification or collection of further links. Therefore this only works well for seed generation but not for data collection.
@@ -95,9 +102,9 @@ Early we discovered, that it is important, which URI to schedule next for downlo
   \item Combined: This strategy combines the new, prioritised and randomised strategy from above, to mimic the recursive strategy with less computational resources needed. First, it applies the new strategy until we are not able to repopulate the pool anymore with only not yet scraped hosts. Then the prioritised strategy is used. If this one gets stuck (e.g. because it hits a region of interlinking hosts), it will not be able to return enough paths to repopulate the pool. In this case, this strategy falls back to the random strategy, getting entries at random. 
   The combined strategy is an approximation to the recursive strategy since we use the new strategy first, we have multiple starting points for the prioritised strategy, therefore it should not immediately run into the issue of lots of interlinking hosts. Since this still can happen, the fallback to random is important, in order to keep the scraper running. Note that always the lower strategies are applied first, so as soon as a new host becomes available for download, it will be dispatched. Of course, this is not a perfect replication of the recursive strategy, but it is less computational expensive; however, it is not as precise as the recursive strategy.
 \end{itemize}
-\subsection{The URI extractor module}
+\subsection{Extract URI }
 From each of the downloaded HTML files, we need to extract the links that point to another page. A first approach here is to use regular expressions. However, a hidden service URI can still be very complicated, which also leads to a quite complex regex. If the HTML string received is very large, the RegEx solution produced high runtimes, therefore another solution was needed for the collection of URIs along the scraping process. For this purpose, cheerio [], an HTML parser, was used to extract links from link tags, instead of scanning through the whole string looking for URIs. However, we found that some URIs are not enclosed in link tags, thus another process runs with the slower RegEx based extraction to ensure all URIs are found as well as the cheerio based in the scraper process to provide the scraper with new URIs to download.
-\subsection{The database}
+\subsection{Store }
 
 
 
@@ -107,9 +114,11 @@ To speed up the scraping process, we ran 100 concurrent requests to the Tor netw
 \CONTENT{Describe the architectural decisions put in designing the spider. Mention the technologies we’re using (node.js, postgres, the tor libraries). Include a diagram for our software architecture. Discuss how we bypass rate limits (e.g. by randomization of visits and by using multiple tor circuits in parallel) and what the rate limiting problems are (including rate limits by individual websites as well as by the tor circuit / network itself). How we avoid downloading illegal content (whitelists and blacklists, content types). Talk about bootstrapping the list, exploration depth. Show the numbers such as how many sites exist, how many base URLs exist, how many links exist, summarize them nicely in a table. Try to aggregate data from our database to create insights for the reader. Extract the “hubs” and state that, contrary to popular opinion, the darknet is well connected; specifically discuss which this hubs are, what their purpose is, and how many links they have for the top 10 hubs.}
 
 
-\section{Analyzing content}
+\section{Analsys methodology}
 
 \CONTENT{Describe the types of content that we found. Talk about our methodology in how we analyzed the content using machine learning and NLP. How were the categories chosen? Discuss how we rank base URLs as well as individual paths. Show diagrams (a pie chart or bars?) with the popularity of various content categories.}
+
+\section{Darknet contents}
 
 \section{Political and Ethical Discussion}
 
