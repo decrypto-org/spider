@@ -289,12 +289,14 @@ ORDER BY boolean.\"termId\" ASC\n".format(
 			cleanContents = session.query(self.cleanContents).\
 				filter((self.cleanContents.legalCertainty + self.cleanContents.labelCertainty)/2 <= 0.1).\
 				filter(self.cleanContents.languageLanguageId.in_(languageIds)).\
+				filter(self.cleanContents.primaryLabelLabelId.is_( None)).\
 				order_by(func.random()).\
 				limit(limit).\
 				all()
 		else:
 			cleanContents = session.query(self.cleanContents).\
 				filter((self.cleanContents.legalCertainty + self.cleanContents.labelCertainty)/2 <= 0.1).\
+				filter(self.cleanContents.primaryLabelLabelId.is_( None)).\
 				order_by(func.random()).\
 				limit(limit).\
 				all()
