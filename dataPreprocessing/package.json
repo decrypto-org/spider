@@ -29,6 +29,7 @@
   "homepage": "https://github.com/decrypto-org/spider#readme",
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
+    "command-line-args": "^5.0.2",
     "dotenv": "^6.0.0",
     "dotenv-expand": "^4.2.0",
     "franc": "^4.0.0",

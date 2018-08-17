@@ -46,9 +46,12 @@ module.exports = (sequelize, DataTypes) => {
      * @param  {Array.<Object>} labels All labels which should be inserted,
      *                                 each object consisting of a label and an
      *                                 id (keys: )
+     * @param {Sequelize.Transaction} transaction Transaction to use for the
+     *                                            update. If none is provided,
+     *                                            a managed transaction is used
      * @return {Array.<object>}        An array of all created label models
      */
-    Label.bulkUpsert = async function(labels) {
+    Label.bulkUpsert = async function(labels, transaction) {
         /* eslint-disable no-multi-str */
         let labelInsertString = "\
 INSERT INTO \"labels\"\n\
@@ -76,11 +79,21 @@ DO UPDATE SET \n\
     \"numberOfDocs\" = \"labels\".\"numberOfDocs\" + 1\n\
 RETURNING \"labelId\", \"label\"";
         /* eslint-enable no-multi-str */
+        if (!transaction) {
+            return await sequelize.query(
+                labelInsertString,
+                {
+                    replacements: replacementsForLabelInsert,
+                    model: Label,
+                }
+            );
+        }
         return await sequelize.query(
             labelInsertString,
             {
                 replacements: replacementsForLabelInsert,
                 model: Label,
+                transaction: transaction,
             }
         );
     };

@@ -219,7 +219,7 @@ ORDER BY terms.\"termId\" ASC\n";
             ">",
             quantile
         );
-        if(languageIds) {
+        if (languageIds) {
             where = Sequelize.where(
                 Sequelize.literal("\"cleanContent\".\"legalCertainty\" +\
                 \"cleanContent\".\"labelCertainty\""),
@@ -321,6 +321,39 @@ ORDER BY terms.\"termId\" ASC\n";
             dfQuantile,
             languageIds
         );
+    };
+
+    /**
+     * Get all contents labelled empty and recalculate their terms and insert
+     * it into the index - some of them seem to be empty
+     * @param  {number} limit How many entries should be returned from the db
+     * @param {Label} primaryLabel Specify the contents to be updated by primary
+     *                             label
+     * @param {Language} languageModel Injects the dependency to the language
+     *                                 model, since we cannot require it at
+     *                                 this point in time (may not yet be
+     *                                 defined)
+     * @param {number} offset How many entries were already processed and do not
+     *                        need to be updated
+     * @return {Array.<cleanContent>}       Returns an array of empty labelled
+     *                                      cleanContent models.
+     */
+    CleanContent.getContentsForUpdate = async function(
+        limit,
+        primaryLabel,
+        languageModel,
+        offset
+    ) {
+        return await CleanContent.findAll({
+            where: {
+                primaryLabelLabelId: primaryLabel.labelId,
+            },
+            include: [{
+                model: languageModel,
+            }],
+            limit: limit,
+            offset: offset,
+        });
     };
 
     return CleanContent;

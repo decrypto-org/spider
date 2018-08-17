@@ -5,6 +5,7 @@ let franc = require("franc-min");
 let stopword = require("stopword");
 let stemmer = require("stemmer");
 let uuidv4 = require("uuid/v4");
+let commandLineArgs = require("command-line-args");
 let Sequelize = require("sequelize");
 let Op = Sequelize.Op;
 
@@ -111,14 +112,25 @@ let languageIdsByISOString = {};
 /**
  * Just print post script after a fatal error and exit the program as needed.
  * @param  {Exception} err Exception object used to print message/stack trace
+ * @param {Sequelize.Transaction} transaction The transaction within the error
+ *                                            was thrown. If a transaction is
+ *                                            passed, it will be rolled back
  */
-function finalErrorHandler(err) {
+function finalErrorHandler(err, transaction) {
+    if (transaction) {
+        transaction.rollback();
+    }
     console.error("For more information check the error message below:");
     console.error(err.message);
     console.error(err.stack);
     console.error("Leaving now... Bye bye");
     process.exit(-1);
 }
+
+const commandLineOptions = commandLineArgs([
+    {name: "recalculate", alias: "r", type: Boolean},
+    {name: "label", alias: "l", type: String},
+]);
 
 /**
  * Run the data normalization process and stop if no more contents
@@ -154,6 +166,10 @@ async function run() {
     for (let i = 0; i < returnedRows.length; i++) {
         let language = returnedRows[i].dataValues;
         languageIdsByISOString[language.language] = language.languageId;
+    }
+    if (commandLineOptions.recalculate) {
+        await updateCleanContents();
+        return;
     }
     // Offset within the content table of
     let offset = await targetDb.cleanContent.count();
@@ -229,9 +245,82 @@ async function run() {
             });
             promiseCounter += 1;
         }
-    } while (queryResults.length > 0 && offset < 450000);
+    } while (queryResults.length > 0 && offset < 700000);
     await Promise.all(Object.values(asyncStores));
     console.log("Statistics: " + JSON.stringify(countsByLanguage));
+    console.log("Did not retrieve more contents. Finished.");
+    console.log("Restart the process after you've added more contents");
+    process.exit(0);
+}
+
+/**
+ * Revisit specified contents in order to check if their postings are correctly
+ * inserted. We found some empty spots - it seems that there the database
+ * connection was lost and the entries were therefor only partially inserted.
+ * This is now fixed by using transactions to ensure "atomicity" in the
+ * insertion process
+ */
+async function updateCleanContents() {
+    let offset = 0;
+    let label = await targetDb.label.findOne(
+        {
+            where: {
+                label: commandLineOptions.label,
+            },
+        }
+    );
+    if (!label) {
+        console.log("Cannot find specified label: " + commandLineOptions.label);
+        finalErrorHandler("label not found!");
+    }
+
+    let queryResults = [];
+    let promiseCounter = 0;
+    let upperLimit = 0;
+    let asyncStores = {};
+    do {
+        queryResults = await targetDb.cleanContent.getContentsForUpdate(
+            limit,
+            label,
+            targetDb.language,
+            offset
+        );
+        upperLimit = offset + queryResults.length;
+        console.log("Currently processing entries ["
+            + offset +"-" + upperLimit +"]");
+        for (let i = 0; i < queryResults.length; i++) {
+            let currIndex = offset + i;
+            console.log("Processing #" + currIndex);
+            let cleanContent = queryResults[i];
+            await getDbConnection().catch((err) => {
+                console.error("getDbConnection timed out. Giving up");
+                process.exit(-1);
+            });
+            let promise = storeResult(
+                cleanContent.cleanContent,
+                cleanContent.language.language,
+                cleanContent.rawContentId,
+                promiseCounter,
+                cleanContent,
+            );
+            promise.index = promiseCounter;
+            asyncStores[promiseCounter] = promise;
+            promise.catch(() => {}).then((taskId) => {
+                let callback = null;
+                while (callback == null && waitingForDbConnection.length > 0) {
+                    callback = waitingForDbConnection.pop();
+                    if (callback != null) {
+                        callback();
+                        delete asyncStores[taskId];
+                    }
+                }
+                dbConnections += 1;
+                delete asyncStores[taskId];
+            });
+            promiseCounter += 1;
+        }
+        offset += queryResults.length;
+    } while (queryResults.length >= limit);
     console.log("Did not retrieve more contents. Finished.");
     console.log("Restart the process after you've added more contents");
     process.exit(0);
@@ -266,6 +355,10 @@ async function getDbConnection() {
  *                                 as link to all the other structures stored
  * @param {number} id              The id of the async task. When resolved, this
  *                                 id is returned
+ * @param {CleanContent} cleanContentModel If passed, no new one will be created
+ *                                         but the old one will be updated. If
+ *                                         empty a new one with a new ID will be
+ *                                         created.
  * @return {number} Store task id is returned when finished. This is useful
  *                  in order to remove the corresponding promise from the array,
  *                  which is needed, otherwise we'd fill up the memory with
@@ -275,7 +368,8 @@ async function storeResult(
     cleanString,
     language,
     originContentId,
-    id
+    id,
+    cleanContentModel,
 ) {
     // IF english ==> apply:
     // 1. punctuation removal
@@ -311,16 +405,23 @@ async function storeResult(
             dict[term] = [i];
         }
     }
-    let contentInstance = await targetDb.cleanContent.create({
-        cleanContent: cleanString,
-        rawContentId: originContentId,
-        languageLanguageId: languageIdsByISOString[language],
-    });
-    let terms = await targetDb.term.bulkUpsert(stemmedTerms).catch(
+    let transaction = await targetDb.sequelize.transaction();
+    let cleanContentInstance;
+    if (!cleanContentModel) {
+        cleanContentInstance = await targetDb.cleanContent.create({
+            cleanContent: cleanString,
+            rawContentId: originContentId,
+            languageLanguageId: languageIdsByISOString[language],
+        }, {transaction: transaction});
+    } else {
+        cleanContentInstance = cleanContentModel;
+    }
+    let terms = await targetDb.term.bulkUpsert(stemmedTerms, transaction).catch(
         (err) => {
         console.error("An error occured while inserting terms in the database");
         console.error("This occured most likely due to a connection issue");
-        finalErrorHandler(err);
+
+        finalErrorHandler(err, transaction);
     });
     if (terms.length != stemmedTerms.length) {
         console.error("Not all terms were correctly inserted into the DB");
@@ -332,40 +433,56 @@ async function storeResult(
         let termObj = terms[i];
         let term = stemmedTerms[i];
         let postingId = uuidv4();
-        let posting = await targetDb.posting.create({
-            postingId,
-        }).catch(
-        (err) => {
-            console.error("An error occured while creating a posting");
-            console.error("This occured most likely due to a connection issue");
-            finalErrorHandler(err);
+        let posting = await targetDb.posting.findOne({
+            where: {
+                cleanContentCleanContentId: cleanContentInstance.cleanContentId,
+                termTermId: termObj.termId,
+            },
         });
+        if (!posting) {
+            posting = await targetDb.posting.create({
+                postingId,
+            }, {transaction: transaction}).catch(
+            (err) => {
+                console.error("An error occured while creating a posting");
+                console.error("This occured most likely due to a" +
+                    " connection issue");
+                finalErrorHandler(err, transaction);
+            });
+        }
         // Side effect: not only associated but also stored on db
-        await posting.setCleanContent(contentInstance).catch(
-        (err) => {
+        await posting.setCleanContent(
+            cleanContentInstance,
+            {transaction: transaction}
+        ).catch((err) => {
             console.error("An error occured while updating a posting -Content");
             console.error("This occured most likely due to a connection issue");
-            finalErrorHandler(err);
+            finalErrorHandler(err, transaction);
         });
-        await posting.setTerm(termObj).catch(
+        await posting.setTerm(termObj, {transaction: transaction}).catch(
         (err) => {
+            console.error(cleanContentInstance.cleanContent);
+            console.error(termObj.term);
             console.error("An error occured while updating a posting -Term");
             console.error("This occured most likely due to a connection issue");
-            finalErrorHandler(err);
+            finalErrorHandler(err, transaction);
         });
-        let positions = await targetDb.position.bulkUpsert(dict[term]).catch(
-        (err) => {
+        let positions = await targetDb.position.bulkUpsert(
+            dict[term],
+            transaction
+        ).catch((err) => {
             console.error("An error occured while upserting positions");
             console.error("This occured most likely due to a connection issue");
-            finalErrorHandler(err);
+            finalErrorHandler(err, transaction);
         });
-        await posting.addPositions(positions).catch(
+        await posting.addPositions(positions, {transaction: transaction}).catch(
         (err) => {
             console.error("An error occured while updating a posting -pos");
             console.error("This occured most likely due to a connection issue");
-            finalErrorHandler(err);
+            finalErrorHandler(err, transaction);
         });
     }
+    transaction.commit();
     return id;
 }
 /* eslint-enable no-unused-vars */

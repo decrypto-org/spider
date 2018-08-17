@@ -46,10 +46,14 @@ module.exports = (sequelize, DataTypes) => {
      * Insert a term into the terms table. If the term already existed,
      * increase the document counter.
      * @param  {string} terms Terms to be inserted into the table
+     * @param {Sequelize.Transaction} transaction If passed, this transaction
+     *                                            will be used. If none is
+     *                                            passed, a managed tranasaction
+     *                                            will be used
      * @return {Promise}      The Promise will be resolved with an array of term
      *                        objects and will be rejected with an error message
      */
-    Term.bulkUpsert = async function(terms) {
+    Term.bulkUpsert = async function(terms, transaction) {
         /* eslint-disable no-multi-str */
         let termInsertString = "\
 LOCK TABLE ONLY \"terms\" IN SHARE ROW EXCLUSIVE MODE;\n\
@@ -65,11 +69,11 @@ VALUES\n";
             let term = terms[i];
             let value = "   (?, ?)";
             if (Buffer.from(term).length >= 2711) {
-                console.warn("Truncating too large term to 2710 bytes");
+                console.warn("Truncating too large term to 2500 bytes");
                 console.warn("Postgres indexes uses a b tree");
                 console.warn("The b tree supports only content of max 2710B");
                 console.warn("Term was: " + term);
-                term = truncate(term, 2710);
+                term = truncate(term, 2500);
                 console.warn("Term is now: " + term);
             }
             replacementsForTermInsertion.push(newTermId);
@@ -86,11 +90,21 @@ ON CONFLICT(\"term\")\n\
 DO UPDATE SET \n\
     \"documentFrequency\" = \"terms\".\"documentFrequency\" + 1\n\
 RETURNING \"termId\", \"term\"";
+        if (!transaction) {
+            return await sequelize.query(
+                termInsertString,
+                {
+                    replacements: replacementsForTermInsertion,
+                    model: Term,
+                }
+            );
+        }
         return await sequelize.query(
             termInsertString,
             {
                 replacements: replacementsForTermInsertion,
                 model: Term,
+                transaction: transaction,
             }
         );
     };
