@@ -153,12 +153,6 @@ We find that the visible part of the darknet is actually well connected. There e
 Despite the fact that more than half of the darknet can be found in just one step if one selects the right entry point, we saw a maximal depth of 22 until we found the last host in our dataset. Graph i shows how the hosts are distributed over the depth.
 Note that this does not mean that this is tha maximal distance between two nodes, since there possibly exists a faster way from depth 0 to depth 22 than the one the scraper has taken.
 
-\TODO{FORMATTING}
-To speed up the scraping process, we ran 100 concurrent requests to the Tor network. In order to prevent overload on the Tor nodes within the circuit, we used a pool of Tor of equal size, such that per request one Tor instance was used. The Tor instances were scheduled in a round robin manner 
-
-\CONTENT{Describe the architectural decisions put in designing the spider. Mention the technologies we’re using (node.js, postgres, the tor libraries). Include a diagram for our software architecture. Discuss how we bypass rate limits (e.g. by randomization of visits and by using multiple tor circuits in parallel) and what the rate limiting problems are (including rate limits by individual websites as well as by the tor circuit / network itself). How we avoid downloading illegal content (whitelists and blacklists, content types). Talk about bootstrapping the list, exploration depth. Show the numbers such as how many sites exist, how many base URLs exist, how many links exist, summarize them nicely in a table. Try to aggregate data from our database to create insights for the reader. Extract the “hubs” and state that, contrary to popular opinion, the darknet is well connected; specifically discuss which this hubs are, what their purpose is, and how many links they have for the top 10 hubs.}
-
-
 \section{Analsys methodology}
 Given the size of the collected dataset of $667\times10^{3}$ contents, we are not able to classify such an amount of data manually in a reasonable amount of time. Therefor we decided we need to employ machine learning techniques to achieve the classification of a large portion of the dataset. In order to be able to classify the pages based on its textual contents, we needed to preprocess the contents first.
 
@@ -181,12 +175,19 @@ Now that the language of the content is known, we remove stop words according to
 After stop word removal we do normalize the contents further and apply stemming where appropriate. Since ... \nb{reference} suggests that stemming works not equally well on all languages, we only apply stemming for english contents.
 
 Everything is now ready to start building our positional index. We decided to build a positional index, since the information is available and even if we don't use it yet it is cheap in terms of storage and computation. Further we would have to store the term frequency anyway, since we want to apply a bag of words model for the classification step, which can be calculated directly from the positional index.
-To make manual classification easier, we also keep the extracted clean content string, such that a human classifier can be presented directly with the content and the decision.
+To make manual classification easier, we also keep the extracted clean content string, such that it can be directly presented to a human classifier, in order to get the labelled training dataset.
 
 \subsection{Storing indexes for classification}
+We stored the extracted contents in the new table cleanContents with a foreign key to the original content. The new cleanContents table has a ont-to-one assignment for both, the language as well as the primary class label. Since the decision if a document is legal is a binary decision, we directly used a boolean column to store the legal value (true corresponds to legal, false to illegal).
 
+The goal in the trainings phase is to employ active learning, therefore we need to have an idea how sure the classifier is about a decision it made. Thus a column for both the legal and the label are inserted in which the probability output of the classifier is stored. This allows us to apply active learning techniques in the classification phase.
+
+The positional index itself is constructed with four different tables. The first table is the list of terms, which has a one-to-many mapping to the postings. Each posting in the posting table has a foreign relation to a clean content and a term, therefor creating the tuple (term, doc id). In order to be a positional index, every posting belongs to many positions, describing the positions at which the reference term appears in the specified clean content (document).
+
+With the model described above it is possible to apply machine learning either to a set-of-words, a bag-of-words or a list-of-words, depending on the needs.
 
 \subsection{Classify darknet content}
+
 
 \CONTENT{Describe the types of content that we found. Talk about our methodology in how we analyzed the content using machine learning and NLP. How were the categories chosen? Discuss how we rank base URLs as well as individual paths. Show diagrams (a pie chart or bars?) with the popularity of various content categories.}
 
@@ -203,6 +204,13 @@ To make manual classification easier, we also keep the extracted clean content s
 \CONTENT{Summarize our results and discuss directions for future work.}
 One issue with the proposed method is the high volatility of the network. We found that up to 30\% of the found hosts switch from being online to offline and vice versa in only a week. This circumstance could be faced by adding a temporal resolution to the data gathering process.
 The provided code already supports temporal resolutions for the hosts and paths, however, one has to match the links by timestamp.One addition could be that along the existing data collection, one also stores to which round of rescraping any entry (whether it now be a host, a path or a link) belongs.
+
+% Content of chapter 2
+
+\TODO{FORMATTING}
+To speed up the scraping process, we ran 100 concurrent requests to the Tor network. In order to prevent overload on the Tor nodes within the circuit, we used a pool of Tor of equal size, such that per request one Tor instance was used. The Tor instances were scheduled in a round robin manner 
+
+\CONTENT{Describe the architectural decisions put in designing the spider. Mention the technologies we’re using (node.js, postgres, the tor libraries). Include a diagram for our software architecture. Discuss how we bypass rate limits (e.g. by randomization of visits and by using multiple tor circuits in parallel) and what the rate limiting problems are (including rate limits by individual websites as well as by the tor circuit / network itself). How we avoid downloading illegal content (whitelists and blacklists, content types). Talk about bootstrapping the list, exploration depth. Show the numbers such as how many sites exist, how many base URLs exist, how many links exist, summarize them nicely in a table. Try to aggregate data from our database to create insights for the reader. Extract the “hubs” and state that, contrary to popular opinion, the darknet is well connected; specifically discuss which this hubs are, what their purpose is, and how many links they have for the top 10 hubs.}
 
 \section{Editorial Policy}
 
