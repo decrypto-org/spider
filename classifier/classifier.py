@@ -1,6 +1,7 @@
 from sklearn import svm
 from sklearn.utils import shuffle
 from sklearn.model_selection import cross_val_score
+import numpy as np
 import logging
 
 class Classifier(object):
@@ -95,4 +96,27 @@ class Classifier(object):
 
 	def apply(self, datacolumns):
 		self.logger.info("Applying...")
-		return self.clf.predict(datacolumns)
+		scores = self.clf.decision_function(datacolumns)
+		probaScores = self.clf.predict_proba(datacolumns)
+		results = []
+		for i in range(0, len(datacolumns)):
+			scoreMax = np.max(scores[i])
+			probaMax = np.max(probaScores[i])
+			try:
+				scorePos = [i for i,x in enumerate(scores[i]) if x == scoreMax][0]
+				scoreDecision = self.clf.classes_[scorePos]
+			except Exception as e:
+				scoreMax = np.max(scores[i])
+				scoreDecision = 0 if scoreMax < 0 else 1
+				scorePos = scoreDecision
+			probaPos = [i for i,x in enumerate(probaScores[i]) if x == probaMax][0]
+			scoreProba = probaScores[i][scorePos]
+			probaDecision = self.clf.classes_[probaPos]
+			if probaDecision == scoreDecision:
+				scoreProba *= 2
+			# The machine should never reach a human decision certainty - therefor
+			# capping at 99%
+			if scoreProba > 0.99:
+				scoreProba = 0.99
+			results.append((scoreDecision, scoreProba))
+		return results

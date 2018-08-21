@@ -436,10 +436,14 @@ def run():
 			Y_legal_r = legalClf.apply(X_apply)
 
 			for idx, cleanContent in enumerate(cleanContents):
-				label = Y_label_r[idx]
-				legal = Y_legal_r[idx]
+				label = Y_label_r[idx][0]
+				legal = Y_legal_r[idx][0]
+				labelCertainty = Y_label_r[idx][1]
+				legalCertainty = Y_legal_r[idx][1]
 				cleanContent.primaryLabelLabelId = label
 				cleanContent.legal = legal
+				cleanContent.labelCertainty = labelCertainty
+				cleanContent.legalCertainty = legalCertainty
 			labellingSession.commit()
 			labellingSession.close()
 			# Insertion via: Insert => on conflict do update legal&label
