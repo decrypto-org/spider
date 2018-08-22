@@ -408,11 +408,22 @@ async function storeResult(
     let transaction = await targetDb.sequelize.transaction();
     let cleanContentInstance;
     if (!cleanContentModel) {
-        cleanContentInstance = await targetDb.cleanContent.create({
-            cleanContent: cleanString,
-            rawContentId: originContentId,
-            languageLanguageId: languageIdsByISOString[language],
-        }, {transaction: transaction});
+        try {
+            cleanContentInstance = await targetDb.cleanContent.findOrCreate({
+                where: { rawContentId: originContentId },
+                defaults: {
+                    cleanContent: cleanString,
+                    rawContentId: originContentId,
+                    languageLanguageId: languageIdsByISOString[language],
+                },
+                transaction: transaction
+            });
+            cleanContentInstance = cleanContentInstance[0];
+        } catch(e) {
+            // statements
+            console.log(e);
+            finalErrorHandler(err, transaction);
+        }
     } else {
         cleanContentInstance = cleanContentModel;
     }
