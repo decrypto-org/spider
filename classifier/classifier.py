@@ -91,8 +91,9 @@ class Classifier(object):
 		self.logger.info("Training...")
 		result = self.clf.fit(datacolumns, targetcolumn)
 		self.logger.info("Training finished: {output}".format(output=result))
-		result = cross_val_score(self.clf, datacolumns, targetcolumn, scoring="accuracy")
-		self.logger.info("Cross validation score: {result}".format(result=result))
+		for scoring in ["accuracy", "average_precision", "f1_micro", "f1_macro", "neg_log_loss", "precision_micro","precision_macro", "recall_micro", "recall_macro"]:
+			result = cross_val_score(self.clf, datacolumns, targetcolumn, scoring=scoring)
+			self.logger.info("Cross validation {scoringScheme}: {result}".format(scoringScheme=scoring, result=result))
 
 	def apply(self, datacolumns):
 		self.logger.info("Applying...")
