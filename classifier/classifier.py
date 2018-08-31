@@ -91,7 +91,7 @@ class Classifier(object):
 		self.logger.info("Training...")
 		result = self.clf.fit(datacolumns, targetcolumn)
 		self.logger.info("Training finished: {output}".format(output=result))
-		for scoring in ["accuracy", "average_precision", "f1_micro", "f1_macro", "neg_log_loss", "precision_micro","precision_macro", "recall_micro", "recall_macro"]:
+		for scoring in ["accuracy", "f1_micro", "f1_macro", "neg_log_loss", "precision_micro","precision_macro", "recall_micro", "recall_macro"]:
 			result = cross_val_score(self.clf, datacolumns, targetcolumn, scoring=scoring)
 			self.logger.info("Cross validation {scoringScheme}: {result}".format(scoringScheme=scoring, result=result))
 
@@ -113,8 +113,6 @@ class Classifier(object):
 			probaPos = [i for i,x in enumerate(probaScores[i]) if x == probaMax][0]
 			scoreProba = probaScores[i][scorePos]
 			probaDecision = self.clf.classes_[probaPos]
-			if probaDecision == scoreDecision:
-				scoreProba *= 2
 			# The machine should never reach a human decision certainty - therefor
 			# capping at 99%
 			if scoreProba > 0.99:
