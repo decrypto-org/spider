@@ -3,9 +3,19 @@
 \usepackage[utf8]{inputenc}%(only for the pdftex engine)
 %\RequirePackage[no-math]{fontspec}%(only for the luatex or the xetex engine)
 \usepackage[big]{dgruyter_NEW}
+\usepackage{supertabular}
+\usepackage{float}
+\restylefloat{table}
 
-\usepackage{xcolor}
- 
+\usepackage{xcolor, colortbl}
+\usepackage[
+backend=biber,
+style=numeric,
+citestyle=numeric-comp
+]{biblatex}
+\addbibresource{references.bib}
+
+
 \DOI{foobar}
 
 \cclogo{\includegraphics{by-nc-nd.pdf}}
@@ -15,42 +25,45 @@
 \newcommand\CONTENT[1]{\textcolor{blue}{#1}}
 \newcommand\NOTE[1]{\textcolor{green}{#1}}
 \newcommand{\nb}[1]{\textcolor{red}{$\blacktriangleright$}\footnote{\textcolor{blue}{[[#1]]}}}
+\newcommand{\rmn}[1]{\textcolor{red}{$\blacktriangleright$}\footnote{\textcolor{red}{[[#1]]}}}
+
+% DO NOT DELETE COMMANDS BELOW %
+\newcommand{\sh}[1]{\noindent\vspace{0.5\baselineskip}\\ \textbf{#1}\\}
   
 \begin{document}
- 
+   \author[1]{Anonymous Submission}
 
-  \author*[1]{Zeta Avarikioti}
+%  \author[1]{Georgia Avarikioti}
 
-  \author[2]{Roman Brunner}
-https://v2.overleaf.com/project/5b6c19affe683e5bba4ed91b
-  \author[3]{Aggelos Kiayias}
+%  \author[2]{Roman Brunner}
+%
+%  \author[3]{Aggelos Kiayias}
 
-  \author[4]{Roger Wattenhofer}
+%  \author[4]{Roger Wattenhofer}
 
-  \author[5]{Dionysis Zindros}
+%  \author[5]{Dionysis Zindros}
+%
+%   \affil[1]{Affil, E-mail: zetavar@ethz.ch}
+%
+%   \affil[2]{Affil, E-mail: robrunne@student.ethz.ch}
+%
+%   \affil[3]{Affil, E-mail: aggelos.kiayias@ed.ac.uk}
+%
+%   \affil[4]{Affil, E-mail: wattenhofer@ethz.ch}
+%
+%   \affil[5]{Affil, E-mail: dionyziz@di.uoa.gr}
 
-  \affil[1]{Affil, E-mail: zetavar@ethz.ch}
+\title{\huge Structure and Content of the Visible Darknet}
 
-  \affil[2]{Affil, E-mail: robrunne@student.ethz.ch}
-
-  \affil[3]{Affil, E-mail: aggelos.kiayias@ed.ac.uk}
-
-  \affil[4]{Affil, E-mail: wattenhofer@ethz.ch}
-
-  \affil[5]{Affil, E-mail: dionyziz@gmail.com}
-
-  \title{\huge The iceberg below the surface:\\ An analysis of dark net content}
-
-  \runningtitle{The iceberg below the surface: An analysis of dark net content}
+  \runningtitle{Structure and Content of the Visible Darknet}
 
   %\subtitle{...}
 
   \begin{abstract}
-{We analyze the type of content present on the “dark web”, the set of websites accessible via Tor. We create a darknet spider and crawl the darknet starting from a bootstrap list and recursively following links. The whole connected component of more than X websites and Y base URLs is explored. We publish our spider as open source software. We find that the darknet is well-connected through hub websites such as wikis and forums. We perform comprehensive measurements on the content found using machine learning to analyze and categorize the various types of content. We observe that the majority of darknet content belongs to P and Q. \nb{maybe add another sentence on the results of content classification when we have them.}
-%We close by discussing the political and ethical implications of these results.
+{In this paper, we analyze the topology and the content found on the ``darknet'', the set of websites accessible via Tor. We created a darknet spider and crawled the darknet starting from a bootstrap list by recursively following links. We explored the whole connected component of more than 34,000 hidden services, of which we found 10,000 to be online. Contrary to folklore belief, the darknet is surprisingly well-connected through hub websites such as wikis and forums. We performed a comprehensive categorization of the content using supervised machine learning. We observe that about half of the visible dark web content is abiding the law. A significant amount of content pertains to software repositories, blogs, and activism-related websites. Among unlawful hidden services, most pertain to fraudulent websites, services selling counterfeit goods, and drug markets.
 }
 \end{abstract}
-  \keywords{anonymity, tor, machine learning, scraping, spider}
+  \keywords{anonymity, tor, machine learning, crawling, spider}
 %  \classification[PACS]{}
  % \communicated{...}
  % \dedication{...}
@@ -69,417 +82,897 @@ https://v2.overleaf.com/project/5b6c19affe683e5bba4ed91b
 
 \maketitle
 
+%%%-----------------------------------------------------
+%%%---------------Introduction--------------------------
+%%%-----------------------------------------------------
+
 \section{Introduction}
-When talking about the darknet, one does often think of the Tor network in particular. However, there are other so-called darknets provided by other anonymisation networks such as i2p\footnote{\href{https://geti2p.net/en/}{https://geti2p.net/en/}} or FreeNet\footnote{\href{https://freenetproject.org/}{https://freenetproject.org/}}. So what is the darknet and how is it defined? Let us first have a look at the whole iceberg and start with the tip of the iceberg above the surface. This part of the internet is typically referred to as the clearnet, which may be best defined as the pages that one can find directly or indirectly using their search machine of choice. The part below the surface is often called the "deep web", which contains everything that is not directly accessible without the further use of tools or knowledge. This means that only a restricted number of people can access those pages. Such areas could be a university's internal network (may require tools (VPN) or passwords) or a personal eMail box (may require a password or card reader - and is most of the time not public).
-Although this is arguably a large part of the deep web, there is also another part of the deep web which requires additional software, such as the Tor browser, to be accessed with the intention of preserving the anonymity of the users. This part is often called the "darknet". 
 
-In this work, we look exclusively at the Tor network since both the public and the academic community has a high interest in knowing what the Tor network is used for and there is still a lot of speculation going on about the content as well as the structure of provided pages on the Tor network. Furthermore, it is also the probably best-known darknet network and hence is often exclusively referred to as the darknet.. The Tor network can be used to access any page on the internet (that is publicly available), so it is often used to access pages from the clearnet, while remaining anonymous \footnote{Anonymity also includes resistance to censorship of other behavioural and technical changes. Note that the level of anonymity always depends on the anonymity set.}. 
-However, Tor also offers a mechanism to provide services anonymised. These services are called hidden services (HS).  In order to access an HS one has to know its exact URI, which either consists of the hash of the RSA public key of the webpage (as the hostname) (v2 address) or of the base32 representation of ed25519 public key concatenated with a checksum. Both versions have .onion as their top level domain, even if it is not a registered TLD, it is still reserved for the Tor project. This makes it very hard to guess hostnames and almost impossible to test all in order to brute force access hidden services.
-However, some of the pages actually want to be found. Therefore we can partition the network into two subgraphs - the visible part, where pages advertise its URI on link hubs and search engines and the invisible part, which contains only pages with URIs that are not publicly listed. 
-
-We focus on the visible part of the Tor network in this work, since even though there exist techniques to collect hosts from the inivisible part of the darknet by running a larger number of guard nodes [reference OWEN], we consider the information of such HS to be private and therefore should not be accessed by anyone without the consent of the owner.
-In addition to that, we want to classify the part of the Tor network that everybody can access without additional information. That means that we do not want to classify content from invisible HS since we might find and classify contents from email inboxes or address lists, which is not of public interest and often requires further authentication via password of HS authentication (knowledge of the content of a cookie). If we only look at the visible part, we only find data that is publicly available. We assume that the visible part of the darknet has a similar link structure to the clearnet, where pages link to each other. Therefore, we describe how a scraper can be used on the visible darknet, which components are necessary and which information can or cannot be found. A scraper requires fewever ressources than previously suggested collection techniques [OWEN again] and reduces the impact on the network since it only acts as a regular Tor client.
-
-We compare our results to previous results, which exploits attacks on the Tor network or guard nodes for data collection. This comparison serves as an indicator of whether a scraper works on the darknet and as a proxy to check if the collected dataset is representative. Furthermore, we estimate the size of the darknet (number of HS) based on the visible HS found and compare it to the estimates provided by the Tor project\footnote{Statistics released by the Tor project concerning the number of available HS: \href{https://metrics.torproject.org/hidserv-dir-onions-seen.html?start=2018-01-01&end=2018-12-31}{metrics.torproject.org/hidserv-dir-onions-seen.html}}. 
-Previous work in this field operates a large number of guard nodes, which knows the actual address of an HS \footnote{\href{https://www.torproject.org/docs/onion-services.html.en}{https://www.torproject.org/docs/onion-services.html.en}}\nb{reference}. In contrast to our approach, this method collects any found HS and cannot fully reconstruct the link structure of the Tor network since it only sees its share of the whole network. However, it allows to test how often particular pages are accessed, a measurement we cannot provide. Other work in this direction that targets darknet content classification uses a flaw in the Tor protocol in order to collect data\nb{reference}. This flaw was fixed in 0.2.4.10-alpha. Therefore this entry point for data collection is no longer available. Furthermore, exploiting a flaw in the Tor protocol contradicts our goal of collecting data with the least invasive method for the Tor network.
-
-The scraper is newly developed for this work and made public under MIT license for further use by other researchers\footnote{Git repository}. It implements a complete data analysis chain, from collection over data preprocessing to classification. The data collected not only contains the content of the HS but also the link structure, status information, network topology information and can be configured to store the change over time of the network.
-
-\section{Scraping the Darknet}
-
-In this section, we describe in detail the structure of the spider we built to crawl the darknet. To understand some of our design choices, we present the problems faced and the different strategies applied to resolve those issues. Furthermore, we present some preliminary results on the darknet structure we collected from the crawling process.
-
-The goal of the scraper is to download content from as many hosts as possible. In order to discover more hosts, we download not only one page per host but multiple, since those can contain further URIs leading to the discovery of new hosts. The goal is to build up a dataset consisting of contents and the network structure itself. We therefor do not only store the downloaded content, but also the links between the different pages.
-
-We seeded our scraper by inserting a list of 20'000 host addresses from previous work\nb{insert source here}, which allowed us to reach a high scrape speed right from the beginning. Out of those 20'000 hosts, approximately 1500 were still online. 
-
-To get a complete scrape of the visible darknet, we needed at least the following functionalities:
-\begin{itemize}
-    \item Network module: The functionality of this module is to download any content and handle any network related exceptions and issues.
-    \item URI extractor: It is used to parse the downloaded content and extract URIs that will be used recursively to download further content.
-    \item Database: Stores content downloaded as well as the network's structure and URIs to download.
-    \item Tor proxy: Since the scraper should download hidden services (HS), a Tor proxy is required.
-\end{itemize}
-
-The modules depicted in Fig [] provide this functionality and are explained below in more detail.
-\subsection{Downloading the content}
-The network module needs to connect to the Tor network, therefore needs a Tor proxy. Since the Tor network is slower than a typical network connection\footnote{\href{https://metrics.torproject.org/torperf.html?source=all&server=onion&filesize=50kb}{https://metrics.torproject.org/torperf.html}}, we used multiple Tor instances, to increase the download performance of the scraper. The Tor proxy spins up a configurable number of Tor instances and uses a round-robin scheduler to distribute download tasks across the instances.
-When testing, we were testing with only a small set of sample pages. Since a page often links to itself, this lead to a state, where we issued a lot of concurrent connections to the same host. In order to prevent such DoS like behaviour of our scraper, the network module has to keep track of how many connections are made to a specific host in order to prevent such behaviour. If it detects that there are already four requests pending to a given host, it puts the new download task into a waiting queue, which will be consumed if a connection to this host is freed up. This works good, if all pages are of similar size, but we ran into a condition, where we started loading large parts of the database into our pending queues. Therefore, the other modules have to ensure the network module is not overloaded with too many requests to the same host, since the memory usage of the network module increases with every request in the waiting queue. The value of four concurrent requests was chosen to be lower than the default Tor Browsers setting\footnote{Tor 7.5.6, setting network.http.max-persistent-connections-per-server} to be less detectable by scraping countermeasures some hosts apply.
-
-Since we download any URI we find on the darknet, we do not know anything about the legality of the content, before we have downloaded it. In order to prevent storing illegal data such as child pornography or movies protected by intellectual property rights, we have a set of guidelines that the network module has to follow. First of all we only want to store textual content, since this minimises the risk of storing illegal image, video or audio data. In order to achieve this, the network module has the following filters in place to prevent the download or even worse the storage of illegal content. First, the network module will check the returned content type header. If one is supplied and it is not a textual representation, the download will be immediately aborted and the buffers are flushed immediately. If no content type header is specified, we try to guess the mime type of the downloaded data as soon as it is available. if the data is again not of textual representation, it will be immediately discarded.
-So far we only downloaded text files, may it be an html file or a txt file. However, one possibility exists, how we could still store media content and that is by data URIs such as base64 and similar. Therefor we make an additional pass through every string downloaded and replace any data URI that does not encode text with a placeholder. These filters are here to ensure now illegal content is stored by our database.
-
-\subsection{Orchestrating the scraping}
-The conductor balances the needs of the other modules. It is the responsibility of the conductor to dispatch URIs for download to the network module and get new URIs from the DB. Since the network is typically slower than local storage (and this is especially true for the Tor network\footnote{Statistics released by the Tor project concerning download speeds: \href{https://metrics.torproject.org/torperf.html?source=all&server=onion&filesize=50kb}{metrics.torproject.org/torperf.html}}), the goal of the conductor is to ensure that the network (as the scarce resource) never has to wait for local storage to deliver new URIs for download. To balance out short peaks in access time to the local storage, we use a pool of URIs ready to download. The size of the pool is configurable to adapt to different setups, e.g. an SSD can deliver data much faster than an HDD; therefore the pool size can be smaller, which also results in a smaller memory footprint.
-We noticed early in this work that deciding which URI to schedule next for download is important. We also observed  that at some point during the scraping process most of the available URIs only stem from a few hosts. Since we do not want to DoS any hosts and still be able to scrape fast, we require a way to prioritise URIs. The prioritisation scheme should ensure fast discovery of new hosts and paths while it avoids bombarding single hosts with tons of requests. These requirements lead to the definition of the following prioritisation schemes:
-\begin{itemize}
-  \item \textbf{Random}: When scheduling the URIs in insertion order, more than the allowed number of URIs are dispatched for download almost immediately, since a page often contains many links to itself. One easy and fast way to mitigate this issue, and therefore our first approach, is randomising the order in which the URIs are scheduled. However, this strategy breaks down when large amounts of the available URIs in the DB are pointing to only a few hosts. In such a scenario, randomised access fails, since even if the URIs are reshuffled, they still stem from only a small group of hosts.
-  \item \textbf{New}: We also discovered, that the "Random" strategy stalls pretty fast by means of reaching new hosts. The main reason for this are hosts we call "black holes" that have a tremendous amount of links to themselves. An example of such a page is a bitcoin explorer, which lists action ever recorded in the bitoin's blockchain. So we want a strategy that does not go deep into a single hosts pages, but more into the depth of the network between the hosts. In this strategy, we only get paths from hosts that are not yet scraped, ie we did not visit earlier any of the available paths from this host. Therefore we only download one page per host and do not dispatch another path of the same host afterwards. This method is efficient when the collection of not yet scraped hosts is huge because it advances very fast through the network. However, the first page downloaded from a host is not always useful for classification or collection of further links. Therefore this strategy only works well for seed generation but not for data collection.
-  \item \textbf{Prioritised}: Since the "New" strategy does not guarantee to generate good data for link collection or classification, we attempted to use another part of the dataset we collected along the scraping progress to serve as an indicator of which path should be dispatched next. Along each URI, two counters are stored. One counts the total number of links pointing to this URI, while the other only counts links from distinct hosts that point to this URI. These counters then are used as a proxy for the importance of a particular page. We consider a high incoming link count from different hosts to be a high vote that this page is more important then others. Although in general this strategy is efficient and results in a power law distribution, which would give us a nice prioritisation schema [-- see powerLawAbnormality.png], we observe a few abnormalities. The most obvious abnormality stems from bitcoin scamming pages linking to a bitcoin explorer, in an attempt to prove that their credibility. Such tightly connected hosts can break this prioritisation scheme, by introducing plateaus in the distribution, therefor the scraper will be busy downloading contents that will link again to the same pages.
-  \item \textbf{Recursive}: In an attempt to make equally progress on all hosts, we introduce the "Recursive" strategy. This is one of the most advanced strategies, and thus one of the most computationally and IO intensive, but still linear in the number of input hosts. In this strategy, we select one path per host, if the host has not yet a request pending and still has unscraped paths available. As soon as the pool needs to be repopulated, we go again through all the hosts and check, which ones are ready for a download. The idea is to dig deeper into the single hosts level by level. This strategy passes through the single hosts as if they were a linked list and ensures that we make progress on all hosts in a similar speed. New hosts are considered as soon as the pool needs to be repopulated. Since a webpage of any given host looks more like a tree to our scraper (we do not follow links back to pages we already visited, we only note that this link exists), we have to decide which of the children of a host to consider next. We decided again to look at the incoming link count of a path. The recursive strategy always chooses the path of a host which was not yet scraped and has the highest incoming link count from distinct hosts. The idea behind the link count as a proxy is similar to the one in the "Prioritised" schema.
-  \item \textbf{Inverse recursive}: This strategy is the same as the recursive strategy, except it chooses the path with the lowest incoming link count per host. One can choose this option to try and make faster progress on the network scraping since a path that has a high incoming link count is already part of a well-scraped area, whereas the one with the lowest incoming link count is probably part of a not yet very well discovered area.
-  \item \textbf{Combined}: Since both recursive strategies can take some time, especially on slower hardware, we came up with an approximation to the "Recursive" strategy. This strategy combines the aforementioned "New", "Prioritised" and "Randomised" strategy to mimic the recursive strategy with less computational overhead. First, we apply the new strategy until we are not able to repopulate the pool anymore with only not yet scraped hosts. Then, the prioritised strategy is used. If this strategy gets stuck (e.g. because it hits a region of interlinking hosts), it will not be able to return enough paths to repopulate the pool. In this case, this strategy falls back to the random strategy, getting entries at random.
-  
-  The proposed combined strategy is an approximation to the recursive strategy; we use the new strategy first and we provide multiple starting points for the prioritised strategy to ensure we do not immediately run into the issue of lots of interlinking hosts. However this issue can still occur, thus the fallback to the random strategy is important to keep the scraper running. Note that the lower strategies are always applied first, so as soon as a new host becomes available for download, it will be dispatched. Although, this is not a perfect replication of the recursive strategy, it is less computational and IO expensive; however, it is not as precise as the recursive strategy and in the worst case fails with the issues the "Random" strategy has.
-\end{itemize}
-\subsection{Extract URI }
-In order to keep the scraper running and getting new targets to be downloaded, we need to extract URIs of the downloaded pages. First we applied regular expressions to match HS URIs in a string. However, such HS URIs can get quite complex which also introduces a high complexity to the RegEx needed. We found that especially if the downloaded text is very large, it can take quite some time to extract the URIs using such a RegEx, up to several seconds. Since we need to extract at least some portion of the URIs fast enough to introduce new URIs in at least the speed data is downloaded, we needed a faster way to extract data running along the scraper. We then measured how long it takes to extract links (that are correctly tagged in an html) with cheerio\footnote{\href{https://cheerio.js.org/}{https://cheerio.js.org/}}. To ensure we only collect links of HS, we have a smaller RegEx ensuring that it is not a link to the clearnet. This approach was ten to a hundred times faster than the RegEx based implementation, however it had the shortcomming, that it did only capture links that are part of an <a> tag in the html string. Since some pages return some other textual representation or do not correctly link to other pages (e.g. not enclosed in an <a> tag), we added another component, running the slower RegEx based technique, capturing every link of a page, in parallel to the scraper. This enables us to keep the scraper running at all times by feeding it with new URIs from the cheerio based scraper and still have the complete extraction of the RegEx based extractor. Note that the time it takes to extract the URIs using the RegEx approach typically takes about the same time as the download of this specific content, however, there are pathological examples, where it takes way longer to extract the URIs. Therefor, we needed the faster extracting cheerio based implementation, since this implementation has a better predictable timing behaviour.
-\subsection{Storing darknet content}
-For storage we used PostgreSQL, a relational database system. The powerful query language provided helps a lot in integrating different aspects of the system such as the prioritization schemes. In order to store all downloaded content as well as the link structure, we introduced several tables. First of all we have the baseUrls table, which stores all the host addresses and a denormalized count of the number of hits, which describes how often this host was referenced. In order to specify a full URI we now need the path, therefore we have the paths table, which is the main entry keeping the state of an entry. In this role, it contains a flag indicating if a download for this specific path is in progress, a timestamp indicating when the last successful download finished, an integer indicating at which depth of the graph pass that the scraper does on the darknet the entry was found, the path itself as well as a possible subdomain. Additionally, it contains the two denormalized counters for number of hits and number of distinct hits used by the "Prioritised" priorisation schema. In order to store the downloaded content, we have the contents table, which stores the content itself as well as some metainformation about the content such as the statusCode of the download and the content type. In order to allow for multiple downloads of the same path, if one wants to track changes of the network over time, it has a scrape timestamp. Lastly, we need a way to store the topology of the network, for which we have the link table. The link table establishes a n-m mapping between the paths table, since one page may contain multiple links to other pages which can be uniquely identified by their path and the base url.
-
-\subsection{Accumulated data}
-Using the above described scraper we were able to find 34'714 host addresse, of which around 10'000 (multiple runs resulted in between 9'100-10'900 responses) hosts responded to the http(s) request. Out of those hosts, 7'200-7'600 responded with content that was actually useable (i.e. not containing an http error status code or an empty html page).
-We collected a total of $7.8\times10^{6}$ paths and $71.35\times10^{6}$ links. Of those we downloaded $1.5\times10^{6}$ contents. The remaining not downloaded paths all belonged to hosts that we classified as black holes hence are unlikely to contain further URIs to unknown hosts.
-\begin{center}
-\begin{tabular}{l|l}
-Type of data           & Number of instances in dataset  \\
-\hline
-Host addressed total found      & $24'714$                                   \\
-\hline
-Hosts responding                & $9'127-10'957$                             \\
-\hline
-Hosts returning useable content & $7'299 - 7'566$                            \\
-\hline
-Paths                           & $7.8\times10^{6}$                        \\
-\hline
-Links                           & $71.34\times10^{6}$                      \\
-\hline
-Contents (Downloaded paths)     & $1.6\times10^{6}$                        \\
-\hline
-Content (useable)               & $626\times10^{3} - 667\times10^{3}$      \\
-\end{tabular}
-\end{center}
-We find that the visible part of the darknet is actually well connected. There exist pages that we call hubs that have much higher outgoing link counts than other pages. Such pages are often link lists similar to the hidden wiki, which play a central role in the navigation of the darknet. Such pages also link to a large part of the visible darknet directly. The page listing links to the most other hosts responding contained $55.8\%$ of the online hosts we found. However, such pages always have a large number of not working links, since once a URI is added it is rarely ever removed again.
-Despite the fact that more than half of the darknet can be found in just one step if one selects the right entry point, we saw a maximal depth of 22 until we found the last host in our dataset. Graph i shows how the hosts are distributed over the depth.
-Note that this does not mean that this is tha maximal distance between two nodes, since there possibly exists a faster way from depth 0 to depth 22 than the one the scraper has taken.
-
-\section{Analsys methodology}
-Given the size of the collected dataset of $667\times10^{3}$ contents, we are not able to classify such an amount of data manually in a reasonable amount of time. Therefor we decided we need to employ machine learning techniques to achieve the classification of a large portion of the dataset. In order to be able to classify the pages based on its textual contents, we needed to preprocess the contents first.
-
-In order to complete data analysis, we neeeded at leas the following parts:
-\begin{itemize}
-    \item A data preprocessor to normalize the downloaded content
-    \item A classifier that classifies the contents based on the preprocessed intermediate representations
-    \item A database to hold both, the intermediate representation as well as the classified results
-\end{itemize}
-
-The modules depicted in Fig [] provide the above functionality and are explained below in more detail.
-
-\subsection{Preprocessing darknet web content}
-The preprocessor has two main tasks to accomplish, first it has to linguistically preprocess the contents and then to index the contents, such that they are ready for classification. 
-The first step is  extract the actual text from the content. This is done by stripping any HTML tags and other script tags we find in the input string, using cheerio. After getting a clean string, we need to find out which language the content is written in, in order to decide which preprocessing will be applied to the string. We use franc\footnote{\href{https://github.com/wooorm/franc}{https://github.com/wooorm/franc}} and we use the minimal set of 82 languages. There exist larger language sets for franc, however they usually make the result of the language classification worse, since we have quite a large amount of short content strings, in which franc might decide to classify one string as scottish englisch and the other as british english and so on. Since we are not interested in which dialect a content is written but mainly the general overlaying language (e.g. english for the previous example), we decided to reduce the languages supported. Overlooking the whole dataset, we found contents in 63 different languages, however, about $\frac{2}{3}$ of the contents are written in english, followed by about $10\%$ russian. For the complete list see Fig [].
-
-For the following steps we need an array of terms instead of a string, therefor we now tokenize the content string. We do not apply complex heuristics here but simply split at ever space and some usual splitting characters such as \, /, :, . or @. Since we have no precise information about the topic of the string,it is hard to apply more sophisticated tokenization at this point in the process.
-
-Now that the language of the content is known, we remove stop words according to the language. As we found out, some of the contents only contain stopwords, therefor they are empty after stop words removal. These will be marked as EMPTY right away.
-After stop word removal we do normalize the contents further and apply stemming where appropriate. Since ... \nb{reference} suggests that stemming works not equally well on all languages, we only apply stemming for english contents.
-
-Everything is now ready to start building our positional index. We decided to build a positional index, since the information is available and even if we don't use it yet it is cheap in terms of storage and computation. Further we would have to store the term frequency anyway, since we want to apply a bag of words model for the classification step, which can be calculated directly from the positional index.
-To make manual classification easier, we also keep the extracted clean content string, such that it can be directly presented to a human classifier, in order to get the labelled training dataset.
-
-\subsection{Storing indexes for classification}
-We stored the extracted contents in the new table cleanContents with a foreign key to the original content. The new cleanContents table has a ont-to-one assignment for both, the language as well as the primary class label. Since the decision if a document is legal is a binary decision, we directly used a boolean column to store the legal value (true corresponds to legal, false to illegal).
-
-The goal in the trainings phase is to employ active learning, therefore we need to have an idea how sure the classifier is about a decision it made. Thus a column for both the legal and the label are inserted in which the probability output of the classifier is stored. This allows us to apply active learning techniques in the classification phase.
-
-The positional index itself is constructed with four different tables. The first table is the list of terms, which has a one-to-many mapping to the postings. Each posting in the posting table has a foreign relation to a clean content and a term, therefor creating the tuple (term, doc id). In order to be a positional index, every posting belongs to many positions, describing the positions at which the reference term appears in the specified clean content (document).
-
-With the model described above it is possible to apply machine learning either to a set-of-words, a bag-of-words or a list-of-words, depending on the needs.
-
-\subsection{Classify darknet content}
-
-
-\CONTENT{Describe the types of content that we found. Talk about our methodology in how we analyzed the content using machine learning and NLP. How were the categories chosen? Discuss how we rank base URLs as well as individual paths. Show diagrams (a pie chart or bars?) with the popularity of various content categories.}
-
-\section{Darknet contents}
-
-\section{Political and Ethical Discussion}
-
-\CONTENT{Discuss the political implications of tor. Is it mostly illegal content? Does it matter? Discuss the ethical considerations of our research and make sure you mention that we didn’t subvert the protocol itself but only collected public data.}
-
-\section{Related Work}
-
-\section{Conclusion}
-
-\CONTENT{Summarize our results and discuss directions for future work.}
-One issue with the proposed method is the high volatility of the network. We found that up to 30\% of the found hosts switch from being online to offline and vice versa in only a week. This circumstance could be faced by adding a temporal resolution to the data gathering process.
-The provided code already supports temporal resolutions for the hosts and paths, however, one has to match the links by timestamp.One addition could be that along the existing data collection, one also stores to which round of rescraping any entry (whether it now be a host, a path or a link) belongs.
-
-% Content of chapter 2
-
-\TODO{FORMATTING}
-To speed up the scraping process, we ran 100 concurrent requests to the Tor network. In order to prevent overload on the Tor nodes within the circuit, we used a pool of Tor of equal size, such that per request one Tor instance was used. The Tor instances were scheduled in a round robin manner 
-
-\CONTENT{Describe the architectural decisions put in designing the spider. Mention the technologies we’re using (node.js, postgres, the tor libraries). Include a diagram for our software architecture. Discuss how we bypass rate limits (e.g. by randomization of visits and by using multiple tor circuits in parallel) and what the rate limiting problems are (including rate limits by individual websites as well as by the tor circuit / network itself). How we avoid downloading illegal content (whitelists and blacklists, content types). Talk about bootstrapping the list, exploration depth. Show the numbers such as how many sites exist, how many base URLs exist, how many links exist, summarize them nicely in a table. Try to aggregate data from our database to create insights for the reader. Extract the “hubs” and state that, contrary to popular opinion, the darknet is well connected; specifically discuss which this hubs are, what their purpose is, and how many links they have for the top 10 hubs.}
-
-\section{Editorial Policy}
-
-\subsection{Choice of reviewers}
-
-The Editor responsible for a given area of physics, turns to experts of the subject for opinion. Research articles and communications are reviewed by minimum two reviewers, review papers by at least three.
-
-\subsection{Suggestions from authors}
-
-Authors are requested to suggest persons competent to review their manuscript. However, please note that this will be treated only as a suggestion, the final selection of reviewers is exclusively the Editor's decision. The reviewers remain anonymous in any case.
-
-The Editor is fully responsible for decision about the manuscript. The final decision, whether to accept or reject a paper, rests with him/her. The Managing Editor only communicates the final decision and informs the author about further processing.
-
-\subsection{Revised manuscript submission}
-
-When revision of a manuscript is requested, authors should return the revised version of their manuscript as soon as possible. Prompt action may ensure fast publication, if the paper is finally accepted for publication in .... If it is the first revision of an article authors need to return their revised manuscript within 60 days. If it is the second revision authors need to return their revised manuscript within 14 days. If these deadlines are no met, and no specific arrangements for completion have been made with the Editor, the manuscript will be treated as a new one and will receive a new identification code along with a new registration date.
-
-\subsection{Final proofreading}
-
-Authors will receive a PDF file with the edited version of their manuscript for final proofreading. This is the last opportunity to view an article before its publication on the journal's web site. No changes or modifications can be introduced once it is published. Thus authors are requested to check their proof pages carefully against manuscript within 3 working days and prepare a separate document containing list of all the changes that should be introduced. Authors are sometimes asked to provide additional comments and explanations in response to remarks and queries from the language and technical editors. In case the authors do not deliver the list of corrections to proofs in the requested time the manuscript will be published as is.
-
+%roger: in this first paragraph i want to plant the idea that crawlers and search engines are very important in the clearnet (and as such also very important in the darknet, and this is what we do) 
  
+Crawlers and search engines have fundamentally changed the web. In June 1993, the first crawler-based search engine Wandex knew just 130 web sites. Soon after, the world witnessed the emergence of many more search engines such as 
+Excite, Lycos, AltaVista, and Google. The usability and success of these search engines may have fueled the exponential growth of the web in the mid-1990s.
 
-\subsection{Reprints}
+%roger: introducing the invisible part.
 
-Because the journal is published in an Open Access model, and has no printed version, the authors receive no reprints.
+Today, many web pages offer content that is dynamically generated for each visit, and as such difficult to crawl. Also, a large part of the web is hidden from crawlers: web sites that dislike to be crawled can include a \texttt{robots.txt} file, and a large part of the web is protected behind passwords. All these web sites (dynamic content, password- or robot-protected) are known as the \emph{invisible} part of the web.
 
-\subsection{Erratum}
+%roger: introducing anonymity.
 
-If any errors are detected in the published material they should be reported to the Managing Editor. The corresponding authors should send appropriate corrected material to the Managing Editor via email. This material will be considered for publication in form of erratum in the earliest available issue of ....
+While interactions between users and web sites became increasingly encrypted (https), the very nature of the internet protocol (IP) cannot prevent that one can observe who is communicating with whom, e.g. whether a user visits a certain web page.
 
-\subsection{Copyright  }
+%roger: introducing Tor.
 
-All authors retain copyright, unless -- due to their local circumstances -- their work is not copyrighted. The non-commercial use of each article will be governed by the Creative Commons Attribution-NonCommercial-NoDerivs license. The corresponding author grants De Gruyter Open the exclusive license to commercial use of the article, by signing the License to Publish. Scanned copy of license should be sent by e-mail to the Managing Editor of the journal, as soon as possible.
 
-%% ###################################################################
 
-\section{Paper writing guide}
+Like the regular web (the ``clearnet’’), the Tor darknet also has a large invisible part (dynamic content or password protected). Because names of web servers are generally non-mnemonic, being invisible in the darknet is the default rather than the exception.
 
-\subsection{Paper elements}
+
+% now we finally come to the topic of our paper.
+
+On the other hand, also the darknet features web servers that absolutely want to be visible. The most prominent example is facebookcorewwwi.onion, an anonymous entrance to the regular Facebook web site. More surprisingly, even if you are in an unlawful business (e.g. selling drugs, guns, or passports), you may want to be visible, as there is no business for those who are completely invisible. Figure \ref{tab:overview} summarizes all these possible web site types.
+
+%roger: i think this figure is very important, since there seems to be a big confusion regarding invisible vs. darknet vs. deep web. eventually our paper may mostly be cited for this figure (if we are lucky).
+
+\begin{table}[h!]
+  \begin{center}
+    \caption{Overview of different web site types. The deep web consists of the italicized cells.}
+    \label{tab:overview}
+    \begin{tabular}{c|c | c }
+       & \textbf{Clearnet} & \textbf{Darknet}\\
+      \hline
+      \textbf{Visible} & \shortstack[c]{Googleable web \\ Publicly accessible sites} & %\cellcolor{black!18} 
+      \shortstack[c]{\\[1pt] \textcolor{blue}{\textit{[our paper]}} \\ \textcolor{blue}{\textit{Invisible part of the Darknet}}}\\
+      \hline
+      \textbf{Invisible}& %\cellcolor{black!18}
+      \shortstack[c]{\\[1pt] \textcolor{blue}{\textit{Your e-mail inbox}} \\ \textcolor{blue}{\textit{Protected networks}}} & %\cellcolor{black!18} 
+      \shortstack[c]{\textcolor{blue}{\textit{Where spies meet?}} \\ \textcolor{blue}{\textit{Dark side of the Darknet}}}\\ %, probably
+    \end{tabular}
+  \end{center}
+\end{table}
+
+%roger: our contributions.
+
+So does it make sense to build a crawler and search engine for the visible part of the darknet, a ``Google for the darknet?'' While it is generally believed that the darknet is impenetrable~\cite{Biryukov2014,Nabki2017}, we show that the darknet has a surprisingly substantial visible part (Section \ref{sec:data}); moreover, we show that this visible part of the darknet is well-connected with hyperlinks, and that crawling indeed is possible. In addition, in Section \ref{sec:results}, we use machine learning techniques to understand the content of the visible darknet: language, topic of content (e.g. drugs, blogs, adult etc), and legality of content.  
+We compare our results to previous work in Section \ref{sec:relatedwork}.
+
+Our contributions are summarized as follows:
 
 \begin{enumerate}
-\item title page with:
-    \begin{enumerate}
-    \item title (short title),
-    \item full name(s) of author(s),
-    \item name and address of workplace(s),
-    \item personal e-mail address(es),
-    \end{enumerate}
-\item abstract,
-\item up-to five keywords,
-\item text,
-\item reference lists.
+    \item We develop and publish novel open source implementations of a darknet crawler and classifier which addresses unique challenges not typically encountered in clearnet settings.
+    \item We provide the first topological analysis of the Tor network graph, concluding that it is well connected and scale-free.
+    \item We apply supervised machine learning on downloaded content and report our findings on physical language, topic and legality.
 \end{enumerate}
 
+%%%-----------------------------------------------------
+%%%---------------Crawling the darknet------------------
+%%%-----------------------------------------------------
+\section{Crawling the Darknet}
+\begin{figure*}
+\includegraphics[width=\linewidth]{images/ArchitecturalSchema.png}
+\caption{The architecture of the crawler. Modules are depicted in bold.~\nocite{Loconte}}
+\label{fig:scraperArchitecture}
+\end{figure*}
+In this section, we describe the structure of the spider we built to crawl the visible darknet. To understand some of our design choices, we present the encountered problems and the different strategies applied to resolve these issues. 
 
-\subsubsection{Abstract}
+The goal of the crawler is to discover and explore a large part\footnote{We measure the size of the darknet in number of hidden services.} of the darknet by recursively following any links it finds in the downloaded content. We distinguish a \emph{hidden service}, which refers to a particular \texttt{.onion} address, from a \emph{path}, which is a URL of a particular website hosted on a specific hidden service.  We store the downloaded content itself, the extracted URIs, the link structure, as well as some metadata such as timestamps and data type of the content.
+We seeded our crawler with a list of 20,000 hidden service addresses from previous work \cite{Kadianakis2017}, which allowed us to reach a high initial crawl speed. Out of those 20,000 hidden services, only approximately 1,500 were still online. 
 
-An abstract must accompany every article. It should be a brief summary of the significant items of the main paper. An abstract should give concise information about the content of the core idea of your paper. It should be informative and not only present the general scope of the paper but also indicate the main results and conclusions. An abstract should not normally exceed 200 words. It should not contain literature citations or allusions to the tables or illustrations. All non-standard symbols and abbreviations should be defined.
-
-In combination with the title and key-words, the abstract is an indicator of the content of the paper. Authors should remember that on-line systems rely heavily on the content of titles and abstracts to identify articles in electronic bibliographic databases and search engines. They are therefore requested to take great care in preparing these elements.
-
-
-\subsubsection{Text}
-
-\paragraph{General rules for writing}
+Our crawler uses the following four modules:
 \begin{itemize}
-\item use simple and declarative sentences, avoid long sentences, in which the meaning may be lost by complicated construction;
-\item be concise, avoid idle words;
-\item make your argumentation complete; use commonly understood terms; define all non-standard symbols and abbreviations when you introduce them;
-\item explain all acronyms and abbreviations when they first appear in the text;
-\item use all units consistently throughout the article;
-\item be self-critical as you review your drafts.
+    \item \textbf{Conductor:} Manages and orchestrates the download, processing, and storage of content by scheduling the other components.
+    \item \textbf{Network module:} Downloads content and handles network related exceptions and issues.
+    \item \textbf{Parser:} Parses the downloaded content and extract URIs that will be used recursively to download further content.
+    \item \textbf{Database:} Stores the downloaded content as well as the network's structure and URIs.
+    \item \textbf{Tor proxy:} Enables the crawler to access the Tor network. 
 \end{itemize}
 
-\paragraph{Structure of a paper}
-    Research papers and review articles should follow a strict structure. Generally a standard scientific paper is divided into:
+The modules are depicted in Figure~\ref{fig:scraperArchitecture}; they are described below in detail.
+
+The crawler is newly developed for this work and made public under the MIT license for further use by other researchers\footnote{The link to the git repository of this project has been redacted for anonymity and will be included in the proceedings version of this paper.}. It implements a complete data analysis chain, from collection to data preprocessing and classification. The data collected not only contains the content of the hidden services but also the link structure, status information, network topology information and can be configured to track the network changes over time.
+%
+%---------------Downloading the content------------------
+%
+\subsection{Downloading the Content}
+\label{sec:MIMEType}
+The network module handles any network related events during the crawling process. It takes a \emph{download task} as input. Such a download task consists of a base URL and a path as well as a unique ID. After getting a download task, a request is sent to the \emph{Tor proxy} \cite{Boyd}. As soon as the network module gets the first data of the response, it starts checking and filtering the contents for potential illegal media content. If the content passes the filter, found to be allowed, and the HTTP status code does not indicate an error, we wait for the download to finish and add the content to the result object. This result object then is passed back to the conductor for further processing.
+
+\sh{Speed Issues of the Tor Network} 
+The Tor network is slower than the clearnet \cite{TorMetricsPerformance} and bursty traffic over one single Tor circuit easily congests at least one of the nodes. To prevent overloading of single nodes and to increase the crawling speed, we use a configurable amount of Tor instances in our Tor proxy~\cite{Boyd}. The incoming requests to the Tor proxy are then distributed across all instances of Tor using a Round-robin scheduler. This prevents congesting single nodes and increases download speed dramatically. We found that using 100 instances, we can download a maximum of 30,000 pages per hour.
+
+The download from the Tor network is the slowest part of the crawler, even when employing a large number of Tor instances. In order to achieve the highest possible download speed, we want to keep the downloads running without having to wait for the other modules. Towards this, we introduced a \emph{pool} of download tasks such that the network module never has to wait for the database to deliver new tasks. The pool is of configurable size and is repopulated by the \emph{conductor}. This pool resides in memory to give the network module fast access to new download tasks. If the pool's size hits a configured lower bound of entries, it is repopulated with new download tasks gathered from the database.
+
+The pool size can be configured to fit the machines' capabilities. A system using an SSD can work with a smaller pool, since it takes less time to repopulate the pool compared to an HDD. This results also in a smaller memory footprint of the crawler.
+
+\sh{Preventing DoS-like Behaviour}
+\label{sec:DoSLike}
+Early in the process we discovered an issue when just blindly downloading anything that is passed on as a download task. If a large part of the download tasks point to the same hidden service and the network module opens up a connection to the same hidden service for each of those download tasks, a darknet web server might classify our behaviour as an attempted DoS attack. First, we do not want to disturb the targeted services. Secondly, servers may initiate rate limiting countermeasures against what they consider a DoS attack, e.g. captchas or similar barriers.
+
+In order to prevent this, we implemented a \emph{push back mechanism}. This mechanism keeps track of the number of already running requests per hidden service and only starts a new download task to the same hidden service if there are less than four live concurrent connections to this hidden service. If all available slots for this hidden service are in use, the download task is put into a waiting queue. This queue will be checked for waiting requests as soon as one of the four pending requests finishes.
+
+The value of four concurrent requests was chosen to be lower than the default Tor Browser's setting of six\footnote{Six concurrent connections is the default in Tor version 7.5.6. The setting is found under \texttt{network.http.max-persistent-connections-per-server}.}. Being below makes the crawler less detectable. Note that four concurrent requests is higher than the proposed number of two simultaneous connections by RFC 2616 \cite{Nielsen1999}; however, most modern browsers use a value between four and eight as well.
+
+The entries in the queues do need memory. If the pool is repopulated and a lot of download tasks reside in the queue, the memory consumption grows unboundedly. This issue cannot be solved by the network module but requires the other modules that repopulate the pool to choose the entries in the pool wisely, such that not too many download tasks point to the same hidden services and therefore end up in the waiting queue.
+
+Additionally, many concurrent download tasks in the waiting queues can slow down the crawling progress.
+To ensure the queues will be emptied eventually we do the following every time a download task returns: we
+check whether there is a download task in a waiting queue that does not violate our limit of four connections per hidden service. If such a task exists we pop it out from the queue, else we get a new entry from the pool. However, in a worst case scenario all hidden services in progress have four concurrent tasks from the waiting queues. Then, all available connections will be busy emptying these queues and no further progress will be made towards other hidden services. This implies that the number of hidden services needed to delay the overall progress of the crawler on the Tor network is $25\%$ of the total number of connections.
+
+
+\sh{Storage and Processing of Illegal Content}
+Since we download any URI we find on the darknet, the legality of the content is unknown before inspection. To prevent storing illegal data such as child pornography persistently, we apply filtering at different stages. The goal of these filters is to only store text. Towards this end we employ a series of black- and whitelist filters.
+
+First we filter by the returned MIME type, if available. This allows us to only whitelist supported MIME types, in our case any textual types. This happens at the earliest possible stage of filtering, right after we have received the response header. We need to flush our cache if we detect an unsupported MIME type, since potentially illegal content might already be in memory. The only information we keep in this case is the HTTP status code returned, the MIME type and the timestamp when the answer was recorded.
+
+If the MIME type header is not set, we need to download the full content to decide which MIME type fits by content inspection using mmmagic~\cite{mscdex}. This requires the full data in memory, but this data will also be immediately discarded if the detected MIME type is not whitelisted.
+
+After the whitelist MIME type filter, only text documents should be available. These can still contain textual representations of media content in the form of data URIs such as base64 encoded data. Here we employ a blacklist filter that replaces any occurrence of a non-textual data URI by a placeholder. 
+
+The previous steps all happen in memory and that data is not accessible to anybody. At this point, all rich media content should be removed, and therefore the content is ready to be passed back for persistent storage. 
+%
+%---------------Orchestrating the Crawling------------------
+%
+\subsection{Orchestrating the Crawling}
+The conductor balances the needs of the other modules. It is the conductor's responsibility to dispatch URIs for download to the network module and get new URIs from the database into the download task pool of the network module. It is important for the conductor to keep the number of download tasks in the pool balanced in order to prevent an unpredictable increase in memory usage. It also uses information about the network module queues when repopulating the pool, by only requesting paths from hidden services that have not yet entries in their queue.
+
+\sh{Prioritization of Downloads}
+\label{sec:prioritizationDownload}
+Deciding which URI to schedule next for download is important not only to prevent DoS-like behaviour as described in Section \ref{sec:DoSLike}, but also to ensure we make progress on the discovery of the visible part of the darknet. We applied several prioritization schemes to ensure good progress and to prevent issues with some pathological examples. We will now introduce those different schemes and explain for each why we introduced them, when they work and where they fail. 
+
 \begin{itemize}
-\item introduction: you present the subject of your paper clearly, you indicate the scope of the subject, you present the goals of your paper and finally the organization of your paper;
-\item main text: you present all important elements of your scientific message;
-\item conclusion: you summarize your paper.
+  \item \textbf{Naïve}: The first approach was to greedily fill up the pool with new download tasks in the order they were previously inserted into the database. However, most of the pages do link a lot to pages of the same hidden service and contain only a small amount of links that point to different hidden services. When populating the pool with such entries, we will fill up immediately the queues in the network module and increase memory consumption. In that case, the speed of exploration of the darknet might be slowed down, as the network module is busy processing the queues.
+  \item \textbf{Random}: To prevent this issue, we started randomizing the selection of paths inserted into the download task pool. This works well when all hidden services in the database have a similar number of paths available for download. However, there exist pages that contain a huge number of links to themselves -- we call these \emph{black hole pages}. An example for a black hole page is a bitcoin explorer that lists every action ever recorded on the bitcoin blockchain. This explorer took up to $90\%$ of the available paths in our database in an early version of our crawler. Even randomization then will lead to a pool filled with $90\%$ download tasks pointing to the same hidden service. The random strategy also does not do a good job at discovering new hidden services, since we select the next page to be downloaded at random.
+  \item \textbf{New-hidden-service-first}: This strategy tries to advance through the darknet as fast as possible by downloading only a single page per hidden service. This method is efficient when the collection of yet uncrawled hidden services is large because it advances very quickly to new hidden services. However, the first page downloaded from a hidden service is not always useful for classification or collection of further links. Thus this strategy only works well for seed generation but not for data collection.
+  \item \textbf{Prioritized}: Since the \emph{new-hidden-service-first} strategy does not guarantee good data for link collection or classification, we attempted to use another part of the dataset we collected along the crawling progress to serve as an indicator of which path should be dispatched next. For each path, we calculate the number of unique hidden services linking to this path. This count then serves as a proxy to assess the importance of a path~\cite{PageRank}. When many unique hidden services link to a particular path, that path likely contains important information. We then start downloading the path with the highest distinct incoming link count. Although this strategy works well in general and results in a nice ordering of paths to be scheduled, there exist two issues with this strategy. First, we found that the darknet contains closely interconnected subnetworks. One such subnetwork is a bitcoin scamming scheme. The scammers spin up several hundred hidden services, which then link to each other in order to prove their credibility. To further support their claim, they also link to the bitcoin explorer mentioned above, pointing to transactions that support their case. This increases the distinct incoming link count enormously (The effects of this will be discussed in Section~\ref{sh:networkStructure}), therefore the prioritization scheme favors pages from the scamming subnetwork. This leads to a state where our crawler is only downloading content from a subnetwork of the darknet for hours and not making any progress on the rest of the darknet. Second, about 1.2 million paths have only incoming links from one single hidden service. At this stage a secondary prioritization scheme is required, since the \emph{prioritized} scheme becomes inefficient when it returns 1.2 million candidates to be scheduled for download.
+  \item \textbf{Iterative}: This strategy is the result of an attempt to make equal progress on all hidden services as well as on the whole network.  First we make a pass through all hidden services and remember the ones that still have uncrawled paths available. In a second phase we then chose exactly one path to be downloaded per hidden service. In order to select a path for download in the second phase, we use the distinct incoming count as secondary measurement. In case of a draw on the distinct incoming count, we just pick the path we found earlier. This strategy is computationally and I/O intensive, as it needs to do two passes over the data, once over all hidden services and once over all paths. New hidden services are considered as soon as the pool needs to be repopulated. This strategy is then iteratively applied to fill the pool.
+
 \end{itemize}
 
+In the development process, we first started off with the \emph{naïve} approach and evolved from there in the order described above. For data collection, we applied a combination of the strategies described. In the beginning of the crawling process, we used the  \emph{new-hidden-service-first} strategy to get an initial broad scan across the available hidden services. We then switched to the \emph{iterative} strategy, since it progressed best on the network. However, we noticed that in the end of the crawling process most hidden services do not have any available paths, and thus at this point the \emph{iterative} strategy is unnecessarily complex. Since the number of paths available per hidden service as well as the distinct incoming counts are in the same order of magnitude for all hidden services,  \emph{random} or  \emph{prioritized} strategy seem more suitable for this phase.
 
-    Experimental part and/or calculations should be presented in sufficient details to enable reader to repeat the original work.
-
-
-
-\paragraph{Footnotes/End-notes/Acknowledgments}
-We encourage authors to restrict the use of footnotes. If necessary, please make end-notes rather than footnotes. Allowable footnotes/end-notes may include:
-
-\begin{itemize}
-\item the designation of the corresponding author of the paper;
-\item the current address of an author (if different from that shown in the affiliation);
-\item traditional footnote content.
-\end{itemize}
-
-\paragraph{Tables}
-    Authors should use tables only to achieve concise presentation, or where the information cannot be given satisfactorily in other ways. Tables should be numbered consecutively using Arabic numerals and referred to in the text by number. Each table should have an explanatory caption which should be as concise as possible.
-
-
-
-\paragraph{Figures}
-    Authors may use line diagrams and photographs to illustrate theses from their text. The figures should be clear, easy to read and of good quality. Styles and fonts should match those in the main body of the article. All figures must be mentioned in the text in consecutive order and be numbered with Arabic numerals. 
-
-\begin{figure}
-\framebox[4cm]{\Huge Figure 1}
-\caption{A figure caption should be placed {\bf below} the figure.\label{fig1}}
+\begin{figure}[b]
+    \centering
+    \includegraphics[width=\linewidth]{images/PercentageByDepth.png}
+    \caption{Exploration of hidden services by depth.}
+    \label{fig:percentageByDepth}
 \end{figure}
 
+Running our crawler using these combinations of prioritization schemes, we observe that the connected component of the darknet which we have explored converges sufficiently after 7 hops from our bootstrapping list, as seen in Figure~\ref{fig:percentageByDepth}.
+
+\subsection{Extracting URIs}
+
+After the content of a website has been downloaded, we need to extract URIs of the downloaded page to understand where it links to and to download further content. Our first approach used regular expressions to match .onion URIs in a string. However, we noticed that URIs can get surprisingly complex, and our regular expression filter was ineffective. We discovered that there exist pathological examples which take several seconds to extract the URIs using such a regular expression. Since we need to extract at least some portion of the URIs fast enough to introduce new URIs in at least the speed data is downloaded, we needed a faster method.
+
+We measured how long it takes to extract links (that are correctly tagged in an HTML document) with cheerio \cite{cheeriojs}, an HTML parsing library. To ensure we only collect links of hidden services, we have a simpler regular expressions ensuring that we do not follow clearnet links. This approach is ten to a hundred times faster than the regular expression-based implementation depending on the input string. However, it has a shortcoming; it only captures links that are part of an \texttt{<a>} tag in the HTML string. Since some pages return some other textual representation or do not correctly link to other pages, we added another component, running the slower regular expression-based technique.
+
+This hybrid approach enables us to keep the crawler running at all times by feeding it with new URIs from the cheerio-based extractor and still have the complete extraction of the regular expression-based extractor.
+%
+%---------------Storing the darknet content------------------
+%
+\subsection{Storing Darknet Content}
+In order to store all the downloaded content as well as the link structure, we use a relational Postgres database. First of all, the \texttt{baseUrls} table stores all the hidden service addresses and a denormalized\footnote{Denormalization is an attempt to increase access speeds by storing the result of a calculation persistently} count of the number of hits, which describes how often this hidden service was referenced.
+
+We now need the path to specify a full URI: We introduce the \texttt{paths} table, which is keeping the state of an entry. In this role, the paths table contains a flag indicating if a download for this specific path is in progress, a timestamp indicating when the last successful download finished, an integer indicating at which depth in the graph the path was found, the path itself, and a possible subdomain. Additionally, it contains the denormalized count of distinct incoming links to allow for efficient use by our prioritization scheme.
+
+\begin{table}[b]
+    \caption{Detailed numbers of our crawler.}
+    \label{table:scrapMetrics}
+    \begin{tabular}[l]{p{5.5cm} | r{2.25cm}}
+    \textbf{Type of Data}           & \textbf{Count} \\
+    \hline
+    \hline
+    Hidden service addresses found      & 34,714                                    \\
+    \hline
+    Hidden services responding                & 10,957                      \\
+    \hline
+    Hidden services returning useable content & 7,566                      \\
+    \hline
+    Paths                           & 7,355,773                   \\
+    \hline
+    Links                           & 67,296,302                \\
+    \hline
+    Downloaded paths                & 1,561,590                 \\
+    \hline
+    Content (useable)               & 667,356         \\
+    \end{tabular}
+\end{table}
+
+To store the downloaded content, we introduce the \texttt{contents} table, which stores the content itself as well as some meta information about the content such as the HTTP status code and the MIME type. Furthermore, we use a crawl timestamp to track the changes of the network over time while allowing for multiple downloads of the same path.
+
+Last, we introduce the \texttt{link} table that stores the topology of the network. The link table establishes an $n$-to-$m$ mapping between the paths table, since one page may contain multiple links to other pages which can be uniquely identified by their path and the base URL.
+%
+%---------------Accumulated data------------------
+%
+\section{Darknet Structure}
+\label{sec:data}
+In this section, we present the results of the crawling process and analyze the darknet structure. We show that at least $15\%$ and at most $50\%$ of the darknet is visible. In addition we show that this visible part is well connected. 
+
+\sh{Statistics}
+During the crawling process, we discovered 34,714 hidden service addresses, of which approximately 10,000 hidden services responded to the HTTP(S) request. Out of those hidden services, about 7,500 responded with meaningful content, i.e. not containing an HTTP error status code or an empty HTML page.
+We collected in total 7,355,773 paths and 67,296,302 links. Of those, we downloaded 1,561,590 paths. We did not download the other almost 5 million paths because we classified them as black hole paths, highly unlikely containing further URIs to unknown hidden services. The detailed numbers can be found in Table~\ref{table:scrapMetrics}.
+
+
+The crawler collected data over a time period of one week. According to Tor metrics~\cite{TorMetricsOnion}, the mean of the estimated number of hidden services (darknet hidden services, both visible and invisible) over this time period was 70,640. Having seen 34,714 different hidden services, one could naively assume about half of the darknet hidden services are visible. However, this is only an upper bound, as merely about a third responded over the HTTP(S) ports 80 and 443: Either a non-responding hidden service was really not active anymore (and we have just followed a stale hyperlink), or the hidden service decided to ignore our crawler. Having 10,975 responding visible hidden services, we know that at least $15\%$ of the hidden services are visible.
+
+Why did two thirds of the hidden services not respond? We believe that they might connect through other ports or different protocols, or they might discriminate connection requests in some other form.
+Such behaviour can be observed in some common link lists, such as the hidden wiki\footnote{Hidden wiki: \texttt{zqktlwi4i34kbat3.onion}} where quite a few services offering IRC chat, FTP sharing or P2P sharing require both a different communication protocol and different ports to be accessed.
+
 \begin{figure}
-\framebox[4cm]{\Huge Figure 2}
-\caption{A figure caption for Fig. \ref{fig2}.\label{fig2}}
+    \centering
+    \includegraphics[width=0.8 \linewidth]{images/DarknetVolatility.png}
+    \caption{The Venn diagram shows the difference between two runs a week apart. The first run (left circle) yielded 10,957 responding hidden services, the second one (right circle) 9,127. The union of the two contains 11,743 hidden services, the intersection contains 8,341 hidden services}
+    \label{fig:highVolatility}
 \end{figure}
 
-\paragraph{Typesetting}
-    Type main text in roman (upright) font. The chemical symbols and compounds, units of measure, most multi-letter operators and functions should are written in roman upright as well. The variables, constants, symbols for particles, most single-letter operators, axes and planes, channels, types (e.g., n, p), bands, geometric points, angles, lines, chemical prefixes, symmetry designations, transitions, critical points, color centers, quantum-state symbols in spectroscopy, and most single-letter abbreviations should be written in roman italic. Boldface roman type is reserved for indicating vectors and in some special cases matrices. 
+Additionally, we noticed that the network is highly volatile; about $30\%$ of all hidden services running an HTTP(S) server switch from online to offline and vice versa within a week, as depicted in Figure \ref{fig:highVolatility}.
+Thus, some of the stale links we followed during the crawling process possibly point to a server that is going to be online again in the future. 
+
+Downloading content of darknet websites that include images or videos is potentially illegal. As we already mentioned, during downloading we detected the MIME type to filter out the potentially illegal content and stored the distribution across MIME types. In total, we found 134 different MIME types, from which the vast majority is of type text/html, as expected. The second most common MIME type we encountered was image types jpeg and png, which is not surprising since almost every webpage has at least an icon that is linked somewhere on the page. The top ten MIME types are listed in the Table \ref{table:mime types} and a more extensive list of 39 MIME types is available in Appendix \ref{appendix:A}.
+
+ \begin{table}
+    \centering
+    \caption{Top ten MIME types. Text and images contribute about $95\%$ of all content.}
+    \label{table:mime types}
+    \begin{tabular}{p{5cm} | r{2.5cm} }
+         \textbf{Top Ten MIME Types Returned} & \textbf{Share of Pages} \\
+         \hline
+         \hline
+    	text/html			&	85.33\% \\
+    	\hline
+    	image/jpeg			&	5.28\% \\
+    	\hline
+    	image/png			&	3.23\% \\
+    	\hline
+    	text/plain			&	0.85\% \\
+    	\hline
+    	application/octet-stream		&	0.72\% \\
+    	\hline
+    	application/zip		&	0.55\% \\
+    	\hline
+    	application/rss+xml	&	0.48\% \\
+    	\hline
+    	application/json	&	0.47\% \\
+    	\hline
+    	image/gif			&	0.44\% \\
+    	\hline
+    	application/epub+zip			&	0.27\% \\
+    \end{tabular}
+\end{table}
+%
+%Network structure
+%
+\sh{Network Structure}\label{sh:networkStructure}
+We also studied the network structure (captured links and hidden services) and observed that the darknet behaves like a scale-free network, similarly to the clearnet and various social networks.
+In Figure \ref{fig:niceGraphImage}, we present a snapshot of the visible darknet.
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{images/ColorPageRankSizeStronglyConnected.png}
+    \caption{A visualization of approximately $10\%$ of the visible darknet. The size of the node represents how large is the part of the network he has access to. The color indicates the ranking when applying page rank; darker (violet) nodes are the ones with the highest rank.}
+    \label{fig:niceGraphImage}
+\end{figure}
+%The Barabási-Albert model~\cite{Albert2002} attempts to capture this behaviour and describes the properties of such a network. 
+The degree distribution of a scale-free network follows a power law and the average path length of the network is proportional to $\ln{N}/\ln{\ln{N}}$. The diameter of the  network is 11. In Figure~\ref{fig:powerLawAbnormality}, it is evident that the degree of the hidden services is power law distributed, except from an outlier which stems from a bitcoing scamming scheme, closely interlinking a high number of hidden services in an attempt to prove their credibility. Moreover, we note that the calculated average path length is $4.1 \approx \frac{\ln 10957}{\ln\ln 10957} = 4.17$. 
+Thus, the structure of the visible part of the darknet seems similar to the structure of the clearnet and typical approaches such as crawlers work well on both networks.
+
+\begin{figure}[t]
+\includegraphics[width=\linewidth]{images/DistinctIncomingLinksCount.png}
+\caption{A histogram depicting the count of pages having a particular
+             number of incoming links.}
+\label{fig:powerLawAbnormality}
+\end{figure}
+
+Figure~\ref{fig:powerLawAbnormality} depicts the distribution of incoming link counts. Most paths can only be reached with a single hyperlink. In general the distribution of hyperlinks per path follows a power law distribution. There is an obvious outlier: Several thousand paths have exactly 196 distinct incoming links. This is a bitcoin scamming scheme that tries to increase its credibility by spinning up multiple hidden services, all of which link to each other, that claim that the provided service is valid. Many of these also point to the same bitcoin transactions on a bitcoin explorer site to prove their claim, explaining the second, smaller outlier.
+Comparing Figure~\ref{fig:powerLawAbnormality} with Figure~\ref{fig:outgoingPowerLaw}, we find that measuring the in-degree is much more stable than measuring the out-degree. This is expected to some degree since the incoming links are typically more resistant to manipulation. On the contrary, the outgoing links are fully controlled by the provider of a hidden service, and thus a single page can have arbitrarily many outgoing links.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{images/DistinctOutgoingLinksCount.png}
+    \caption{A histogram depicting the count of pages having a particular
+             number of outgoing links.}
+    \label{fig:outgoingPowerLaw}
+\end{figure}
+
+Our most surprising structural finding is that the visible part of the darknet is well connected. 
+While examining the degree distribution, we noticed that the network contains \emph{hubs}, web sites that feature a large number of hyperlinks.  These hubs clearly tie the network together, as they connect sites that do not necessarily have anything in common.
+One may expect that removing important hubs will partition the darknet into many small components. However, rather surprisingly, even removing all the largest hubs (with degree greater than 1000) does not disconnect the network.
+
+Figure~\ref{fig:largestConnectedComponent} illustrates the size of the largest connected component after iteratively removing the largest hubs.
+Furthermore, we also examined the hidden services that become disconnected from the largest connected component after removing the largest hubs. It turns out that $90\%$ of those could only be reached through hubs. The remaining $10\%$ form small connected components. In other words, while about half the visible darknet is well-connected even without hubs, the other half are single sites or small clusters of sites that are only reachable through hubs. 
+
+\begin{table}[t]
+    \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}
+    \label{table:toptenout}
+    \begin{tabular}{p{3cm} | p{3.5cm} | p{1cm}}
+         \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
+         \hline
+         \hline
+        Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
+        \hline
+        Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
+        \hline
+        VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
+        \hline
+        Ahmia & msydqstlz2kzerdg.onion  &  5808\\
+        \hline
+        H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
+        \hline
+        List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
+        \hline
+        Tor Pastebin & happenedpghnqffa.onion  &  3745\\
+        \hline
+        Tor Directory & directoryvi6plzm.onion  &  1596\\
+        \hline
+        The onion crate & cratedvnn5z57xhl.onion  &  1089\\
+        \hline
+        UnderDir & underdj5ziov3ic7.onion  &  1009\\
+    \end{tabular}
+\end{table}
+
+Some large hubs also feature a search engine. Among the top ten hubs, presented in Table \ref{table:toptenout}, there are three search engines, six lists of links which also download the title of the website to provide some sort of searchable content, and one Pastebin site where links are deposited without organization. Note that the linked hidden services can contain disturbing content (text or images), as some include previews of the linked pages. Additionally some of the URLs provided in this paper might not work anymore due to the high volatility of the Tor network. %Such pages also directly link to a large part of the visible darknet. The page listing the most links to different responding hidden services contained $55.8\%$ of the online hidden services we uncovered and belongs into the link hub category. 
+
+In Table~\ref{table:toptenin}, we present the top ten hidden services ranked by the number of incoming links from unique hidden services. 
+First, we observe that one market place is clearly dominant in this list. 
+Moreover, we notice that the second most linked hidden service provides hosting and related services for darknet pages for free. In exchange many of the pages running on this hoster's infrastructure link back to the hidden service. 
+The third most linked hidden service is the same blockchain explorer that breaks the \emph{random} strategy, as mentioned in subsection \ref{sec:prioritizationDownload}. 
+We found that the bitcoin scamming scheme that breaks the \emph{prioritized} strategy links to this particular bitcoin explorer. The bitcoin scamming scheme makes up for more than $50\%$ of the distinct incoming links of the bitcoin explorer.
+However, the most remarkable observation is that a library made it into the list of the most referenced services.
 
 
-\paragraph{Mathematical symbols}
-    The multiplication signs are reserved for a vector product ($\mathbf{A}\times\mathbf{B}$) and simple dot product ($\mathbf{A}\cdot\mathbf{B}$). The only exception are numbers expressed in scientific notation ($9.7\times 10^3$ MeV).
+\begin{table}[b]
+    \centering
+    \begin{tabular}{p{3.5cm} | p{3.1cm} | p{0.9cm}}
+        \textbf{Hub Name}   & \textbf{URI}  & \textbf{Size} \\
+        \hline
+        \hline
+    	DreamMarket						&	[Multiple]					&	2130 \\
+    	\hline
+    	Daniel's Hosting				&	dhosting4okcs22v.onion		&	889 \\
+    	\hline
+    	Blockchain Explorer				&	blockchainbdgpzk.onion		&	523 \\
+    	\hline
+    	The Tor Mail Box				&	torbox3uiot6wchz.onion		&	280 \\
+    	\hline
+    	\hbox{\strut DuckDuckGo}
+    	(Search engine)
+    	&	3g2upl4pq6kufc4m.onion		&	166 \\
+    	\hline
+    	Deep Dot Web (News)				&	deepdot35wvmeyd5.onion		&	151 \\
+    	\hline
+    	\hbox{\strut Matrix Trilogy}
+    	(Image sharing)
+    	&	matrixtxri745dfw.onion		&	139 \\
+    	\hline
+    	TORCH: Tor Search				&	xmh57jrzrnw6insl.onion		&	134 \\
+    	\hline
+    	Hidden Wiki						&	zqktlwi4fecvo6ri.onion		&	126 \\
+    	\hline
+    	Imperial Library (Books)		&	xfmro77i3lixucja.onion		&	124 \\
+    \end{tabular}
+    \caption{Top ten hidden services ranked by the number of \emph{incoming} links from unique other hidden services.}
+    \label{table:toptenin}
+\end{table}
 
 
-\paragraph{Units}
-    Units and dimensions should be expressed according to the metric system and SI units. This system is based on: meter (m), second (s), kilogram (kg), ampere (A), kelvin (K), mole (mol), and candela (cd). Most units are spaced off from the number, e.g. 12 mV. The only exceptions are:
-\begin{center}
-    1\%, 1\textperthousand, 1\textdegree C, 1\textdegree, 1', 1".
-\end{center}
+\begin{figure}
+\includegraphics[width=\linewidth]{images/LinkhubsRemoval.png}
+\caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
+\label{fig:largestConnectedComponent}
+\end{figure}
 
-    Decimal multiples or sub-multiples of units are indicated by the use of prefixes
-
-\begin{center}
-    \textmu=$10^{-6}$, m$=10^{-3}$, c$=10^{-2}$, d$=10^{-1}$,
-    da$=10^1$, h$=10^2$, k$=10^3$, M$=10^6$, G$=10^9$, {\em etc}.
-\end{center}
-
-    Compound units are written as
-\begin{center}
-    4221.9 J kg$^{-1}$ K$^{-1}$ or 4221.9 J/(kg K),
-\end{center}
-    with a thin space between unit parts.
-
-
-    Authors should indicate precisely in the main text {\bf where tables and figures should be inserted}, if these elements are given at the end in the original version of the manuscript (or supplied in separate files).
-    If this information is not provided along with the manuscript, we will assume that the figures and/or tables should be insert at the closest position to first reference to them in the published paper.
-
-\paragraph{Multimedia and images}
-    Authors can attach files in most popular formats, including (for example):
+%%%-----------------------------------------------------
+%%%---------------Analysis methodology--------------------------
+%%%-----------------------------------------------------
+\section{Analysis Methodology}
+Given the size of the collected data set of 667,356 paths, we relied on automated preprocessing and machine learning techniques to classify their contents. The main modules used to achieve this are:
 \begin{itemize}
-\item images in BMP, GIF, JPEG formats,
-\item multimedia files in MPEG or AVI formats.
+    \item A \emph{data preprocessor} to normalize the downloaded content.
+    \item A \emph{classifier} that classifies the contents based on the preprocessed intermediate representations.
+    \item A \emph{database} to hold both the intermediate representation as well as the classified results.
 \end{itemize}
 
-However please keep to file types that are read by standard media players (e.g. RealPlayer, Quicktime, Windows Media Player) and/or standard office applications (Adobe Acrobat Reader, Microsoft Office etc.).
+The goal of the classifier is twofold: Firstly, to determine the legality of a particular piece of content, which we express as a binary decision. Secondly, to classify the content into a particular category describing its topic. The modules we developed to perform these tasks are part of our open source release and are described in detail below.
+%
+%---------------Content preprocessing------------------
+%
+\subsection{Content Preprocessing}
+The preprocessor has two main tasks to accomplish: First it linguistically preprocesses the contents and then builds the indexes needed for classification. 
+Initially, we extract the clean text from the content.
+For this purpose, we use cheerio~\cite{cheeriojs} to strip any HTML tags and other script tags we find in the input string.
+%This is done by stripping any HTML tags and other script tags we find in the input string, using cheerio~\cite{cheeriojs}.
+After getting a clean string, we identify the physical language of the content, in order to decide which linguistic preprocessing will be applied to the string.
+We employ franc~\cite{WormerFranc} and the minimal set of 82 languages franc provides. Franc also offers more inclusive language sets; however, a more inclusive language set might produce worse language classification results, since it is too fine grained (e.g., Scottish English vs. British English).
 
-    Your attachments may be accessible through links to external locations or to our internal locations (if you choose the second option, please remember to send us your attachments).
+We found that approximately $66\%$ of the content is in English, followed by $11\%$ in Russian. The physical language distribution is depicted in Figure~\ref{fig:languages}. In total we found 60 different language. For a more extensive list of 26 languages, see Appendix \ref{appendix:B}. Since the vast majority of content is written in English, we solely consider English language in the classification process.
 
-    Please remember that your images, video and animation clips are intended for Internet use and we need to consider the needs of users with slow Internet connections. Please try to minimize file sizes by using a lower resolution or number of colors for images and animations (as long as the material is still clear). To help you in formatting your images (including tables and figures) or multimedia files, please submit your paper with separate attachments, which are used in your paper.
+\begin{figure}
+\includegraphics[width=\linewidth]{images/contentsByLanguage.png}
+\caption{Language distribution in the visible darknet.}
+\label{fig:languages}
+\end{figure}
+For the following steps we need an array of terms instead of a string; thus we tokenize the content string into words.
+Now that the language of the content is known, we remove stop words~\cite{McDowall} depending on the language. As it turns out, some of the content only contains stop words, resulting in an empty content after stop-words removal. This content is immediately marked as \emph{empty}.
 
-\paragraph{English language}
- Journal     is published only in English. Make sure that your manuscripts are clearly and grammatically written. Please note that authors who are not native-speakers of English can be provided with help in rewriting their contribution in correct English. Try to prepare your manuscript in an easily readable style; this will help avoid severe misunderstandings which might lead to rejection of the paper.
+After stop word removal, we normalize the content further and apply stemming \cite{WormerStemmer} based on the porter stemmer \cite{porter1980algorithm} when appropriate. Previous work \cite{Harman1991, hull1996stemming, krovetz1996word,SaltonTextProcessing} suggests that stemming does not work equally well in all languages, hence we only apply stemming for English content. Lemmatization (determining the canonical form of a set of words depending on the context) is not considered since previous work showed that it can even degrade performance when applied to English content.
 
-\subsubsection{Reference list}
+Next, we build a positional index, which allows us to choose whether the classification should happen on a list of words, a bag of words or a set of words approach. Since we want to keep the most information possible and employ an SVM classifier, we decided to use a bag of words approach for the classification of labels. However, the software provides the functionality for all three approaches, which makes it easier to experiment with different machine learning techniques on the collected data set. For the bag of words model, we need to store the frequency of each word; the frequency can be extracted from the positional index, which is discussed in the following subsection. 
+In addition, we keep the extracted clean content string to facilitate manual classification. Thereby, the clean content string can be directly presented to a human classifier, in order to get the labeled training data set.
+%
+%---------------Storing content for classification------------------
+%
+\subsection{Storing Content for Classification}
+We store the extracted content in the table \texttt{cleanContents} with a foreign key to the original content. This table has a one-to-one assignment for both the \texttt{language} as well as the primary class label to the \texttt{labels} table. Since the legality of a document is expressed as a binary decision, we directly use a boolean column to store the legal value, where \emph{true} corresponds to legal, and \emph{false} to illegal.
 
-A complete reference should give the reader enough information to find the relevant article. All authors (unless there are six or more) should be named in the citation. If there are six or more, list the name of the first one followed by ``et al''. Please pay particular attention to spelling, capitalization and punctuation here. Completeness of references is the responsibility of the authors. A complete reference should comprise the following:
+The goal of the training phase is to employ active learning~\cite{Xu2009}; hence, it is essential to measure the certainty of the classifier's decisions. For this purpose, we insert a column to store the probability output of the classifier for both label and legal classification. Now, we can apply active learning techniques in the classification phase.
 
-\paragraph{Reference to an article in a journal}
-Elements to cite:
-Author's Initials. Surname, -- if more authors, see examples below,
-Title of journal -- abbreviated according to the ISI standards\footnote{ http://images.isiknowledge.com/WOK46/help/WOS/0-9\_abrvjt.html},
-volume number, page or article number (year of publication).
-Please supply DOI or URL for e-version of the papers.
-See Refs. \cite{journal-1, journal-2, journal-3, journal-4, journal-5, journal-6, journal-7, journal-8} for example.
+A positional index stores information about which term appears in which document at which positions. The positional index itself is constructed with three different tables. The first table is the list of \texttt{terms}, which has a one-to-many mapping to the \texttt{postings} table. A posting is a pair, mapping a term to a document. Therefore each posting in the posting table has a foreign relation to a clean content and a term, thus creating the tuple $<$\texttt{term} ID, \texttt{cleanContent} ID$>$. In order to store a positional index, every posting points to multiple \texttt{positions}, describing the positions at which the referenced term appears in the specified clean content.
 
-\paragraph{Reference to a book}
-Elements to cite:
-Author's Initials. Surname,
-Title,
-Edition -- if not the first
-(Publisher, Place of publication, Year of publication)
-\cite{book}.
+%
+%---------------Content classification------------------
+%
+\subsection{Content Classification}
+As discussed in \cite{Nabki2017, Verma2013}, a Support Vector Machine (SVM) is well suited for text classification, mainly because the SVM efficiently copes with high dimensional features that are typical for text classification. Moreover, an SVM is easy to train and apply, compared to different types of neural networks. We use $k$-fold cross-validation and compare the output scores to decide which parameters and kernels are performing better. The parameters that deliver the best results are then used to train the model.
 
+We begin the classification process with a very small training set of about $200$ entries, in an attempt to minimize the size of the training set, and then apply active learning~\cite{Xu2009}. 
+Active learning requires knowledge on the uncertainty level of the classifier for each sample, since in every iteration we manually label the samples with the highest uncertainty. The idea is to  manually label the entries with the highest entropy to convey the most information to the classifier.
+ 
+ These entries are then added to the data set, and the previously trained classifier is trained again on the updated data set. Since the original training set was small, we reevaluated different SVM classifiers from time to time to ensure we are still using the best possible configuration. We found that a linear kernel worked best for both classification problems. With this approach, we reached an F1 score of $60\%$ and an accuracy of $75\%$ for the label classifier, and an F1 score of $85\%$ and an accuracy of $89\%$ for the legal classifier.
 
-\paragraph{Reference to a part/chapter book}
-Elements to cite:
-Author's Initials. Surname,
-In: Editor's Initials. Editor's Surname (Ed.),
-Book Title,
-Edition -- if not the first,
-(Publisher, Place of publication, Year of publication)
-page number \cite{chapter}.
+During  the training of the classifier and the examination of preliminary results, we observed that some pages did not contain enough information to be assigned a label. In this case, the \emph{empty} label was added and excluded from the corpus. Pages not containing enough information were either actually (or almost) empty, often containing only a placeholder like ``coming soon'', or were login pages without further information about what a user is logging into or for what service the user could register. If there are other pages of the same hidden service available, it is sufficient to assign the page a label. If no other pages are available, or they do not contain enough information for labeling, we are not able to classify such a hidden service.
 
+The labels are chosen in an attempt to represent the most common categories and answer often posed questions about content found in the Tor network.
+We always labeled the contents with the most specific label possible. For example, if we have a page that is a blog about information security, this page would be labeled ``Security''.
 
-\paragraph{Reference to a preprint}
-Elements to cite:
-Author's Initials. Surname,
-arXiv:preprint-number and version \cite{arxiv-1,arxiv-2}.
-
-\paragraph{Reference to a conference proceedings}
-Elements to cite:
-Author's Initials. Surname,
-In: Editor's Initials. Editor's Surname (Ed.),
-Conference,
-date, place (town and country) of conference
-(Publisher, place of publication, year of publication)
-page number \cite{proceedings}.
-
-
-\paragraph{Reference to a thesis}
-Elements to cite:
-Author's Initials. Surname,
-D.Sc./Ph.D./M.Sc./B.Sc. thesis,
-University,
-(town, country, year of publication) \cite{thesis}.
+In order to label the hidden services, we take the maximum number of labeled pages per hidden service and assign this label to the hidden service as well. For legal classification, we assign \emph{illegal} to a hidden service as soon as at least $10\%$ of the contents are illegal. This threshold is used to reduce false positives from the classification process. In Figure~\ref{fig:legalityByThreshold}, we show how the number of illegal hidden services changes with different thresholds. Lower values than $1\%$ only introduce minor changes to the result. Overall, we observe that  the number of illegal hidden services is quite stable.
+ 
 
 
-\paragraph{Reference to an article in a newspaper}
-Elements to cite:
-Author's Initials. Surname,
-Newspaper Title,
-date of publication,
-page number \cite{newspaper-1,newspaper-2}.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8 \linewidth]{images/legalHostsByThreshold.png}
+    \caption{Estimated number of hidden services containing illegal content for different thresholds.}
+    \label{fig:legalityByThreshold}
+\end{figure}
+
+The labels are listed below, each with a description and examples.
+\begin{itemize}
+	\item \textbf{Activism}: Any content that is conveying activism, e.g. human rights activism.
+	\item \textbf{Adult}: Pornographic content of any type except paedophilic content. It does not have to contain media content to be classified as Adult; textual descriptions  are also included if they are clearly of pornographic nature.
+	\item \textbf{Art}: Anything ranging from literature to images (either photographs or computer generated) to whole web pages being an art project. This label does not include pages that contain sharing books or other pieces of art. Such a page would belong to the Sharing label.
+	\item \textbf{Blog}: Any web page that has a clearly defined set of authors that can publish content on the page and the content is not generated interactively as in a forum. Any web page, even if not in typical blog form is counted here if it fulfills the above condition and cannot be labeled more specifically, 
+	including marketing or news content.
+	\item \textbf{Counterfeit}: Any page that offers or describes how to create counterfeits is listed here. Most common topics are passports and credit cards.
+	\item \textbf{Drugs}: Any page where the main topic is drugs. This does not only include marketplaces selling drugs but also forums and information pages about drugs, including drug prevention pages.
+	\item \textbf{Empty}: The page does not contain enough information to be labeled with some other label. This category mainly includes empty pages, pages with too short messages and login pages that have no reference to the service they belong to. Furthermore, pages containing an error code (e.g. \texttt{404}) in the returned HTML were also assigned the Empty label.
+	\item \textbf{Exchange}: Any currency exchange page, typically between cryptocurrencies or from cryptocurrency to fiat money and back.
+	\item \textbf{Forum}: Either forums or chats. We consider them to belong to the same label since in both cases users are populating the page with content and responding to each other. The only difference is of a temporal nature, how fast one expects a response. This label is only assigned when no other label fits better. For example, a forum focused on drugs would be classified into the Drugs label.
+	\item \textbf{Fraud}: Offers that are of a fraudulent nature, such as bitcoin frauds that attempt to trick the user into sending them bitcoin for some promised higher return value.
+	\item \textbf{Gambling}: Mainly online casinos running with cryptocurrencies or other betting games that promise to pay out money for certain events.
+	\item \textbf{Hacking}: Contains anything related to breaching computer systems, independent of being black hat or white hat hacking.
+	\item \textbf{Hosting}: Offers to host a web page, darknet as well as clearnet.
+	\item \textbf{Laundry}: Pages offering money laundering services, often for cryptocurrencies stemming from dishonest sources.
+	\item \textbf{Hub}: Hubs are pages listing links of darknet sites, such as ``The Hidden Wiki''.
+	\item \textbf{Mail}: E-mail provider, anonymized or not.
+	\item \textbf{Market}: Any market selling goods that do not qualify for other labels. Also markets that sell multiple goods of different types.
+	\item \textbf{Murder}: Pages promising to execute a murder in exchange for money. Some of these pages could also be considered scams as indicated in news and blog publications \cite{Monteiro}. However, we introduce this label separately since hitmen services are often linked to the darknet.
+	\item \textbf{Paedophilic}: Any pages containing either paedophilic content directly, including media content or textual representation of fantasies. This label also contains forums and support groups for paedophiles.
+	\item \textbf{Phishing}: Fake pages that try to grab login credentials for different services from the user (e.g. Facebook or Google).
+	\item \textbf{Search Engine}: Any page offering to search for darknet hidden services. Often these keep a manually edited index.
+	\item \textbf{Security}: Pages containing information about computer security and personal security.
+	\item \textbf{Seized}: Pages taken offline by law enforcement agencies.
+	\item \textbf{Service}: Any service that does not fit into one of the other labels, e.g. a darknet calendar.
+	\item \textbf{Sharing}: Any page that shares content, either illegal (pirating) or legal, e.g., Dropbox.
+	\item \textbf{Social Network}: Social networks similar to Facebook or Twitter. Facebook itself is accessible through the darknet~\cite{facebook} and thus belongs to this label.
+	\item \textbf{Software Development}: Anything that has to do with software or its development. We consolidated selling software and development into one label since in most cases, the page serves as both the marketing page as well as the git repository or test page.
+	\item \textbf{Terrorism}: Anything related to extremism and terrorism. We do not classify the type of terrorism.
+	\item \textbf{Weapons}: Selling or discussing goods around weapons, be it guns, rifles or other devices that can kill or harm people.
+	\item \textbf{Whistleblowing}: Pages similar to Wikileaks. Pages that contain a drop off for whistle-blowers also qualify for this label.
+\end{itemize}
+
+The darknet seems to be a shelter for people discussing controversial or embarrassing topics. One such example is a support group for paedophiles that tries to help its members to live with their predisposition without harming others and avoid interference with the law. This example shows that it is not enough to just assign one of the previous mentioned labels to assess the contents legality, since in most categories both legal and illegal content can be found. Therefore, we also trained a binary classifier to determine the legality of content. The classifier also uses an SVM for classification and the same bag-of-words data collection as the label classifier.
+
+It is important to note that assessing the legality of content is challenging for several reasons. For one, every country and legal system has different notions of which actions are legal and illegal.
+Furthermore, sometimes the content itself belongs in a grey area, between legal and illegal. Since our goal is to provide a rough estimate on the distribution of the content, we follow a rather conservative approach when assessing legality: when the purpose of the content is an obviously illegal action, the content is classified as illegal, even if it might not technically be. One might say that this classifier is slightly biased towards classifying contents as illegal.
+%%%-----------------------------------------------------
+%%%---------------Darknet contents--------------------------
+%%%-----------------------------------------------------
+\section{Darknet Content}
+\label{sec:results}
+
+In this section, we present the results of the content classification, both in terms of label and legality. 
+The visible darknet mostly consists of empty pages; just above $30\%$ of the content is classified in this label. 
+For the legal classification of both pages and hidden services, we exclude the content with an empty label. Such content usually does not contain enough information for labeling, as we cannot assess the intended content from a vanilla login page; also regarding legality, empty pages are impossible to judge, and hence not considered.
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{images/labelsByContent.png}
+\caption{Label of darknet pages.}
+\label{fig:labelsByContent}
+\end{figure}
+
+\begin{figure}[h]
+\includegraphics[width=\linewidth]{images/labelsByHost.png}
+\caption{Label of darknet hidden services.}
+\label{fig:labelsByHost}
+\end{figure}
+
+%label classification
+\sh{Label Classification}
+In Figure \ref{fig:labelsByContent}, we present the top thirteen labels of darknet pages, while the complete list can be found in Appendix~\ref{appendix:labelsByPages}. 
+We notice that, quite unexpectedly, \emph{Blog} is the top category in the classification per page. However, as we discussed earlier, we classified in \emph{Blog} all the pages that did not fit in any other label, such as a company blog presenting the new employees or a news article about an arbitrary topic.
+%In contrast to previous work that measured the traffic on Tor and identified that approximately 80\% of requests concern paedophilic content, we report only about 4\% of the pages to contain paedophilic content. 
+
+On the other hand, the classification per hidden service was more challenging since typically most hidden services have multiple pages with sometimes different labels. To deal with this issue we decided on the following classification strategy: we counted how many pages each hidden service hosts from each label and assigned to the hidden service the label with the highest count. Consolidating all the labeled data per hidden service, as depicted in Figure \ref{fig:labelsByHost}, we observe only minor changes in the relative occurrence of labels. The complete list can be found in Appendix~\ref{appendix:labelsByHosts}.
+
+The top category in classification per hidden service is \emph{Software}, which also seems surprising. 
+Exploring further, however, we observed a specific pattern which justifies the high occurrence of \emph{Software} labels:
+first of all, many pages rely on open source software, which is later developed further. To manage such developments, the pages introduce a version control system which is often hosted by the same hidden service as the actual service. In addition, many pages store information for the operation team in status information pages which are also classified in the \emph{Software} category. Both version control systems and operation tools often contain a large amount of sub pages, so \emph{Software} may be overrepresented. 
+Furthermore, the way we accumulate the labels of single pages in order to label the hidden services also contributes to this result. A different feature selection could probably improve the results and allow the classifier to distinguish between the main topic of a hidden service and the git repository of such.
+
+If we compare the results by page and by hidden service, we see two major differences. Fraud is only making up for $1.82\%$ when grouped by page, however, it is the second largest category when grouping by hidden services with $8.13\%$. We find that many hidden services that try to scam their users only contain very few sub pages and rely mainly on external, more trusted services to place their links and faked testimonies.
+In contrast, hubs make up for $11.1\%$ of all pages, while they only constitute $3.8\%$ of all hidden services. We observe that many link lists have a high amount of sub pages, as to be expected.
+
+%legal classification
+\sh{Legal Classification}
+After excluding all empty pages, we find that about $60\%$ of the collected pages is legal, as illustrated in Figure \ref{fig:legalByContent}; this seems an unexpectedly high number for the darknet. To explain this high number of legal pages, we look more closely into the assigned labels. 
+For example, \emph{Software} is often considered legal because the development of software such as a market place is legal; however the goods sold in such a marketplace might be illegal. Thus, the label we assigned might be misleading in assessing the purpose of the page.
+
+\begin{figure}[t]
+    \includegraphics[width=\linewidth]{images/legalByContent.png}
+    \caption{Approximately $60\%$ of all pages are legal in the visible part of the darknet.}
+    \label{fig:legalByContent}
+\end{figure}
+
+\begin{figure}[t]
+    \includegraphics[width=\linewidth]{images/legalByHost.png}
+    \caption{When accumulating the pages by hidden service, we find that above $50\%$ of all hidden services contain illegal content.}
+    \label{fig:legalByHost}
+\end{figure}
+
+If we accumulate the labels by hidden service, the number of hidden services containing illegal content slightly increases compared to the corresponding number of pages, as depicted in Figure \ref{fig:legalByHost}.
+However, we found that a lot of forums have dedicated threads for the illegal content to enable users to choose in which discussion to participate. When classifying the content of the forum, some part contributes to the legal and some to the illegal category. However, we classify the hidden service as illegal if at least $10\%$ of the content is illegal. Thus, the classification by hidden service is biased towards the illegal category; this is the most probable cause of the percentage difference between pages and hidden services regarding legality.
+
+%Comparing the amount of traffic leaving the Tor network with the amount of traffic targeting hidden services, we estimate that only about $3.8\%$ of the whole traffic\footnote{Estimated using the statistics provided by the Tor network about bandwidth provided by exit nodes~\cite{TorMetricsBandwidthUsage} $b_E$ and the bandwidth used to access hidden serivces~\cite{TorMetricsServiceTraffic} $b_S$. $3.8\% = hs_T = \frac{b_S}{\left(b_E - b_S\right)}$ } routed by the Tor network targets hidden services. We can therefore conclude that at most $3.8\%$ of the total Tor network traffic accesses the hidden services and hence at most $3.8\%$ of all requests target illegal hidden services.
+
+Note that all the results apply to content written in English only, c.f., Figure~\ref{fig:languages}.
 
 
-\paragraph{Reference to a patent}
-Elements to cite:
-Originator,
-Series designation which may include full date \cite{patent}.
+%%%-----------------------------------------------------
+%%%---------------Related Work--------------
+%%%-----------------------------------------------------
+\section{Related Work}\label{sec:relatedwork}
+
+%crawling the clearnet
+Starting with the rise of the web, crawling has been a topic of interest  for the academic community as well as society in general. Some of the earliest crawlers \cite{Gray1993,McBryan1994, Eichmann1994, Pinkerton1994} were presented just shortly after the web became public. However, since the early web was smaller than the visible darknet today, clearnet crawlers did not face the same issues as they do today. Castillo~\cite{Castillo2005} and Najork and Heydon~\cite{Najork2002} addressed a wide variety of issues, e.g. scheduling. Castillo found that using applying different scheduling strategies works best. Both acknowledged the need to limit the number of requests sent to the targets, and described several approaches similar to ours.
+
+%crawling the darknet
+Contrary to aforementioned work, we are interested in exploring the \emph{darknet}.
+Previous work~\cite{GeorgeKadianakis2015, TorMetricsOnion} has estimated the size of the Tor darknet using non-invasive methods that allow us to measure what portion of the darknet we have explored.
+Similarly to our work, Al Nabki et al.~\cite{Nabki2017} want to understand the Tor network; they created a dataset of active Tor hidden services and explored different methods for content classification. However, instead of using a real crawler, they browsed a big initial dataset as seed, and then followed all links they found exactly twice. In turn, Moore and Rid~\cite{Moore2016} went to depth five, which seems to be good enough to catch most of the darknet, as their results are similar to ours. Our crawler does a real recursive search and as such understands the darknet topology in more detail, in contrast to both of these previous works.
+
+%classifying the darknet with different methods
+Other work applied different approaches to data collection for classification.
+Owen et al.~\cite{Owen2016} measured the activity on each page of the darknet by operating a large number of Tor relays, a measure which is not possible with our methodology. Similarly to our work, Biryukov et al.~\cite{Biryukov2014} have classified darknet content with findings comparable to ours. Their methodology relied on a Tor bug which was fixed in 0.2.4.10-alpha and can no longer be used for data collection. Unlike both of these works which can have adverse effects on the anonymity of Tor users, our method is less invasive as it only utilizes publicly available information and does not require operating any Tor relays or participating in the DHT.
+
+Furthermore, Terbium labs~\cite{ClareGollnick2016} proposed content classification via a small but random sample from a crawled collection. Despite the small size of the dataset, their results are also comparable to ours.
+
+%measuring popularity with traffic??
+While we focus on the web, Chaabane et al.~\cite{Chaabane2010} wanted to know what other protocols are using Tor, by analyzing the traffic on Tor's exit routers. They concluded that the largest amount of transmitted data stems from peer-to-peer file sharing traffic. As shown by McCoy et al.~\cite{McCoy2008}, measurements of traffic can be easily skewed by data-heavy applications such as file sharing. This work estimates that HTTP makes up for approximately $92\%$ of all connections. 
+
+%classification methods on clearnet content
+Content classification is also a topic in the clearnet, and depending on the size of the collected dataset, automated content classification is required. 
+Both Verma~\cite{Verma2013} and Kim and Kuljis~\cite{Kim2010} analyzed existing techniques and proposed different methods to improve content analysis to Web based content. Xu et al.~\cite{Xu2009} compared different methods to improve SVM performance, including the active learning approach. They showed that an active learning approach coupled with an SVM classifier can result in better accuracy with less samples than other compared methods. These results were applied in the machine learning process we employed, combining active learning and SVM estimators.
+
+%classification on darknet
+Specifically for the darknet, Fidalgo et al. \cite{Fidalgo2017} described how to classify illegal activity on the darknet based on image classification. While adding images as an additional feature could improve the performance of our classifier (especially for pages that did not contain enough textual information), we abstained from it because  it requires downloading potentially illegal images.
+
+%Biryukov et al. \cite{Biryukov2013} focused on deanonymization and proposed a method to collect data and descriptors for hidden services and measure their popularity, by exploiting flaws in the design and implementation of Tor. This method is massively invasive to the Tor protocol - they even propose a large-scale deanonymization attack- and serves a different purpose than ours.
+
+%classification on darknet marketplaces
+A more specific content analysis was performed on marketplaces residing on the darknet. Christin et al. \cite{Christin2013} and Soska et al. \cite{KyleSoska2015} concentrated on a few large markets and developed strategies to circumvent barriers such as captchas and password entries. They used this data to estimate sales volumes, product categories and activity of vendors.
 
 
-\paragraph{Reference to a standard}
-Elements to cite:
-Standard symbol and number,
-Title \cite{standard-1,standard-2}.
+%%%-----------------------------------------------------
+%%%---------------Conclusion--------------
+%%%-----------------------------------------------------
+\section{Conclusion $\&$ Future Work}
 
-Please add language of publication for materials which are not written in English. Indicate materials accepting for publications by adding ``(in press)''. Please avoid references to unpublished materials, private communication and web pages.
+We performed a thorough analysis of both the structure and the content of the visible part of the darknet. To the best of our knowledge, we were the first to systematically (recursively) explore the network topology of the visible darknet. To that end, we developed a novel open source spider which captures the graph of hyperlinks between web pages. 
 
-You should make sure the information is correct so that the linking reference service may link abstracts electronically. For the same reason please separate each reference from the others.
+Remarkably, we found that the darknet is well connected and behaves like a scale-free network, similarly to the clearnet. The degree distribution follows a power law and the diameter of the network is 11. Furthermore, we identified the existence of large hubs connecting the network. Although these hubs have  high degrees, their impact on the connectivity of the network is as significant as anticipated; at least half of the darknet remains well connected even if we remove all such hubs. Last but not least, we observed that the darknet is highly volatile, and experience a churn of about $30\%$ within a single week.
 
-Before submitting your article, please ensure you have checked your paper for any relevant references you may have missed.
+We employed supervised learning techniques to classify the content of the darknet both per page and per hidden service. Specifically, we used active learning and an SVM classifier to label the content in terms of physical language, topic and legality. 
+Surprisingly, 60\% of the pages and approximately half of the hidden services in the darknet are legal. Furthermore, the label classification indicates that (contrary to popular belief) about half of the pages in the darknet concern licit topics such as blogs, forums, hubs, activism etc. On the other hand, we revealed that a significant amount of hidden services perform fraud. 
 
-\subsubsection{Submission formats}
+% \sh{Future Work}
+Our crawler was able to uncover a significant but small ($15\%$) percentage of the darknet as compared to Tor Metrics estimates. Future work can address the reason we were unable to penetrate the rest of the darknet. We already recommended several mechanisms towards this direction, i.e. looking for non-HTTP(S) services that could be running on the darknet as well as employing the crawler repeatedly for a longer period of time to increase the probability of discovering services which are often offline.
 
-Manuscripts for ... should be submitted in the \LaTeX ~format with figures in EPS, PDF or PNG format. Authors are strongly encouraged to register their manuscript in arXiv preprint server and submit it to our Editorial Manager using arXiv's paper ID.
 
-\subsubsection{Supplementary data}
+The machine learning techniques can also be improved to obtain better results. In particular, we classified hidden services into labels by taking a majority of labels of their individual pages. However, treating hidden services independently could probably yield better classification results.  
+Furthermore, taking into account additional features in the classification process could significantly improve the outcome. Explicitly handling special cases such as git repositories and excluding them from the accumulation of the labels could have significant impact on the results. Moreover, notable improvement could arise from the use of images as an additional classification feature when the content is insufficient; however, this method can only be adopted if the legality of the image is automatically determined.
 
-You can also submit any supplementary data files as well. These may include long tables (in HTML or plain TXT format) or movies (preferably in AVI format).
+Lastly, our collected data is comprehensive enough to be useful if made available to the public. To that end, future work could build an open source Tor search engine that allows searching the indexed data, similarly to rudimentary closed source solutions such as TORCH~\cite{torch}. Our indexing techniques could also benefit existing open source search engine attempts such as Ahmia~\cite{ahmia}. An interactively browseable version of our graph that presents an in-depth apprehensible view on the topology of the darknet could also be a valuable extension for future work.
 
-\begin{thebibliography}{99}
-\bibitem{journal-1} A.~P.~Raposo, H.~J.~Weber, D.~E.~Alvarez--Castillo, M.~Kirchbach, Cent. Eur. J. Phys. 5, 253 (2007)
-\bibitem{journal-2} J.~Barth et al. (SAPHIR Collaboration), Phys. Lett. B 572, 127 (2003)
-\bibitem{journal-3} S.~Chekanov et al., Eur. Phys. J. C 51, 289 (2007)
-\bibitem{journal-4} K.~Malarz, Postepy Fizyki 57, 235 (2006) (in Polish)
-\bibitem{journal-5} G.~Meng, Cent. Eur. J. Phys., DOI:10.2478/s11534-007-0038-1
-\bibitem{journal-6} R.~Hegselmann, U.~Krause, Journal of Artificial Societies and Social Simulation (2006), http://jasss.soc.surrey.ac.uk/9/3/10.html
-\bibitem{journal-7} A.~Dybala, Cent. Eur. J. Chem. (in press)
-\bibitem{journal-8} A.~Dybala, Przeglad chemiczny (in Polish, in press)
-\bibitem{book} M.~Lister, Fundamentals of Operating Systems, 3rd edition (Springer-Verlag, New York, 1984)
-\bibitem{chapter} C.~K.~Clenshaw, K.~Lord, In: B.~K.~P.~Scaife (Ed.), Studies in Numerical Analysis (Academic Press, London and New York, 1974) 95
-\bibitem{arxiv-1} M.~Majewski, K.~Malarz, arXiv:cond-mat/0609635v2 [cond-mat.stat-mech]
-\bibitem{arxiv-2} J.~A.~C.~E.~Solano, arXiv:0707.1343v1 [astro-ph]
-\bibitem{proceedings} A.~Kaczanowski, K.~Malarz, K.~Kulakowski, In: T.~E.~Simos (Ed.), International Conference of Computational Methods in Science and Engineering, Sep. 12-16, 2003, Kastoria, Greece (World Scientific, Singapore 2003) 258
-\bibitem{thesis} A.~J.~Agutter, Ph.D. thesis, Edinburgh University (Edinburgh, UK, 1995)
-\bibitem{newspaper-1} A.~Sherwin, The Times, Jul. 13, 2007, 1
-\bibitem{newspaper-2} M.~Dzierzanowski, Wprost, Jul. 8, 2007, 18 (in Polish)
-\bibitem{patent} Philip Morris Inc., European patent application 0021165 A1, Jan. 7, 1981
-\bibitem{standard-1} ISO 2108:1992, Information and documentation --- International standard book numbering (ISBN)
-\bibitem{standard-2} ISO/TR 9544:1988, Information processing --- Computer-assisted publishing --- Vocabulary
-\end{thebibliography}
+\newpage
+
+\printbibliography
+
+\appendix
+%
+% Appendix A
+%
+\section{Appendix: MIME Types}
+\label{appendix:A}
+MIME Types of collected content. Either the server returned a MIME type header or we detected the type by data inspection through mmmagic\cite{mscdex}
+\begin{center}
+\label{table:mime types}
+\begin{supertabular}[H]{p{5.5cm} | r{2.5cm}}
+    \textbf{MIME Type} & \textbf{Share of pages}\\
+	\hline
+	\hline
+	\hline
+	text/html			&	85.33\% \\
+	\hline
+	image/jpeg			&	5.28\% \\
+	\hline
+	image/png			&	3.23\% \\
+	\hline
+	text/plain			&	0.85\% \\
+	\hline
+	application/octet-stream		&	0.72\% \\
+	\hline
+	application/zip		&	0.55\% \\
+	\hline
+	application/rss+xml	&	0.48\% \\
+	\hline
+	application/json	&	0.47\% \\
+	\hline
+	image/gif			&	0.44\% \\
+	\hline
+	application/epub+zip			&	0.27\% \\
+	\hline
+	application/xml		&	0.25\% \\
+	\hline
+	application/javascript			&	0.25\% \\
+	\hline
+	application/x-fictionbook+xml	&	0.20\% \\
+	\hline
+	application/x-bittorrent		&	0.19\% \\
+	\hline
+	application/atom+xml			&	0.19\% \\
+	\hline
+	application/x-mpegURL			&	0.18\% \\
+	\hline
+	text/xml			&	0.17\% \\
+	\hline
+	application/pdf		&	0.15\% \\
+	\hline
+	text/css			&	0.15\% \\
+	\hline
+	audio/x-wav			&	0.13\% \\
+	\hline
+	application/x-download			&	0.08\% \\
+	\hline
+	video/mp4			&	0.08\% \\
+	\hline
+	video/webm			&	0.08\% \\
+	\hline
+	application/vnd.comicbook+zip	&	0.05\% \\
+	\hline
+	text/csv			&	0.03\% \\
+	\hline
+	audio/mpeg			&	0.02\% \\
+	\hline
+	application/rdf+xml	&	0.02\% \\
+	\hline
+	application/pgp-signature		&	0.02\% \\
+	\hline
+	image/jpg			&	0.01\% \\
+	\hline
+	text/tab-separated-values		&	0.01\% \\
+	\hline
+	application/x-tar	&	0.01\% \\
+	\hline
+	application/vnd.comicbook-rar	&	0.01\% \\
+	\hline
+	audio/x-scpls		&	0.01\% \\
+	\hline
+	text/calendar		&	0.01\% \\
+	\hline
+	application/owl+xml	&	0.01\% \\
+	\hline
+	video/x-matroska	&	0.01\% \\
+	\hline
+	image/svg+xml		&	0.01\% \\
+	\hline
+	application/x-empty	&	0.01\% \\
+	\hline
+	Other				&	0.06\% \\
+	\hline
+\end{supertabular}
+\end{center}
+
+%
+% Appendix B
+%
+\section{Appendix: Languages in the Darknet}
+\label{appendix:B}
+We found content in 60 languages. The exact number of documents per language is listed below.
+\begin{center}
+    \label{table:languages}
+    \begin{supertabular}[H]{p{4cm} | r{3.5cm}}
+    \textbf{Language} &	\textbf{Share of pages}	\\
+    \hline 
+    \hline
+	English		&	66.14\%\\
+	\hline
+	Russian		&	11.56\%\\
+	\hline
+	French		&	5.82\%\\
+	\hline
+	German		&	4.49\%\\
+	\hline
+	Spanish		&	3.00\%\\
+	\hline
+	Bulgarian	&	1.78\%\\
+	\hline
+	Portuguese	&	1.20\%\\
+	\hline
+	Italian	&	0.75\%\\
+	\hline
+	Mandarin	&	0.68\%\\
+	\hline
+	Iloko		&	0.61\%\\
+	\hline
+	\textit{Undetermined}	&	0.56\%\\
+	\hline
+	Dutch		&	0.53\%\\
+	\hline
+	Swedish		&	0.40\%\\
+	\hline
+	Ukrainian	&	0.34\%\\
+	\hline
+	Turkish		&	0.20\%\\
+	\hline
+	Polish		&	0.20\%\\
+	\hline
+	Hausa		&	0.14\%\\
+	\hline
+	Madurese	&	0.14\%\\
+	\hline
+	Korean		&	0.13\%\\
+	\hline
+	Standard Arabic	&	0.11\%\\
+	\hline
+	Japanese	&	0.10\%\\
+	\hline
+	Czech		&	0.10\%\\
+	\hline
+	Romanian	&	0.10\%\\
+	\hline
+	Malay		&	0.08\%\\
+	\hline
+	Indonesian	&	0.08\%\\
+	\hline
+	\textit{Other}		&	0.79\%\\
+    \end{supertabular}
+\end{center}
+
+\section{Appendix: Complete List of Labels}
+All labelled categories are listed here in detail.
+\subsection{Labels by Pages}
+\label{appendix:labelsByPages}
+\begin{center}
+    \begin{supertabular}[H]{p{4cm} | r{3.5cm}}
+    \textbf{Label}		&	\textbf{Share of Pages}\\
+	\hline
+	\hline
+	Blog		&	13.49\%\\
+	\hline
+	Software Development	&	12.29\%\\
+	\hline
+	Hub		&	11.14\%\\
+	\hline
+	Forum		&	6.86\%\\
+	\hline
+	Adult		&	6.23\%\\
+	\hline
+	Activism	&	6.16\%\\
+	\hline
+	Counterfeit	&	5.37\%\\
+	\hline
+	Sharing		&	5.24\%\\
+	\hline
+	Market		&	5.08\%\\
+	\hline
+	Drugs		&	4.32\%\\
+	\hline
+	Pedophilic	&	3.91\%\\
+	\hline
+	Art			&	2.64\%\\
+	\hline
+	Hosting		&	2.30\%\\
+	\hline
+	Service		&	1.99\%\\
+	\hline
+	Hacking		&	1.95\%\\
+	\hline
+	Fraud		&	1.82\%\\
+	\hline
+	Gambling	&	1.81\%\\
+	\hline
+	Whistleblowing			&	1.57\%\\
+	\hline
+	Search Engine			&	1.54\%\\
+	\hline
+	Laundry		&	1.07\%\\
+	\hline
+	Exchange	&	0.94\%\\
+	\hline
+	Seized		&	0.75\%\\
+	\hline
+	Security	&	0.62\%\\
+	\hline
+	Murder		&	0.47\%\\
+	\hline
+	Social Network			&	0.44\%\\
+    \end{supertabular}
+\end{center}
+\subsection{Labels by Hidden Services}
+\label{appendix:labelsByHosts}
+\begin{center}
+    \begin{supertabular}[H]{p{4cm} | r{3.5cm}}
+    \textbf{Label}  & \textbf{Share of Hidden Service}\\
+    \hline
+    \hline
+    Software Development	&	13.56\%\\
+	\hline
+	Fraud		&	8.13\%\\
+	\hline
+	Blog		&	7.87\%\\
+	\hline
+	Market		&	7.75\%\\
+	\hline
+	Counterfeit	&	7.33\%\\
+	\hline
+	Activism	&	5.79\%\\
+	\hline
+	Drugs		&	5.25\%\\
+	\hline
+	Art			&	4.05\%\\
+	\hline
+	Service		&	3.98\%\\
+	\hline
+	Adult		&	3.86\%\\
+	\hline
+	Sharing		&	3.83\%\\
+	\hline
+	Hub		&	3.83\%\\
+	\hline
+	Laundry		&	3.48\%\\
+	\hline
+	Forum		&	3.45\%\\
+	\hline
+	Whistleblowing			&	3.19\%\\
+	\hline
+	Hosting		&	3.07\%\\
+	\hline
+	Hacking		&	2.88\%\\
+	\hline
+	Search Engine			&	2.02\%\\
+	\hline
+	Pedophilic	&	1.64\%\\
+	\hline
+	Gambling	&	1.64\%\\
+	\hline
+	Exchange	&	1.26\%\\
+	\hline
+	Seized		&	0.95\%\\
+	\hline
+	Murder		&	0.47\%\\
+	\hline
+	Security	&	0.44\%\\
+	\hline
+	Social Network			&	0.28\%\\
+    \end{supertabular}
+\end{center}
 
 \end{document}
