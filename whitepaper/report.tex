@@ -31,27 +31,26 @@ citestyle=numeric-comp
 \newcommand{\sh}[1]{\noindent\vspace{0.5\baselineskip}\\ \textbf{#1}\\}
   
 \begin{document}
-   \author[1]{Anonymous Submission}
-
-%  \author[1]{Georgia Avarikioti}
-
-%  \author[2]{Roman Brunner}
-%
-%  \author[3]{Aggelos Kiayias}
-
-%  \author[4]{Roger Wattenhofer}
-
-%  \author[5]{Dionysis Zindros}
-%
-%   \affil[1]{Affil, E-mail: zetavar@ethz.ch}
-%
-%   \affil[2]{Affil, E-mail: robrunne@student.ethz.ch}
-%
-%   \affil[3]{Affil, E-mail: aggelos.kiayias@ed.ac.uk}
-%
-%   \affil[4]{Affil, E-mail: wattenhofer@ethz.ch}
-%
-%   \affil[5]{Affil, E-mail: dionyziz@di.uoa.gr}
+%      \author[1]{Anonymous Submission}
+      \author[1]{Georgia Avarikioti}
+   
+      \author[2]{Roman Brunner}
+    
+      \author[3]{Aggelos Kiayias}
+   
+      \author[4]{Roger Wattenhofer}
+   
+      \author[5]{Dionysis Zindros}
+  
+      \affil[1]{ETH, zetavar@ethz.ch}
+      
+      \affil[2]{ETH, robrunne@student.ethz.ch}
+      
+      \affil[3]{University of Edinburgh, IOHK, aggelos.kiayias@ed.ac.uk}
+      
+      \affil[4]{ETH, wattenhofer@ethz.ch}
+      
+      \affil[5]{University of Athens, IOHK, dionyziz@di.uoa.gr}
 
 \title{\huge Structure and Content of the Visible Darknet}
 
@@ -60,7 +59,7 @@ citestyle=numeric-comp
   %\subtitle{...}
 
   \begin{abstract}
-{In this paper, we analyze the topology and the content found on the ``darknet'', the set of websites accessible via Tor. We created a darknet spider and crawled the darknet starting from a bootstrap list by recursively following links. We explored the whole connected component of more than 34,000 hidden services, of which we found 10,000 to be online. Contrary to folklore belief, the darknet is surprisingly well-connected through hub websites such as wikis and forums. We performed a comprehensive categorization of the content using supervised machine learning. We observe that about half of the visible dark web content is abiding the law. A significant amount of content pertains to software repositories, blogs, and activism-related websites. Among unlawful hidden services, most pertain to fraudulent websites, services selling counterfeit goods, and drug markets.
+{In this paper, we analyze the topology and the content found on the ``darknet'', the set of websites accessible via Tor. We created a darknet spider and crawled the darknet starting from a bootstrap list by recursively following links. We explored the whole connected component of more than 34,000 hidden services, of which we found 10,000 to be online. Contrary to folklore belief, the visible part of the darknet is surprisingly well-connected through hub websites such as wikis and forums. We performed a comprehensive categorization of the content using supervised machine learning. We observe that about half of the visible dark web content is related to apparently licit activities based on our classifier. A significant amount of content pertains to software repositories, blogs, and activism-related websites. Among unlawful hidden services, most pertain to fraudulent websites, services selling counterfeit goods, and drug markets.
 }
 \end{abstract}
   \keywords{anonymity, tor, machine learning, crawling, spider}
@@ -105,12 +104,13 @@ While interactions between users and web sites became increasingly encrypted (ht
 
 
 
+
 Like the regular web (the ``clearnet’’), the Tor darknet also has a large invisible part (dynamic content or password protected). Because names of web servers are generally non-mnemonic, being invisible in the darknet is the default rather than the exception.
 
 
 % now we finally come to the topic of our paper.
 
-On the other hand, also the darknet features web servers that absolutely want to be visible. The most prominent example is facebookcorewwwi.onion, an anonymous entrance to the regular Facebook web site. More surprisingly, even if you are in an unlawful business (e.g. selling drugs, guns, or passports), you may want to be visible, as there is no business for those who are completely invisible. Figure \ref{tab:overview} summarizes all these possible web site types.
+On the other hand, the darknet also features web servers that absolutely want to be visible. The most prominent example is facebookcorewwwi.onion, an anonymous entrance to the regular Facebook web site. More surprisingly, even if you are in an unlawful business (e.g. selling drugs, guns, or passports), you may want to be visible, as there is no business for those who are completely invisible. Figure~\ref{tab:overview} summarizes all these possible web site types.
 
 %roger: i think this figure is very important, since there seems to be a big confusion regarding invisible vs. darknet vs. deep web. eventually our paper may mostly be cited for this figure (if we are lucky).
 
@@ -119,14 +119,15 @@ On the other hand, also the darknet features web servers that absolutely want to
     \caption{Overview of different web site types. The deep web consists of the italicized cells.}
     \label{tab:overview}
     \begin{tabular}{c|c | c }
-       & \textbf{Clearnet} & \textbf{Darknet}\\
+      & \textbf{Clearnet} & \textbf{Darknet}\\
       \hline
-      \textbf{Visible} & \shortstack[c]{Googleable web \\ Publicly accessible sites} & %\cellcolor{black!18} 
-      \shortstack[c]{\\[1pt] \textcolor{blue}{\textit{[our paper]}} \\ \textcolor{blue}{\textit{Invisible part of the Darknet}}}\\
+      \textbf{Visible}&
+      \shortstack[c]{Googleable web \\ Publicly accessible sites} & 
+      \shortstack[c]{\\[1pt] \textit{[our paper]} \\ \textit{Visible part of the Darknet}}\\
       \hline
-      \textbf{Invisible}& %\cellcolor{black!18}
-      \shortstack[c]{\\[1pt] \textcolor{blue}{\textit{Your e-mail inbox}} \\ \textcolor{blue}{\textit{Protected networks}}} & %\cellcolor{black!18} 
-      \shortstack[c]{\textcolor{blue}{\textit{Where spies meet?}} \\ \textcolor{blue}{\textit{Dark side of the Darknet}}}\\ %, probably
+      \textbf{Invisible}&
+      \shortstack[c]{\\[1pt] \textit{Your e-mail inbox} \\ \textit{Protected networks}} & 
+      \shortstack[c]{\textit{Where spies meet?} \\ \textit{Dark side of the Darknet}}\\
     \end{tabular}
   \end{center}
 \end{table}
@@ -292,10 +293,9 @@ During the crawling process, we discovered 34,714 hidden service addresses, of w
 We collected in total 7,355,773 paths and 67,296,302 links. Of those, we downloaded 1,561,590 paths. We did not download the other almost 5 million paths because we classified them as black hole paths, highly unlikely containing further URIs to unknown hidden services. The detailed numbers can be found in Table~\ref{table:scrapMetrics}.
 
 
-The crawler collected data over a time period of one week. According to Tor metrics~\cite{TorMetricsOnion}, the mean of the estimated number of hidden services (darknet hidden services, both visible and invisible) over this time period was 70,640. Having seen 34,714 different hidden services, one could naively assume about half of the darknet hidden services are visible. However, this is only an upper bound, as merely about a third responded over the HTTP(S) ports 80 and 443: Either a non-responding hidden service was really not active anymore (and we have just followed a stale hyperlink), or the hidden service decided to ignore our crawler. Having 10,975 responding visible hidden services, we know that at least $15\%$ of the hidden services are visible.
-
-Why did two thirds of the hidden services not respond? We believe that they might connect through other ports or different protocols, or they might discriminate connection requests in some other form.
-Such behaviour can be observed in some common link lists, such as the hidden wiki\footnote{Hidden wiki: \texttt{zqktlwi4i34kbat3.onion}} where quite a few services offering IRC chat, FTP sharing or P2P sharing require both a different communication protocol and different ports to be accessed.
+The crawler collected data over a time period of one week. According to Tor metrics~\cite{TorMetricsOnion}, the mean of the estimated number of hidden services (darknet hidden services, both visible and invisible) over this time period was 70,640. Having seen 34,714 different hidden services, one could naively assume about half of the darknet hidden services are visible. However, this is only an upper bound, as merely about a third of these responded over the HTTP(S) ports 80 and 443: Either a non-responding hidden service was really not active anymore (and we have just followed a stale hyperlink), or the hidden service decided to ignore our crawler. Having 10,975 responding visible hidden services, we know that at least $15\%$ of the hidden services are visible.
+There are multiple reasons why a portion of these hidden services did not respond. One conjecture is that they might connect through other ports or different protocols, or they might discriminate connection requests in some other form.
+Such behaviour can be observed in some common link lists, such as the hidden wiki\footnote{Hidden wiki: \texttt{zqktlwi4i34kbat3.onion}}, where a plethora of services offer IRC chat, FTP sharing or P2P sharing and require both a different communication protocol and different ports to be accessed.
 
 \begin{figure}
     \centering
@@ -641,7 +641,7 @@ Note that all the results apply to content written in English only, c.f., Figure
 \section{Related Work}\label{sec:relatedwork}
 
 %crawling the clearnet
-Starting with the rise of the web, crawling has been a topic of interest  for the academic community as well as society in general. Some of the earliest crawlers \cite{Gray1993,McBryan1994, Eichmann1994, Pinkerton1994} were presented just shortly after the web became public. However, since the early web was smaller than the visible darknet today, clearnet crawlers did not face the same issues as they do today. Castillo~\cite{Castillo2005} and Najork and Heydon~\cite{Najork2002} addressed a wide variety of issues, e.g. scheduling. Castillo found that using applying different scheduling strategies works best. Both acknowledged the need to limit the number of requests sent to the targets, and described several approaches similar to ours.
+Starting with the rise of the web, crawling has been a topic of interest  for the academic community as well as society in general. Some of the earliest crawlers \cite{Gray1993,McBryan1994, Eichmann1994, Pinkerton1994} were presented just shortly after the web became public. However, since the early web was smaller than the visible darknet today, clearnet crawlers did not face the same issues as they do today. Castillo~\cite{Castillo2005} and Najork and Heydon~\cite{Najork2002} addressed a wide variety of issues, e.g. scheduling. Castillo found that applying different scheduling strategies works best. Both acknowledged the need to limit the number of requests sent to the targets, and described several approaches similar to ours.
 
 %crawling the darknet
 Contrary to aforementioned work, we are interested in exploring the \emph{darknet}.
@@ -687,7 +687,7 @@ Our crawler was able to uncover a significant but small ($15\%$) percentage of t
 
 
 The machine learning techniques can also be improved to obtain better results. In particular, we classified hidden services into labels by taking a majority of labels of their individual pages. However, treating hidden services independently could probably yield better classification results.  
-Furthermore, taking into account additional features in the classification process could significantly improve the outcome. Explicitly handling special cases such as git repositories and excluding them from the accumulation of the labels could have significant impact on the results. Moreover, notable improvement could arise from the use of images as an additional classification feature when the content is insufficient; however, this method can only be adopted if the legality of the image is automatically determined.
+Furthermore, taking into account additional features in the classification process could significantly improve the outcome. Explicitly handling special cases such as git repositories and excluding them from the accumulation of the labels could have significant impact on the results. Moreover, notable improvement could arise from the use of images as an additional classification feature when the content is insufficient; however, this method can only be adopted if the legality of the image can be automatically determined.
 
 Lastly, our collected data is comprehensive enough to be useful if made available to the public. To that end, future work could build an open source Tor search engine that allows searching the indexed data, similarly to rudimentary closed source solutions such as TORCH~\cite{torch}. Our indexing techniques could also benefit existing open source search engine attempts such as Ahmia~\cite{ahmia}. An interactively browseable version of our graph that presents an in-depth apprehensible view on the topology of the darknet could also be a valuable extension for future work.
 
