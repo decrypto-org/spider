@@ -1,0 +1,94 @@
+\ProvidesPackage{preamble}
+
+\usepackage[pdftex]{graphicx}
+\iflncs
+    \usepackage[english]{babel}
+    \usepackage{geometry}
+    \geometry{
+        a4paper,         % or letterpaper
+        textwidth=15cm,  % llncs has 12.2cm
+        textheight=24cm, % llncs has 19.3cm
+        heightrounded,   % integer number of lines
+        hratio=1:1,      % horizontally centered
+        vratio=2:3,      % not vertically centered
+    }
+\fi
+\ifdgruyter
+    \usepackage[utf8]{inputenc}%(only for the pdftex engine)
+    \usepackage[big]{dgruyter_NEW}
+
+    \usepackage[
+    backend=biber,
+    style=numeric,
+    citestyle=numeric-comp
+    ]{biblatex}
+\fi
+\newcommand{\sh}[1]{\noindent\vspace{0.5\baselineskip}\\ \textbf{#1}\\}
+\usepackage{supertabular}
+\usepackage{float}
+\restylefloat{table}
+\usepackage{xcolor, colortbl}
+% \usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+% \usepackage{amsthm}
+% \usepackage{mathtools}
+% \usepackage{amssymb}
+% \usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{graphviz}
+\usepackage{dot2texi}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usetikzlibrary{shapes,arrows}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{import}
+
+%code options with \lstlisting
+\lstset{frame=tb,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle=\ttfamily,
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3,
+  escapeinside={(*@}{@*)},
+  frame=n
+}
+\lstdefinestyle{numbers}{numbers=left, stepnumber=1, numberstyle=\tiny, numbersep=10pt}
+\let\origthelstnumber\thelstnumber
+\makeatletter
+\newcommand*\Suppressnumber{%
+  \lst@AddToHook{OnNewLine}{%
+    \let\thelstnumber\relax%
+     \advance\c@lstnumber-\@ne\relax%
+    }%
+}
+
+\newcommand*\Reactivatenumber{%
+  \lst@AddToHook{OnNewLine}{%
+   \let\thelstnumber\origthelstnumber%
+   \advance\c@lstnumber\@ne\relax}%
+}
+
+%page style set to plain
+% \pagestyle{plain}
+
+% \bibliographystyle{splncs}
+
+%PDF bookmarks
+\definecolor{darkblue}{rgb}{0.0,0.0,0.3}
+\hypersetup{colorlinks,breaklinks,
+    linkcolor=darkblue,urlcolor=darkblue,
+    anchorcolor=darkblue,citecolor=darkblue}
+
+\def\Let#1#2{\State $#1\gets#2$}
+
+\newcommand{\CommentLine}[1]{
+    \State \(\triangleright\) \text{#1}
+}
