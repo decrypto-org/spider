@@ -1,2 +1,2 @@
 clean:
-	rm -f *.aux *.log *.out report.pdf *.run.xml *.swp
+	rm -f *.aux *.log *.out report.pdf *.run.xml *.swp *.bbl *.dvi *.blg

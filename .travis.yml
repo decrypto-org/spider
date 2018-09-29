@@ -11,6 +11,7 @@ services:
 before_script:
   - sudo apt update -qq -y
   - sudo apt install -y tor
+  - touch $TRAVIS_BUILD_DIR/server/.env
   - docker swarm init # We need to initialize the host as a swarm manager first
   - $TRAVIS_BUILD_DIR/Setup.sh
   - $TRAVIS_BUILD_DIR/Run.sh shell
