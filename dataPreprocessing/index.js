@@ -410,19 +410,19 @@ async function storeResult(
     if (!cleanContentModel) {
         try {
             cleanContentInstance = await targetDb.cleanContent.findOrCreate({
-                where: { rawContentId: originContentId },
+                where: {rawContentId: originContentId},
                 defaults: {
                     cleanContent: cleanString,
                     rawContentId: originContentId,
                     languageLanguageId: languageIdsByISOString[language],
                 },
-                transaction: transaction
+                transaction: transaction,
             });
             cleanContentInstance = cleanContentInstance[0];
-        } catch(e) {
+        } catch (e) {
             // statements
             console.log(e);
-            finalErrorHandler(err, transaction);
+            finalErrorHandler(e, transaction);
         }
     } else {
         cleanContentInstance = cleanContentModel;

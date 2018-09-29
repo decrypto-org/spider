@@ -55,8 +55,6 @@ services:
     depends_on:
       - "db"
       - "tor"
-    ports:
-      - "65000-65100:65000-65100"
 
   tor:
     image: robrunne/tor-proxy:1.0.0
