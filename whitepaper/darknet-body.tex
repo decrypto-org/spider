@@ -31,24 +31,47 @@ On the other hand, the darknet also features web servers that absolutely want to
 
 %roger: i think this figure is very important, since there seems to be a big confusion regarding invisible vs. darknet vs. deep web. eventually our paper may mostly be cited for this figure (if we are lucky).
 
-\begin{table}[h!]
-  \begin{center}
-    \caption{Overview of different web site types. The deep web consists of the italicized cells.}
-    \label{tab:overview}
-    \begin{tabular}{c|c | c }
-      & \textbf{Clearnet} & \textbf{Darknet}\\
-      \hline
-      \hline
-      \textbf{Visible}&
-      \shortstack[c]{Googleable web \\ Publicly accessible sites} & 
-      \shortstack[c]{\\[1pt] \textit{[our paper]} \\ \textit{Visible part of the Darknet}}\\
-      \hline
-      \textbf{Invisible}&
-      \shortstack[c]{\\[1pt] \textit{Your e-mail inbox} \\ \textit{Protected networks}} & 
-      \shortstack[c]{\textit{Where spies meet?} \\ \textit{Dark side of the Darknet}}\\
-    \end{tabular}
-  \end{center}
-\end{table}
+\ifdgruyter
+  \begin{table}[h!]
+    \begin{center}
+      \caption{Overview of different web site types. The deep web consists of the italicized cells.}
+      \label{tab:overview}
+      \begin{tabular}{c|c | c }
+        & \textbf{Clearnet} & \textbf{Darknet}\\
+        \hline
+        \hline
+        \textbf{Visible}&
+        \shortstack[c]{Googleable web \\ Publicly accessible sites} & 
+        \shortstack[c]{\\[1pt] \textit{[our paper]} \\ \textit{Visible part of the Darknet}}\\
+        \hline
+        \textbf{Invisible}&
+        \shortstack[c]{\\[1pt] \textit{Your e-mail inbox} \\ \textit{Protected networks}} & 
+        \shortstack[c]{\textit{Where spies meet?} \\ \textit{Dark side of the Darknet}}\\
+      \end{tabular}
+    \end{center}
+  \end{table}
+\fi
+
+\iflncs
+  \begin{table}[h!]
+    \begin{center}
+      \begin{tabular}{c|c | c }
+        & \textbf{Clearnet} & \textbf{Darknet}\\
+        \hline
+        \hline
+        \textbf{Visible}&
+        \shortstack[c]{Googleable web \\ Publicly accessible sites} & 
+        \shortstack[c]{\\[1pt] \textit{[our paper]} \\ \textit{Visible part of the Darknet}}\\
+        \hline
+        \textbf{Invisible}&
+        \shortstack[c]{\\[1pt] \textit{Your e-mail inbox} \\ \textit{Protected networks}} & 
+        \shortstack[c]{\textit{Where spies meet?} \\ \textit{Dark side of the Darknet}}\\
+      \end{tabular}
+      \caption{Overview of different web site types. The deep web consists of the italicized cells.}
+      \label{tab:overview}
+    \end{center}
+  \end{table}
+\fi
 
 % %roger: our contributions.
 % 
@@ -173,30 +196,57 @@ In order to store all the downloaded content as well as the link structure, we u
 
 We now need the path to specify a full URI: We introduce the \texttt{paths} table, which is keeping the state of an entry. In this role, the paths table contains a flag indicating if a download for this specific path is in progress, a timestamp indicating when the last successful download finished, an integer indicating at which depth in the graph the path was found, the path itself, and a possible subdomain. Additionally, it contains the denormalized count of distinct incoming links to allow for efficient use by our prioritization scheme.
 
-\begin{table}[H]
-    \begin{center}
-        \caption{Detailed numbers of our crawler}
-        \label{table:scrapMetrics}
-        \begin{tabular}[l]{l|r}
-        \textbf{Type of Data}           & \textbf{Count} \\
-        \hline
-        \hline
-        Hidden service addresses found      & 34,714                                    \\
-        \hline
-        Hidden services responding                & 10,957                      \\
-        \hline
-        Hidden services returning useable content & 7,566                      \\
-        \hline
-        Paths                           & 7,355,773                   \\
-        \hline
-        Links                           & 67,296,302                \\
-        \hline
-        Downloaded paths                & 1,561,590                 \\
-        \hline
-        Content (useable)               & 667,356         \\
-        \end{tabular}
-    \end{center}
-\end{table}
+\ifdgruyter
+  \begin{table}[H]
+      \begin{center}
+          \caption{Detailed numbers of our crawler}
+          \label{table:scrapMetrics}
+          \begin{tabular}[l]{l|r}
+          \textbf{Type of Data}           & \textbf{Count} \\
+          \hline
+          \hline
+          Hidden service addresses found      & 34,714                                    \\
+          \hline
+          Hidden services responding                & 10,957                      \\
+          \hline
+          Hidden services returning useable content & 7,566                      \\
+          \hline
+          Paths                           & 7,355,773                   \\
+          \hline
+          Links                           & 67,296,302                \\
+          \hline
+          Downloaded paths                & 1,561,590                 \\
+          \hline
+          Content (useable)               & 667,356         \\
+          \end{tabular}
+      \end{center}
+  \end{table}
+\fi
+
+\iflncs
+  \begin{wraptable}[14]{R}[1pt]{9.4cm}
+    \begin{tabular}{l|r}
+    \textbf{Type of Data}           & \textbf{Count} \\
+    \hline
+    \hline
+    Hidden service addresses found      & 34,714                                    \\
+    \hline
+    Hidden services responding                & 10,957                      \\
+    \hline
+    Hidden services returning useable content & 7,566                      \\
+    \hline
+    Paths                           & 7,355,773                   \\
+    \hline
+    Links                           & 67,296,302                \\
+    \hline
+    Downloaded paths                & 1,561,590                 \\
+    \hline
+    Content (useable)               & 667,356         \\
+    \end{tabular}
+    \caption{Detailed numbers of our crawler}
+    \label{table:scrapMetrics}
+  \end{wraptable}
+\fi
 
 To store the downloaded content, we introduce the \texttt{contents} table, which stores the content itself as well as some meta information about the content such as the HTTP status code and the MIME type. Furthermore, we use a crawl timestamp to track the changes of the network over time while allowing for multiple downloads of the same path.
 
@@ -227,12 +277,12 @@ Such behaviour can be observed in some common link lists, such as the hidden wik
 Additionally, we noticed that the network is highly volatile; about $30\%$ of all hidden services running an HTTP(S) server switch from online to offline and vice versa within a week, as depicted in Figure \ref{fig:highVolatility}.
 Thus, some of the stale links we followed during the crawling process possibly point to a server that is going to be online again in the future. 
 
-Downloading content of darknet websites that include images or videos is potentially illegal. As we already mentioned, during downloading we detected the MIME type to filter out the potentially illegal content and stored the distribution across MIME types. In total, we found 134 different MIME types, from which the vast majority is of type text/html, as expected. The second most common MIME type we encountered was image types jpeg and png, which is not surprising since almost every webpage has at least an icon that is linked somewhere on the page. The top ten MIME types are listed in the Table \ref{table:mime types} and a more extensive list of 39 MIME types is available in Appendix \ref{appendix:A}.
-
- \begin{table}
+Downloading content of darknet websites that include images or videos is potentially illegal. As we already mentioned, during downloading we detected the MIME type to filter out the potentially illegal content and stored the distribution across MIME types. In total, we found 134 different MIME types, from which the vast majority is of type text/html, as expected. The second most common MIME type we encountered was image types jpeg and png, which is not surprising since almost every webpage has at least an icon that is linked somewhere on the page. The top ten MIME types are listed in the Table \ref{table:mime_types} and a more extensive list of 39 MIME types is available in Appendix \ref{appendix:A}.
+\ifdgruyter
+  \begin{table}
     \centering
     \caption{Top ten MIME types. Text and images contribute about $95\%$ of all content.}
-    \label{table:mime types}
+    \label{table:mime_types}
     \begin{tabular}{l|r}
          \textbf{Top Ten MIME Types Returned} & \textbf{Share of Pages} \\
          \hline
@@ -257,7 +307,39 @@ Downloading content of darknet websites that include images or videos is potenti
     	\hline
     	application/epub+zip			&	0.27\% \\
     \end{tabular}
-\end{table}
+  \end{table}
+\fi
+
+\iflncs
+  \begin{wraptable}[16]{R}[1pt]{9.4cm}
+    \begin{tabular}{l|r}
+         \textbf{Top Ten MIME Types Returned} & \textbf{Share of Pages} \\
+         \hline
+         \hline
+      text/html     & 85.33\% \\
+      \hline
+      image/jpeg      & 5.28\% \\
+      \hline
+      image/png     & 3.23\% \\
+      \hline
+      text/plain      & 0.85\% \\
+      \hline
+      application/octet-stream    & 0.72\% \\
+      \hline
+      application/zip   & 0.55\% \\
+      \hline
+      application/rss+xml & 0.48\% \\
+      \hline
+      application/json  & 0.47\% \\
+      \hline
+      image/gif     & 0.44\% \\
+      \hline
+      application/epub+zip      & 0.27\% \\
+    \end{tabular}
+    \caption{Top ten MIME types. Text and images contribute about $95\%$ of all content.}
+    \label{table:mime_types}
+  \end{wraptable}
+\fi
 %
 %Network structure
 %
@@ -299,37 +381,140 @@ One may expect that removing important hubs will partition the darknet into many
 
 Figure~\ref{fig:largestConnectedComponent} illustrates the size of the largest connected component after iteratively removing the largest hubs.
 Furthermore, we also examined the hidden services that become disconnected from the largest connected component after removing the largest hubs. It turns out that $90\%$ of those could only be reached through hubs. The remaining $10\%$ form small connected components. In other words, while about half the visible darknet is well-connected even without hubs, the other half are single sites or small clusters of sites that are only reachable through hubs. 
+% outtable
+\ifdgruyter
+  \begin{table}[t]
+      \begin{center}
+          \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}
+          \label{table:toptenout}
+          \begin{tabular}{p{3cm} | p{3.5cm} | p{1cm}}
+               \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
+               \hline
+               \hline
+              Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
+              \hline
+              Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
+              \hline
+              VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
+              \hline
+              Ahmia & msydqstlz2kzerdg.onion  &  5808\\
+              \hline
+              H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
+              \hline
+              List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
+              \hline
+              Tor Pastebin & happenedpghnqffa.onion  &  3745\\
+              \hline
+              Tor Directory & directoryvi6plzm.onion  &  1596\\
+              \hline
+              The onion crate & cratedvnn5z57xhl.onion  &  1089\\
+              \hline
+              UnderDir & underdj5ziov3ic7.onion  &  1009\\
+          \end{tabular}
+      \end{center}
+  \end{table}
+\fi
 
-\begin{table}[t]
-    \begin{center}
-        \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}
-        \label{table:toptenout}
-        \begin{tabular}{p{3cm} | p{3.5cm} | p{1cm}}
-             \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
-             \hline
-             \hline
-            Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
-            \hline
-            Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
-            \hline
-            VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
-            \hline
-            Ahmia & msydqstlz2kzerdg.onion  &  5808\\
-            \hline
-            H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
-            \hline
-            List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
-            \hline
-            Tor Pastebin & happenedpghnqffa.onion  &  3745\\
-            \hline
-            Tor Directory & directoryvi6plzm.onion  &  1596\\
-            \hline
-            The onion crate & cratedvnn5z57xhl.onion  &  1089\\
-            \hline
-            UnderDir & underdj5ziov3ic7.onion  &  1009\\
-        \end{tabular}
-    \end{center}
-\end{table}
+\iflncs
+  \begin{wraptable}[12]{R}[1pt]{8.5cm}
+    \begin{tabular}{l | l | r}
+      \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
+      \hline
+      \hline
+      Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
+      \hline
+      Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
+      \hline
+      VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
+      \hline
+      Ahmia & msydqstlz2kzerdg.onion  &  5808\\
+      \hline
+      H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
+      \hline
+      List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
+      \hline
+      Tor Pastebin & happenedpghnqffa.onion  &  3745\\
+      \hline
+      Tor Directory & directoryvi6plzm.onion  &  1596\\
+      \hline
+      The onion crate & cratedvnn5z57xhl.onion  &  1089\\
+      \hline
+      UnderDir & underdj5ziov3ic7.onion  &  1009\\
+    \end{tabular}
+    \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}\label{table:toptenout}
+  \end{wraptable}
+\fi
+% in table
+\ifdgruyter
+  \begin{table}[b]
+      \centering
+      \begin{tabular}{l|l|r}
+          \textbf{Hub Name}   & \textbf{URI}  & \textbf{Size} \\
+          \hline
+          \hline
+        DreamMarket           & [Multiple]          & 2130 \\
+        \hline
+        Daniel's Hosting        & dhosting4okcs22v.onion    & 889 \\
+        \hline
+        Blockchain Explorer       & blockchainbdgpzk.onion    & 523 \\
+        \hline
+        The Tor Mail Box        & torbox3uiot6wchz.onion    & 280 \\
+        \hline
+        \hbox{\strut DuckDuckGo}
+        (Search engine)
+        & 3g2upl4pq6kufc4m.onion    & 166 \\
+        \hline
+        Deep Dot Web (News)       & deepdot35wvmeyd5.onion    & 151 \\
+        \hline
+        \hbox{\strut Matrix Trilogy}
+        (Image sharing)
+        & matrixtxri745dfw.onion    & 139 \\
+        \hline
+        TORCH: Tor Search       & xmh57jrzrnw6insl.onion    & 134 \\
+        \hline
+        Hidden Wiki           & zqktlwi4fecvo6ri.onion    & 126 \\
+        \hline
+        Imperial Library (Books)    & xfmro77i3lixucja.onion    & 124 \\
+      \end{tabular}
+      \caption{Top ten hidden services ranked by the number of \emph{incoming} links from unique other hidden services.}
+      \label{table:toptenin}
+  \end{table}
+\fi
+
+\iflncs
+  \begin{wraptable}[17]{l}[1pt]{10.5cm}
+    \begin{tabular}{l|l|r}
+        \textbf{Hub Name}   & \textbf{URI}  & \textbf{Size} \\
+        \hline
+        \hline
+      DreamMarket           & [Multiple]          & 2130 \\
+      \hline
+      Daniel's Hosting        & dhosting4okcs22v.onion    & 889 \\
+      \hline
+      Blockchain Explorer       & blockchainbdgpzk.onion    & 523 \\
+      \hline
+      The Tor Mail Box        & torbox3uiot6wchz.onion    & 280 \\
+      \hline
+      \hbox{\strut DuckDuckGo}
+      (Search engine)
+      & 3g2upl4pq6kufc4m.onion    & 166 \\
+      \hline
+      Deep Dot Web (News)       & deepdot35wvmeyd5.onion    & 151 \\
+      \hline
+      \hbox{\strut Matrix Trilogy}
+      (Image sharing)
+      & matrixtxri745dfw.onion    & 139 \\
+      \hline
+      TORCH: Tor Search       & xmh57jrzrnw6insl.onion    & 134 \\
+      \hline
+      Hidden Wiki           & zqktlwi4fecvo6ri.onion    & 126 \\
+      \hline
+      Imperial Library (Books)    & xfmro77i3lixucja.onion    & 124 \\
+    \end{tabular}
+    \caption{Top ten hidden services ranked by the number of \emph{incoming} links from unique other hidden services.}
+    \label{table:toptenin}
+  \end{wraptable}
+\fi
 
 Some large hubs also feature a search engine. Among the top ten hubs, presented in Table \ref{table:toptenout}, there are three search engines, six lists of links which also download the title of the website to provide some sort of searchable content, and one Pastebin site where links are deposited without organization. Note that the linked hidden services can contain disturbing content (text or images), as some include previews of the linked pages. Additionally some of the URLs provided in this paper might not work anymore due to the high volatility of the Tor network. %Such pages also directly link to a large part of the visible darknet. The page listing the most links to different responding hidden services contained $55.8\%$ of the online hidden services we uncovered and belongs into the link hub category. 
 
@@ -339,42 +524,6 @@ Moreover, we notice that the second most linked hidden service provides hosting 
 The third most linked hidden service is the same blockchain explorer that breaks the \emph{random} strategy, as mentioned in subsection \ref{sec:prioritizationDownload}. 
 We found that the bitcoin scamming scheme that breaks the \emph{prioritized} strategy links to this particular bitcoin explorer. The bitcoin scamming scheme makes up for more than $50\%$ of the distinct incoming links of the bitcoin explorer.
 However, the most remarkable observation is that a library made it into the list of the most referenced services.
-
-
-\begin{table}[b]
-    \centering
-    \begin{tabular}{l|l|r}
-        \textbf{Hub Name}   & \textbf{URI}  & \textbf{Size} \\
-        \hline
-        \hline
-    	DreamMarket						&	[Multiple]					&	2130 \\
-    	\hline
-    	Daniel's Hosting				&	dhosting4okcs22v.onion		&	889 \\
-    	\hline
-    	Blockchain Explorer				&	blockchainbdgpzk.onion		&	523 \\
-    	\hline
-    	The Tor Mail Box				&	torbox3uiot6wchz.onion		&	280 \\
-    	\hline
-    	\hbox{\strut DuckDuckGo}
-    	(Search engine)
-    	&	3g2upl4pq6kufc4m.onion		&	166 \\
-    	\hline
-    	Deep Dot Web (News)				&	deepdot35wvmeyd5.onion		&	151 \\
-    	\hline
-    	\hbox{\strut Matrix Trilogy}
-    	(Image sharing)
-    	&	matrixtxri745dfw.onion		&	139 \\
-    	\hline
-    	TORCH: Tor Search				&	xmh57jrzrnw6insl.onion		&	134 \\
-    	\hline
-    	Hidden Wiki						&	zqktlwi4fecvo6ri.onion		&	126 \\
-    	\hline
-    	Imperial Library (Books)		&	xfmro77i3lixucja.onion		&	124 \\
-    \end{tabular}
-    \caption{Top ten hidden services ranked by the number of \emph{incoming} links from unique other hidden services.}
-    \label{table:toptenin}
-\end{table}
-
 
 \begin{figure}[H]
 \includegraphics[width=\linewidth]{images/LinkhubsRemoval.png}

@@ -4,6 +4,7 @@
 \iflncs
     \usepackage[english]{babel}
     \usepackage{geometry}
+    \usepackage{wrapfig}
     \geometry{
         a4paper,         % or letterpaper
         textwidth=15cm,  % llncs has 12.2cm
@@ -26,7 +27,9 @@
 \newcommand{\sh}[1]{\noindent\vspace{0.5\baselineskip}\\ \textbf{#1}\\}
 \usepackage{supertabular}
 \usepackage{float}
-\restylefloat{table}
+\ifdgruyter
+  \restylefloat{table}
+\fi
 \usepackage{xcolor, colortbl}
 % \usepackage{amsmath}
 \usepackage{algorithm}
