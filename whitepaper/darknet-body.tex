@@ -90,11 +90,23 @@ Our contributions are summarized as follows:
 %%%---------------Crawling the darknet------------------
 %%%-----------------------------------------------------
 \section{Crawling the Darknet}
+
+\ifdgruyter
 \begin{figure}[H]
 \includegraphics[width=\linewidth]{images/ArchitecturalSchema.png}
 \caption{The architecture of the crawler. Modules are depicted in bold.~\cite{Loconte}}
 \label{fig:scraperArchitecture}
 \end{figure}
+\fi
+
+\iflncs
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/ArchitecturalSchema.png}
+\caption{The architecture of the crawler. Modules are depicted in bold.~\cite{Loconte}}
+\label{fig:scraperArchitecture}
+\end{figure}
+\fi
 In this section, we describe the structure of the spider we built to crawl the visible darknet. To understand some of our design choices, we present the encountered problems and the different strategies applied to resolve these issues. 
 
 The goal of the crawler is to discover and explore a large part\footnote{We measure the size of the darknet in number of hidden services.} of the darknet by recursively following any links it finds in the downloaded content. We distinguish a \emph{hidden service}, which refers to a particular \texttt{.onion} address, from a \emph{path}, which is a URL of a particular website hosted on a specific hidden service.  We store the downloaded content itself, the extracted URIs, the link structure, as well as some metadata such as timestamps and data type of the content.
@@ -172,13 +184,22 @@ Deciding which URI to schedule next for download is important not only to preven
 
 In the development process, we first started off with the \emph{naïve} approach and evolved from there in the order described above. For data collection, we applied a combination of the strategies described. In the beginning of the crawling process, we used the  \emph{new-hidden-service-first} strategy to get an initial broad scan across the available hidden services. We then switched to the \emph{iterative} strategy, since it progressed best on the network. However, we noticed that in the end of the crawling process most hidden services do not have any available paths, and thus at this point the \emph{iterative} strategy is unnecessarily complex. Since the number of paths available per hidden service as well as the distinct incoming counts are in the same order of magnitude for all hidden services,  \emph{random} or  \emph{prioritized} strategy seem more suitable for this phase.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{images/PercentageByDepth.png}
-    \caption{Exploration of hidden services by depth.}
-    \label{fig:percentageByDepth}
-\end{figure}
-
+\ifdgruyter
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=\linewidth]{images/PercentageByDepth.png}
+      \caption{Exploration of hidden services by depth.}
+      \label{fig:percentageByDepth}
+  \end{figure}
+\fi
+\iflncs
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=0.65\linewidth]{images/PercentageByDepth.png}
+      \caption{Exploration of hidden services by depth.}
+      \label{fig:percentageByDepth}
+  \end{figure}
+\fi
 Running our crawler using these combinations of prioritization schemes, we observe that the connected component of the darknet which we have explored converges sufficiently after 7 hops from our bootstrapping list, as seen in Figure~\ref{fig:percentageByDepth}.
 
 \subsection{Extracting URIs}
@@ -357,23 +378,46 @@ In Figure \ref{fig:niceGraphImage}, we present a snapshot of the visible darknet
 The degree distribution of a scale-free network follows a power law and the average path length of the network is proportional to $\ln{N}/\ln{\ln{N}}$. The diameter of the  network is 11. In Figure~\ref{fig:powerLawAbnormality}, it is evident that the degree of the hidden services is power law distributed, except from an outlier which stems from a bitcoing scamming scheme, closely interlinking a high number of hidden services in an attempt to prove their credibility. Moreover, we note that the calculated average path length is $4.1 \approx \frac{\ln 10957}{\ln\ln 10957} = 4.17$. 
 Thus, the structure of the visible part of the darknet seems similar to the structure of the clearnet and typical approaches such as crawlers work well on both networks.
 
-\begin{figure}[H]
-\includegraphics[width=\linewidth]{images/DistinctIncomingLinksCount.png}
-\caption{A histogram depicting the count of pages having a particular
-             number of incoming links.}
-\label{fig:powerLawAbnormality}
-\end{figure}
+\ifdgruyter
+  \begin{figure}[H]
+  \includegraphics[width=\linewidth]{images/DistinctIncomingLinksCount.png}
+  \caption{A histogram depicting the count of pages having a particular
+               number of incoming links.}
+  \label{fig:powerLawAbnormality}
+  \end{figure}
+\fi
+\iflncs
+  \begin{figure}[H]
+  \centering
+  \includegraphics[width=0.65\linewidth]{images/DistinctIncomingLinksCount.png}
+  \caption{A histogram depicting the count of pages having a particular
+               number of incoming links.}
+  \label{fig:powerLawAbnormality}
+  \end{figure}
+\fi
 
 Figure~\ref{fig:powerLawAbnormality} depicts the distribution of incoming link counts. Most paths can only be reached with a single hyperlink. In general the distribution of hyperlinks per path follows a power law distribution. There is an obvious outlier: Several thousand paths have exactly 196 distinct incoming links. This is a bitcoin scamming scheme that tries to increase its credibility by spinning up multiple hidden services, all of which link to each other, that claim that the provided service is valid. Many of these also point to the same bitcoin transactions on a bitcoin explorer site to prove their claim, explaining the second, smaller outlier.
 Comparing Figure~\ref{fig:powerLawAbnormality} with Figure~\ref{fig:outgoingPowerLaw}, we find that measuring the in-degree is much more stable than measuring the out-degree. This is expected to some degree since the incoming links are typically more resistant to manipulation. On the contrary, the outgoing links are fully controlled by the provider of a hidden service, and thus a single page can have arbitrarily many outgoing links.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{images/DistinctOutgoingLinksCount.png}
-    \caption{A histogram depicting the count of pages having a particular
-             number of outgoing links.}
-    \label{fig:outgoingPowerLaw}
-\end{figure}
+\ifdgruyter
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=\linewidth]{images/DistinctOutgoingLinksCount.png}
+      \caption{A histogram depicting the count of pages having a particular
+               number of outgoing links.}
+      \label{fig:outgoingPowerLaw}
+  \end{figure}
+\fi
+
+\iflncs
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=0.65\linewidth]{images/DistinctOutgoingLinksCount.png}
+      \caption{A histogram depicting the count of pages having a particular
+               number of outgoing links.}
+      \label{fig:outgoingPowerLaw}
+  \end{figure}
+\fi
 
 Our most surprising structural finding is that the visible part of the darknet is well connected. 
 While examining the degree distribution, we noticed that the network contains \emph{hubs}, web sites that feature a large number of hyperlinks.  These hubs clearly tie the network together, as they connect sites that do not necessarily have anything in common.
@@ -525,11 +569,22 @@ The third most linked hidden service is the same blockchain explorer that breaks
 We found that the bitcoin scamming scheme that breaks the \emph{prioritized} strategy links to this particular bitcoin explorer. The bitcoin scamming scheme makes up for more than $50\%$ of the distinct incoming links of the bitcoin explorer.
 However, the most remarkable observation is that a library made it into the list of the most referenced services.
 
-\begin{figure}[H]
-\includegraphics[width=\linewidth]{images/LinkhubsRemoval.png}
-\caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
-\label{fig:largestConnectedComponent}
-\end{figure}
+\ifdgruyter
+  \begin{figure}[H]
+  \includegraphics[width=\linewidth]{images/LinkhubsRemoval.png}
+  \caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
+  \label{fig:largestConnectedComponent}
+  \end{figure}
+\fi
+
+\iflncs
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\linewidth]{images/LinkhubsRemoval.png}
+    \caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
+    \label{fig:largestConnectedComponent}
+  \end{figure}
+\fi
 
 %%%-----------------------------------------------------
 %%%---------------Analysis methodology--------------------------
@@ -556,11 +611,23 @@ We employ franc~\cite{WormerFranc} and the minimal set of 82 languages franc pro
 
 We found that approximately $66\%$ of the content is in English, followed by $11\%$ in Russian. The physical language distribution is depicted in Figure~\ref{fig:languages}. In total we found 60 different language. For a more extensive list of 26 languages, see Appendix \ref{appendix:B}. Since the vast majority of content is written in English, we solely consider English language in the classification process.
 
-\begin{figure}[H]
-\includegraphics[width=\linewidth]{images/contentsByLanguage.png}
-\caption{Language distribution in the visible darknet.}
-\label{fig:languages}
-\end{figure}
+\ifdgruyter
+  \begin{figure}[H]
+  \includegraphics[width=\linewidth]{images/contentsByLanguage.png}
+  \caption{Language distribution in the visible darknet.}
+  \label{fig:languages}
+  \end{figure}
+\fi
+
+\iflncs
+  \begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{images/contentsByLanguage.png}
+  \caption{Language distribution in the visible darknet.}
+  \label{fig:languages}
+  \end{figure}
+\fi
+
 For the following steps we need an array of terms instead of a string; thus we tokenize the content string into words.
 Now that the language of the content is known, we remove stop words~\cite{McDowall} depending on the language. As it turns out, some of the content only contains stop words, resulting in an empty content after stop-words removal. This content is immediately marked as \emph{empty}.
 
@@ -597,13 +664,23 @@ We always labeled the contents with the most specific label possible. For exampl
 In order to label the hidden services, we take the maximum number of labeled pages per hidden service and assign this label to the hidden service as well. For legal classification, we assign \emph{illegal} to a hidden service as soon as at least $10\%$ of the contents are illegal. This threshold is used to reduce false positives from the classification process. In Figure~\ref{fig:legalityByThreshold}, we show how the number of illegal hidden services changes with different thresholds. Lower values than $1\%$ only introduce minor changes to the result. Overall, we observe that  the number of illegal hidden services is quite stable.
  
 
-
-\begin{figure}[H]
+\ifdgruyter
+  \begin{figure}[H]
     \centering
     \includegraphics[width=0.8 \linewidth]{images/legalHostsByThreshold.png}
     \caption{Estimated number of hidden services containing illegal content for different thresholds.}
     \label{fig:legalityByThreshold}
-\end{figure}
+  \end{figure}
+\fi
+
+\iflncs
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.55\linewidth]{images/legalHostsByThreshold.png}
+    \caption{Estimated number of hidden services containing illegal content for different thresholds.}
+    \label{fig:legalityByThreshold}
+  \end{figure}
+\fi
 
 The labels are listed below, each with a description and examples.
 \begin{itemize}
@@ -653,18 +730,39 @@ Furthermore, sometimes the content itself belongs in a grey area, between legal 
 In this section, we present the results of the content classification, both in terms of label and legality. 
 The visible darknet mostly consists of empty pages; just above $30\%$ of the content is classified in this label. 
 For the legal classification of both pages and hidden services, we exclude the content with an empty label. Such content usually does not contain enough information for labeling, as we cannot assess the intended content from a vanilla login page; also regarding legality, empty pages are impossible to judge, and hence not considered.
+\ifdgruyter
+  \begin{figure}[h]
+  \includegraphics[width=\linewidth]{images/labelsByContent.png}
+  \caption{Label of darknet pages}
+  \label{fig:labelsByContent}
+  \end{figure}
+\fi
 
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{images/labelsByContent.png}
-\caption{Label of darknet pages}
-\label{fig:labelsByContent}
-\end{figure}
+\iflncs
+  \begin{figure}[h]
+  \centering
+  \includegraphics[width=0.6\linewidth]{images/labelsByContent.png}
+  \caption{Label of darknet pages}
+  \label{fig:labelsByContent}
+  \end{figure}
+\fi
 
-\begin{figure}[h]
-\includegraphics[width=\linewidth]{images/labelsByHost.png}
-\caption{Label of darknet hidden services}
-\label{fig:labelsByHost}
-\end{figure}
+\ifdgruyter
+  \begin{figure}[h]
+  \includegraphics[width=\linewidth]{images/labelsByHost.png}
+  \caption{Label of darknet hidden services}
+  \label{fig:labelsByHost}
+  \end{figure}
+\fi
+
+\iflncs
+  \begin{figure}[h]
+  \centering
+  \includegraphics[width=0.6\linewidth]{images/labelsByHost.png}
+  \caption{Label of darknet hidden services}
+  \label{fig:labelsByHost}
+  \end{figure}
+\fi
 
 %label classification
 \sh{Label Classification}
@@ -687,17 +785,39 @@ In contrast, hubs make up for $11.1\%$ of all pages, while they only constitute 
 After excluding all empty pages, we find that about $60\%$ of the collected pages is legal, as illustrated in Figure \ref{fig:legalByContent}; this seems an unexpectedly high number for the darknet. To explain this high number of legal pages, we look more closely into the assigned labels. 
 For example, \emph{Software} is often considered legal because the development of software such as a market place is legal; however the goods sold in such a marketplace might be illegal. Thus, the label we assigned might be misleading in assessing the purpose of the page.
 
-\begin{figure}[H]
+\ifdgruyter
+  \begin{figure}[H]
     \includegraphics[width=\linewidth]{images/legalByContent.png}
     \caption{Approximately $60\%$ of all pages are legal in the visible part of the darknet.}
     \label{fig:legalByContent}
-\end{figure}
+  \end{figure}
+\fi
 
-\begin{figure}[H]
+\iflncs
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{images/legalByContent.png}
+    \caption{Approximately $60\%$ of all pages are legal in the visible part of the darknet.}
+    \label{fig:legalByContent}
+  \end{figure}
+\fi
+
+\ifdgruyter
+  \begin{figure}[H]
     \includegraphics[width=\linewidth]{images/legalByHost.png}
     \caption{When accumulating the pages by hidden service, we find that above $50\%$ of all hidden services contain illegal content.}
     \label{fig:legalByHost}
-\end{figure}
+  \end{figure}
+\fi
+
+\iflncs
+  \begin{figure}[H]
+    \centering
+    \includegraphics[width=0.6\linewidth]{images/legalByHost.png}
+    \caption{When accumulating the pages by hidden service, we find that above $50\%$ of all hidden services contain illegal content.}
+    \label{fig:legalByHost}
+  \end{figure}
+\fi
 
 If we accumulate the labels by hidden service, the number of hidden services containing illegal content slightly increases compared to the corresponding number of pages, as depicted in Figure \ref{fig:legalByHost}.
 However, we found that a lot of forums have dedicated threads for the illegal content to enable users to choose in which discussion to participate. When classifying the content of the forum, some part contributes to the legal and some to the illegal category. However, we classify the hidden service as illegal if at least $10\%$ of the content is illegal. Thus, the classification by hidden service is biased towards the illegal category; this is the most probable cause of the percentage difference between pages and hidden services regarding legality.
