@@ -56,6 +56,7 @@ On the other hand, the darknet also features web servers that absolutely want to
   \begin{table}[h!]
     \begin{center}
       \begin{tabular}{c|c | c }
+        \hline
         & \textbf{Clearnet} & \textbf{Darknet}\\
         \hline
         \hline
@@ -66,7 +67,9 @@ On the other hand, the darknet also features web servers that absolutely want to
         \textbf{Invisible}&
         \shortstack[c]{\\[1pt] \textit{Your e-mail inbox} \\ \textit{Protected networks}} & 
         \shortstack[c]{\textit{Where spies meet?} \\ \textit{Dark side of the Darknet}}\\
+        \hline
       \end{tabular}
+      \vspace{10pt}
       \caption{Overview of different web site types. The deep web consists of the italicized cells.}
       \label{tab:overview}
     \end{center}
@@ -182,7 +185,7 @@ Deciding which URI to schedule next for download is important not only to preven
 
 \end{itemize}
 
-In the development process, we first started off with the \emph{naïve} approach and evolved from there in the order described above. For data collection, we applied a combination of the strategies described. In the beginning of the crawling process, we used the  \emph{new-hidden-service-first} strategy to get an initial broad scan across the available hidden services. We then switched to the \emph{iterative} strategy, since it progressed best on the network. However, we noticed that in the end of the crawling process most hidden services do not have any available paths, and thus at this point the \emph{iterative} strategy is unnecessarily complex. Since the number of paths available per hidden service as well as the distinct incoming counts are in the same order of magnitude for all hidden services,  \emph{random} or  \emph{prioritized} strategy seem more suitable for this phase.
+In the development process, we first started off with the \emph{na\"ive} approach and evolved from there in the order described above. For data collection, we applied a combination of the strategies described. In the beginning of the crawling process, we used the  \emph{new-hidden-service-first} strategy to get an initial broad scan across the available hidden services. We then switched to the \emph{iterative} strategy, since it progressed best on the network. However, we noticed that in the end of the crawling process most hidden services do not have any available paths, and thus at this point the \emph{iterative} strategy is unnecessarily complex. Since the number of paths available per hidden service as well as the distinct incoming counts are in the same order of magnitude for all hidden services,  \emph{random} or  \emph{prioritized} strategy seem more suitable for this phase.
 
 \ifdgruyter
   \begin{figure}[H]
@@ -215,6 +218,35 @@ This hybrid approach enables us to keep the crawler running at all times by feed
 \subsection{Storing Darknet Content}
 In order to store all the downloaded content as well as the link structure, we use a relational Postgres database. First of all, the \texttt{baseUrls} table stores all the hidden service addresses and a denormalized\footnote{Denormalization is an attempt to increase access speeds by storing the result of a calculation persistently} count of the number of hits, which describes how often this hidden service was referenced.
 
+
+\iflncs
+  \begin{wraptable}[10]{R}[1pt]{9.4cm}
+    \vspace{-2pt}
+    \begin{tabular}{l|r}
+    \hline
+    \textbf{Type of Data}           & \textbf{Count} \\
+    \hline
+    \hline
+    Hidden service addresses found      & 34,714                                    \\
+    \hline
+    Hidden services responding                & 10,957                      \\
+    \hline
+    Hidden services returning useable content & 7,566                      \\
+    \hline
+    Paths                           & 7,355,773                   \\
+    \hline
+    Links                           & 67,296,302                \\
+    \hline
+    Downloaded paths                & 1,561,590                 \\
+    \hline
+    Content (useable)               & 667,356         \\
+    \hline
+    \end{tabular}
+    \caption{Detailed numbers of our crawler}
+    \label{table:scrapMetrics}
+  \end{wraptable}
+\fi
+
 We now need the path to specify a full URI: We introduce the \texttt{paths} table, which is keeping the state of an entry. In this role, the paths table contains a flag indicating if a download for this specific path is in progress, a timestamp indicating when the last successful download finished, an integer indicating at which depth in the graph the path was found, the path itself, and a possible subdomain. Additionally, it contains the denormalized count of distinct incoming links to allow for efficient use by our prioritization scheme.
 
 \ifdgruyter
@@ -244,30 +276,6 @@ We now need the path to specify a full URI: We introduce the \texttt{paths} tabl
   \end{table}
 \fi
 
-\iflncs
-  \begin{wraptable}[14]{R}[1pt]{9.4cm}
-    \begin{tabular}{l|r}
-    \textbf{Type of Data}           & \textbf{Count} \\
-    \hline
-    \hline
-    Hidden service addresses found      & 34,714                                    \\
-    \hline
-    Hidden services responding                & 10,957                      \\
-    \hline
-    Hidden services returning useable content & 7,566                      \\
-    \hline
-    Paths                           & 7,355,773                   \\
-    \hline
-    Links                           & 67,296,302                \\
-    \hline
-    Downloaded paths                & 1,561,590                 \\
-    \hline
-    Content (useable)               & 667,356         \\
-    \end{tabular}
-    \caption{Detailed numbers of our crawler}
-    \label{table:scrapMetrics}
-  \end{wraptable}
-\fi
 
 To store the downloaded content, we introduce the \texttt{contents} table, which stores the content itself as well as some meta information about the content such as the HTTP status code and the MIME type. Furthermore, we use a crawl timestamp to track the changes of the network over time while allowing for multiple downloads of the same path.
 
@@ -280,20 +288,62 @@ Last, we introduce the \texttt{link} table that stores the topology of the netwo
 In this section, we present the results of the crawling process and analyze the darknet structure. We show that at least $15\%$ and at most $50\%$ of the darknet is visible. In addition we show that this visible part is well connected. 
 
 \sh{Statistics}
+\iflncs
+  \begin{wrapfigure}[16]{r}{0.51\textwidth}
+    \begin{center}
+      \includegraphics[trim={0 0 0 7cm},width=\linewidth]{images/DarknetVolatilityAnnotated.png}
+    \end{center}
+    \caption{The Venn diagram shows the difference between two runs a week apart. The first run yielded 10,957 responding hidden services, the second one 9,127. The union of the two contains 11,743 hidden services, the intersection contains 8,341 hidden services}
+    \label{fig:highVolatility}
+  \end{wrapfigure}
+\fi
 During the crawling process, we discovered 34,714 hidden service addresses, of which approximately 10,000 hidden services responded to the HTTP(S) request. Out of those hidden services, about 7,500 responded with meaningful content, i.e. not containing an HTTP error status code or an empty HTML page.
 We collected in total 7,355,773 paths and 67,296,302 links. Of those, we downloaded 1,561,590 paths. We did not download the other almost 5 million paths because we classified them as black hole paths, highly unlikely containing further URIs to unknown hidden services. The detailed numbers can be found in Table~\ref{table:scrapMetrics}.
-
 
 The crawler collected data over a time period of one week. According to Tor metrics~\cite{TorMetricsOnion}, the mean of the estimated number of hidden services (darknet hidden services, both visible and invisible) over this time period was 70,640. Having seen 34,714 different hidden services, one could naively assume about half of the darknet hidden services are visible. However, this is only an upper bound, as merely about a third of these responded over the HTTP(S) ports 80 and 443: Either a non-responding hidden service was really not active anymore (and we have just followed a stale hyperlink), or the hidden service decided to ignore our crawler. Having 10,975 responding visible hidden services, we know that at least $15\%$ of the hidden services are visible.
 There are multiple reasons why a portion of these hidden services did not respond. One conjecture is that they might connect through other ports or different protocols, or they might discriminate connection requests in some other form.
 Such behaviour can be observed in some common link lists, such as the hidden wiki\footnote{Hidden wiki: \texttt{zqktlwi4i34kbat3.onion}}, where a plethora of services offer IRC chat, FTP sharing or P2P sharing and require both a different communication protocol and different ports to be accessed.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.7\linewidth]{images/DarknetVolatility.png}
-    \caption{The Venn diagram shows the difference between two runs a week apart. The first run (left circle) yielded 10,957 responding hidden services, the second one (right circle) 9,127. The union of the two contains 11,743 hidden services, the intersection contains 8,341 hidden services}
-    \label{fig:highVolatility}
-\end{figure}
+\iflncs
+  \begin{wraptable}[15]{l}[1pt]{9.4cm}
+    \vspace{-10pt}
+    \begin{tabular}{l|r}
+      \hline
+       \textbf{Top Ten MIME Types Returned} & \textbf{Share of Pages} \\
+       \hline
+       \hline
+      text/html     & 85.33\% \\
+      \hline
+      image/jpeg      & 5.28\% \\
+      \hline
+      image/png     & 3.23\% \\
+      \hline
+      text/plain      & 0.85\% \\
+      \hline
+      application/octet-stream    & 0.72\% \\
+      \hline
+      application/zip   & 0.55\% \\
+      \hline
+      application/rss+xml & 0.48\% \\
+      \hline
+      application/json  & 0.47\% \\
+      \hline
+      image/gif     & 0.44\% \\
+      \hline
+      application/epub+zip      & 0.27\% \\
+      \hline
+    \end{tabular}
+    \caption{Top ten MIME types. Text and images contribute about $95\%$ of all content.}
+    \label{table:mime_types}
+  \end{wraptable}
+\fi
+\ifdgruyter
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=0.7\linewidth]{images/DarknetVolatility.png}
+      \caption{The Venn diagram shows the difference between two runs a week apart. The first run (left circle) yielded 10,957 responding hidden services, the second one (right circle) 9,127. The union of the two contains 11,743 hidden services, the intersection contains 8,341 hidden services}
+      \label{fig:highVolatility}
+  \end{figure}
+\fi
 
 Additionally, we noticed that the network is highly volatile; about $30\%$ of all hidden services running an HTTP(S) server switch from online to offline and vice versa within a week, as depicted in Figure \ref{fig:highVolatility}.
 Thus, some of the stale links we followed during the crawling process possibly point to a server that is going to be online again in the future. 
@@ -331,36 +381,6 @@ Downloading content of darknet websites that include images or videos is potenti
   \end{table}
 \fi
 
-\iflncs
-  \begin{wraptable}[16]{R}[1pt]{9.4cm}
-    \begin{tabular}{l|r}
-         \textbf{Top Ten MIME Types Returned} & \textbf{Share of Pages} \\
-         \hline
-         \hline
-      text/html     & 85.33\% \\
-      \hline
-      image/jpeg      & 5.28\% \\
-      \hline
-      image/png     & 3.23\% \\
-      \hline
-      text/plain      & 0.85\% \\
-      \hline
-      application/octet-stream    & 0.72\% \\
-      \hline
-      application/zip   & 0.55\% \\
-      \hline
-      application/rss+xml & 0.48\% \\
-      \hline
-      application/json  & 0.47\% \\
-      \hline
-      image/gif     & 0.44\% \\
-      \hline
-      application/epub+zip      & 0.27\% \\
-    \end{tabular}
-    \caption{Top ten MIME types. Text and images contribute about $95\%$ of all content.}
-    \label{table:mime_types}
-  \end{wraptable}
-\fi
 %
 %Network structure
 %
@@ -368,12 +388,25 @@ Downloading content of darknet websites that include images or videos is potenti
 \sh{Network Structure}
 We also studied the network structure (captured links and hidden services) and observed that the darknet behaves like a scale-free network, similarly to the clearnet and various social networks.
 In Figure \ref{fig:niceGraphImage}, we present a snapshot of the visible darknet.
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\linewidth]{images/ColorPageRankSizeStronglyConnected.png}
-    \caption{A visualization of approximately $10\%$ of the visible darknet. The size of the node represents how large is the part of the network he has access to. The color indicates the ranking when applying page rank; darker (violet) nodes are the ones with the highest rank.}
-    \label{fig:niceGraphImage}
-\end{figure}
+
+\ifdgruyter
+  \begin{figure}[H]
+      \centering
+      \includegraphics[width=0.8\linewidth]{images/ColorPageRankSizeStronglyConnected.png}
+      \caption{A visualization of approximately $10\%$ of the visible darknet. The size of the node represents how large is the part of the network he has access to. The color indicates the ranking when applying page rank; darker (violet) nodes are the ones with the highest rank.}
+      \label{fig:niceGraphImage}
+  \end{figure}
+\fi
+\iflncs
+  \begin{figure}[!t]
+      \vspace{-50pt}
+      \centering
+      \includegraphics[width=0.8\linewidth]{images/ColorPageRankSizeStronglyConnected.png}
+      \caption{A visualization of approximately $10\%$ of the visible darknet. The size of the node represents how large is the part of the network he has access to. The color indicates the ranking when applying page rank; darker (violet) nodes are the ones with the highest rank.}
+      \label{fig:niceGraphImage}
+  \end{figure}
+\fi
+
 %The Barabási-Albert model~\cite{Albert2002} attempts to capture this behaviour and describes the properties of such a network. 
 The degree distribution of a scale-free network follows a power law and the average path length of the network is proportional to $\ln{N}/\ln{\ln{N}}$. The diameter of the  network is 11. In Figure~\ref{fig:powerLawAbnormality}, it is evident that the degree of the hidden services is power law distributed, except from an outlier which stems from a bitcoing scamming scheme, closely interlinking a high number of hidden services in an attempt to prove their credibility. Moreover, we note that the calculated average path length is $4.1 \approx \frac{\ln 10957}{\ln\ln 10957} = 4.17$. 
 Thus, the structure of the visible part of the darknet seems similar to the structure of the clearnet and typical approaches such as crawlers work well on both networks.
@@ -386,17 +419,27 @@ Thus, the structure of the visible part of the darknet seems similar to the stru
   \label{fig:powerLawAbnormality}
   \end{figure}
 \fi
-\iflncs
-  \begin{figure}[H]
-  \centering
-  \includegraphics[width=0.65\linewidth]{images/DistinctIncomingLinksCount.png}
-  \caption{A histogram depicting the count of pages having a particular
-               number of incoming links.}
-  \label{fig:powerLawAbnormality}
-  \end{figure}
-\fi
 
+\iflncs
+  \begin{wrapfigure}[16]{l}{0.55\textwidth}
+  \vspace{-17pt}
+  \centering
+  \includegraphics[trim={6cm 0 5cm 1cm}, width=0.65\linewidth]{images/DistinctIncomingLinksCount.png}
+  \caption{A histogram depicting the count of pages having a particular number of incoming links.}
+  \label{fig:powerLawAbnormality}
+  \end{wrapfigure}
+\fi
 Figure~\ref{fig:powerLawAbnormality} depicts the distribution of incoming link counts. Most paths can only be reached with a single hyperlink. In general the distribution of hyperlinks per path follows a power law distribution. There is an obvious outlier: Several thousand paths have exactly 196 distinct incoming links. This is a bitcoin scamming scheme that tries to increase its credibility by spinning up multiple hidden services, all of which link to each other, that claim that the provided service is valid. Many of these also point to the same bitcoin transactions on a bitcoin explorer site to prove their claim, explaining the second, smaller outlier.
+
+\iflncs
+  \begin{wrapfigure}[6]{l}{0.55\textwidth}
+      \vspace{-75pt}
+      \centering
+      \includegraphics[trim={6cm 0 5cm 1cm}, width=0.62\linewidth]{images/DistinctOutgoingLinksCount.png}
+      \caption{A histogram depicting the count of pages having a particular number of outgoing links.}
+      \label{fig:outgoingPowerLaw}
+  \end{wrapfigure}
+\fi
 Comparing Figure~\ref{fig:powerLawAbnormality} with Figure~\ref{fig:outgoingPowerLaw}, we find that measuring the in-degree is much more stable than measuring the out-degree. This is expected to some degree since the incoming links are typically more resistant to manipulation. On the contrary, the outgoing links are fully controlled by the provider of a hidden service, and thus a single page can have arbitrarily many outgoing links.
 
 \ifdgruyter
@@ -410,15 +453,14 @@ Comparing Figure~\ref{fig:powerLawAbnormality} with Figure~\ref{fig:outgoingPowe
 \fi
 
 \iflncs
-  \begin{figure}[H]
-      \centering
-      \includegraphics[width=0.65\linewidth]{images/DistinctOutgoingLinksCount.png}
-      \caption{A histogram depicting the count of pages having a particular
-               number of outgoing links.}
-      \label{fig:outgoingPowerLaw}
-  \end{figure}
+  \begin{wrapfigure}[17]{l}{0.57\textwidth}
+   \vspace{-15pt}
+    \centering
+    \includegraphics[trim={4.5cm 0 3cm 1cm}, width=0.65\linewidth]{images/LinkhubsRemoval.png}
+    \caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
+    \label{fig:largestConnectedComponent}
+  \end{wrapfigure}
 \fi
-
 Our most surprising structural finding is that the visible part of the darknet is well connected. 
 While examining the degree distribution, we noticed that the network contains \emph{hubs}, web sites that feature a large number of hyperlinks.  These hubs clearly tie the network together, as they connect sites that do not necessarily have anything in common.
 One may expect that removing important hubs will partition the darknet into many small components. However, rather surprisingly, even removing all the largest hubs (with degree greater than 1000) does not disconnect the network.
@@ -459,35 +501,6 @@ Furthermore, we also examined the hidden services that become disconnected from 
   \end{table}
 \fi
 
-\iflncs
-  \begin{wraptable}[12]{R}[1pt]{8.5cm}
-    \begin{tabular}{l | l | r}
-      \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
-      \hline
-      \hline
-      Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
-      \hline
-      Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
-      \hline
-      VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
-      \hline
-      Ahmia & msydqstlz2kzerdg.onion  &  5808\\
-      \hline
-      H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
-      \hline
-      List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
-      \hline
-      Tor Pastebin & happenedpghnqffa.onion  &  3745\\
-      \hline
-      Tor Directory & directoryvi6plzm.onion  &  1596\\
-      \hline
-      The onion crate & cratedvnn5z57xhl.onion  &  1089\\
-      \hline
-      UnderDir & underdj5ziov3ic7.onion  &  1009\\
-    \end{tabular}
-    \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}\label{table:toptenout}
-  \end{wraptable}
-\fi
 % in table
 \ifdgruyter
   \begin{table}[b]
@@ -525,9 +538,53 @@ Furthermore, we also examined the hidden services that become disconnected from 
   \end{table}
 \fi
 
+
 \iflncs
-  \begin{wraptable}[17]{l}[1pt]{10.5cm}
+  \begin{wraptable}[16]{l}[1pt]{8.5cm}
+    \vspace{-22pt}
+    \begin{tabular}{l | l | r}
+      \hline
+      \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
+      \hline
+      \hline
+      Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
+      \hline
+      Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
+      \hline
+      VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
+      \hline
+      Ahmia & msydqstlz2kzerdg.onion  &  5808\\
+      \hline
+      H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
+      \hline
+      List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
+      \hline
+      Tor Pastebin & happenedpghnqffa.onion  &  3745\\
+      \hline
+      Tor Directory & directoryvi6plzm.onion  &  1596\\
+      \hline
+      The onion crate & cratedvnn5z57xhl.onion  &  1089\\
+      \hline
+      UnderDir & underdj5ziov3ic7.onion  &  1009\\
+      \hline
+    \end{tabular}
+    \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}\label{table:toptenout}
+  \end{wraptable}
+\fi
+
+Some large hubs also feature a search engine. Among the top ten hubs, presented in Table \ref{table:toptenout}, there are three search engines, six lists of links which also download the title of the website to provide some sort of searchable content, and one Pastebin site where links are deposited without organization. Note that the linked hidden services can contain disturbing content (text or images), as some include previews of the linked pages. Additionally some of the URLs provided in this paper might not work anymore due to the high volatility of the Tor network. %Such pages also directly link to a large part of the visible darknet. The page listing the most links to different responding hidden services contained $55.8\%$ of the online hidden services we uncovered and belongs into the link hub category. 
+
+In Table~\ref{table:toptenin}, we present the top ten hidden services ranked by the number of incoming links from unique hidden services. 
+First, we observe that one market place is clearly dominant in this list. 
+Moreover, we notice that the second most linked hidden service provides hosting and related services for darknet pages for free. In exchange many of the pages running on this hoster's infrastructure link back to the hidden service. 
+The third most linked hidden service is the same blockchain explorer that breaks the \emph{random} strategy, as mentioned in subsection \ref{sec:prioritizationDownload}. 
+We found that the bitcoin scamming scheme that breaks the \emph{prioritized} strategy links to this particular bitcoin explorer. The bitcoin scamming scheme makes up for more than $50\%$ of the distinct incoming links of the bitcoin explorer.
+However, the most remarkable observation is that a library made it into the list of the most referenced services.
+\iflncs
+  \begin{wraptable}[9]{r}[1pt]{10.5cm}
+    \vspace{-25pt}
     \begin{tabular}{l|l|r}
+      \hline
         \textbf{Hub Name}   & \textbf{URI}  & \textbf{Size} \\
         \hline
         \hline
@@ -554,20 +611,12 @@ Furthermore, we also examined the hidden services that become disconnected from 
       Hidden Wiki           & zqktlwi4fecvo6ri.onion    & 126 \\
       \hline
       Imperial Library (Books)    & xfmro77i3lixucja.onion    & 124 \\
+      \hline
     \end{tabular}
     \caption{Top ten hidden services ranked by the number of \emph{incoming} links from unique other hidden services.}
     \label{table:toptenin}
   \end{wraptable}
 \fi
-
-Some large hubs also feature a search engine. Among the top ten hubs, presented in Table \ref{table:toptenout}, there are three search engines, six lists of links which also download the title of the website to provide some sort of searchable content, and one Pastebin site where links are deposited without organization. Note that the linked hidden services can contain disturbing content (text or images), as some include previews of the linked pages. Additionally some of the URLs provided in this paper might not work anymore due to the high volatility of the Tor network. %Such pages also directly link to a large part of the visible darknet. The page listing the most links to different responding hidden services contained $55.8\%$ of the online hidden services we uncovered and belongs into the link hub category. 
-
-In Table~\ref{table:toptenin}, we present the top ten hidden services ranked by the number of incoming links from unique hidden services. 
-First, we observe that one market place is clearly dominant in this list. 
-Moreover, we notice that the second most linked hidden service provides hosting and related services for darknet pages for free. In exchange many of the pages running on this hoster's infrastructure link back to the hidden service. 
-The third most linked hidden service is the same blockchain explorer that breaks the \emph{random} strategy, as mentioned in subsection \ref{sec:prioritizationDownload}. 
-We found that the bitcoin scamming scheme that breaks the \emph{prioritized} strategy links to this particular bitcoin explorer. The bitcoin scamming scheme makes up for more than $50\%$ of the distinct incoming links of the bitcoin explorer.
-However, the most remarkable observation is that a library made it into the list of the most referenced services.
 
 \ifdgruyter
   \begin{figure}[H]
@@ -576,16 +625,6 @@ However, the most remarkable observation is that a library made it into the list
   \label{fig:largestConnectedComponent}
   \end{figure}
 \fi
-
-\iflncs
-  \begin{figure}[H]
-    \centering
-    \includegraphics[width=0.65\linewidth]{images/LinkhubsRemoval.png}
-    \caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
-    \label{fig:largestConnectedComponent}
-  \end{figure}
-\fi
-
 %%%-----------------------------------------------------
 %%%---------------Analysis methodology--------------------------
 %%%-----------------------------------------------------
@@ -763,7 +802,7 @@ For the legal classification of both pages and hidden services, we exclude the c
   \label{fig:labelsByHost}
   \end{figure}
 \fi
-
+\newpage
 %label classification
 \sh{Label Classification}
 In Figure \ref{fig:labelsByContent}, we present the top thirteen labels of darknet pages, while the complete list can be found in Appendix~\ref{appendix:labelsByPages}. 
