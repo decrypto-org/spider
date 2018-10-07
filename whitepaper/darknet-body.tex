@@ -1,7 +1,6 @@
 %%%-----------------------------------------------------
 %%%---------------Introduction--------------------------
 %%%-----------------------------------------------------
-
 \section{Introduction}
 
 %roger: in this first paragraph i want to plant the idea that crawlers and search engines are very important in the clearnet (and as such also very important in the darknet, and this is what we do) 
@@ -195,16 +194,18 @@ In the development process, we first started off with the \emph{na\"ive} approac
       \label{fig:percentageByDepth}
   \end{figure}
 \fi
-\iflncs
-  \begin{figure}[H]
-      \centering
-      \includegraphics[width=0.65\linewidth]{images/PercentageByDepth.png}
-      \caption{Exploration of hidden services by depth.}
-      \label{fig:percentageByDepth}
-  \end{figure}
-\fi
 Running our crawler using these combinations of prioritization schemes, we observe that the connected component of the darknet which we have explored converges sufficiently after 7 hops from our bootstrapping list, as seen in Figure~\ref{fig:percentageByDepth}.
 
+\iflncs
+  \begin{wrapfigure}[12]{r}{0.65\textwidth}
+      \centering
+      \vspace{-55pt}
+      \includegraphics[trim={0 1.5cm 0 0}, width=0.65\textwidth]{images/PercentageByDepth.png}
+      \caption{Exploration of hidden services by depth.}
+      \label{fig:percentageByDepth}
+  \end{wrapfigure}
+\fi
+\newpage
 \subsection{Extracting URIs}
 
 After the content of a website has been downloaded, we need to extract URIs of the downloaded page to understand where it links to and to download further content. Our first approach used regular expressions to match .onion URIs in a string. However, we noticed that URIs can get surprisingly complex, and our regular expression filter was ineffective. We discovered that there exist pathological examples which take several seconds to extract the URIs using such a regular expression. Since we need to extract at least some portion of the URIs fast enough to introduce new URIs in at least the speed data is downloaded, we needed a faster method.
@@ -220,8 +221,8 @@ In order to store all the downloaded content as well as the link structure, we u
 
 
 \iflncs
-  \begin{wraptable}[10]{R}[1pt]{9.4cm}
-    \vspace{-2pt}
+  \begin{wraptable}[11]{R}[1pt]{9.4cm}
+    \vspace{-23pt}
     \begin{tabular}{l|r}
     \hline
     \textbf{Type of Data}           & \textbf{Count} \\
@@ -407,7 +408,16 @@ In Figure \ref{fig:niceGraphImage}, we present a snapshot of the visible darknet
   \end{figure}
 \fi
 
-%The Barabási-Albert model~\cite{Albert2002} attempts to capture this behaviour and describes the properties of such a network. 
+%The Barabási-Albert model~\cite{Albert2002} attempts to capture this behaviour and describes the properties of such a network.
+\iflncs
+  \begin{wrapfigure}[14]{l}{0.55\textwidth}
+  \vspace{-15pt}
+  \centering
+  \includegraphics[trim={6cm 1.5cm 5cm 1cm}, width=0.65\linewidth]{images/DistinctIncomingLinksCount.png}
+  \caption{A histogram depicting the count of pages having a particular number of incoming links.}
+  \label{fig:powerLawAbnormality}
+  \end{wrapfigure}
+\fi
 The degree distribution of a scale-free network follows a power law and the average path length of the network is proportional to $\ln{N}/\ln{\ln{N}}$. The diameter of the  network is 11. In Figure~\ref{fig:powerLawAbnormality}, it is evident that the degree of the hidden services is power law distributed, except from an outlier which stems from a bitcoing scamming scheme, closely interlinking a high number of hidden services in an attempt to prove their credibility. Moreover, we note that the calculated average path length is $4.1 \approx \frac{\ln 10957}{\ln\ln 10957} = 4.17$. 
 Thus, the structure of the visible part of the darknet seems similar to the structure of the clearnet and typical approaches such as crawlers work well on both networks.
 
@@ -420,22 +430,13 @@ Thus, the structure of the visible part of the darknet seems similar to the stru
   \end{figure}
 \fi
 
-\iflncs
-  \begin{wrapfigure}[16]{l}{0.55\textwidth}
-  \vspace{-17pt}
-  \centering
-  \includegraphics[trim={6cm 0 5cm 1cm}, width=0.65\linewidth]{images/DistinctIncomingLinksCount.png}
-  \caption{A histogram depicting the count of pages having a particular number of incoming links.}
-  \label{fig:powerLawAbnormality}
-  \end{wrapfigure}
-\fi
 Figure~\ref{fig:powerLawAbnormality} depicts the distribution of incoming link counts. Most paths can only be reached with a single hyperlink. In general the distribution of hyperlinks per path follows a power law distribution. There is an obvious outlier: Several thousand paths have exactly 196 distinct incoming links. This is a bitcoin scamming scheme that tries to increase its credibility by spinning up multiple hidden services, all of which link to each other, that claim that the provided service is valid. Many of these also point to the same bitcoin transactions on a bitcoin explorer site to prove their claim, explaining the second, smaller outlier.
 
 \iflncs
-  \begin{wrapfigure}[6]{l}{0.55\textwidth}
-      \vspace{-75pt}
+  \begin{wrapfigure}[13]{l}{0.55\textwidth}
+      \vspace{-15pt}
       \centering
-      \includegraphics[trim={6cm 0 5cm 1cm}, width=0.62\linewidth]{images/DistinctOutgoingLinksCount.png}
+      \includegraphics[trim={6cm 1.5cm 5cm 1cm}, width=0.62\linewidth]{images/DistinctOutgoingLinksCount.png}
       \caption{A histogram depicting the count of pages having a particular number of outgoing links.}
       \label{fig:outgoingPowerLaw}
   \end{wrapfigure}
@@ -453,10 +454,10 @@ Comparing Figure~\ref{fig:powerLawAbnormality} with Figure~\ref{fig:outgoingPowe
 \fi
 
 \iflncs
-  \begin{wrapfigure}[17]{l}{0.57\textwidth}
+  \begin{wrapfigure}[16]{l}{0.57\textwidth}
    \vspace{-15pt}
     \centering
-    \includegraphics[trim={4.5cm 0 3cm 1cm}, width=0.65\linewidth]{images/LinkhubsRemoval.png}
+    \includegraphics[trim={4.5cm 1cm 3cm 1cm}, width=0.65\linewidth]{images/LinkhubsRemoval.png}
     \caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
     \label{fig:largestConnectedComponent}
   \end{wrapfigure}
@@ -466,6 +467,38 @@ While examining the degree distribution, we noticed that the network contains \e
 One may expect that removing important hubs will partition the darknet into many small components. However, rather surprisingly, even removing all the largest hubs (with degree greater than 1000) does not disconnect the network.
 
 Figure~\ref{fig:largestConnectedComponent} illustrates the size of the largest connected component after iteratively removing the largest hubs.
+\iflncs
+  \begin{wraptable}[15]{l}[1pt]{8.5cm}
+    \vspace{-20pt}
+    \begin{tabular}{l | l | r}
+      \hline
+      \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
+      \hline
+      \hline
+      Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
+      \hline
+      Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
+      \hline
+      VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
+      \hline
+      Ahmia & msydqstlz2kzerdg.onion  &  5808\\
+      \hline
+      H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
+      \hline
+      List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
+      \hline
+      Tor Pastebin & happenedpghnqffa.onion  &  3745\\
+      \hline
+      Tor Directory & directoryvi6plzm.onion  &  1596\\
+      \hline
+      The onion crate & cratedvnn5z57xhl.onion  &  1089\\
+      \hline
+      UnderDir & underdj5ziov3ic7.onion  &  1009\\
+      \hline
+    \end{tabular}
+    \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}\label{table:toptenout}
+  \end{wraptable}
+\fi
 Furthermore, we also examined the hidden services that become disconnected from the largest connected component after removing the largest hubs. It turns out that $90\%$ of those could only be reached through hubs. The remaining $10\%$ form small connected components. In other words, while about half the visible darknet is well-connected even without hubs, the other half are single sites or small clusters of sites that are only reachable through hubs. 
 % outtable
 \ifdgruyter
@@ -537,41 +570,6 @@ Furthermore, we also examined the hidden services that become disconnected from 
       \label{table:toptenin}
   \end{table}
 \fi
-
-
-\iflncs
-  \begin{wraptable}[16]{l}[1pt]{8.5cm}
-    \vspace{-22pt}
-    \begin{tabular}{l | l | r}
-      \hline
-      \textbf{Hub Name} & \textbf{URI} & \textbf{Size} \\
-      \hline
-      \hline
-      Fresh onions & zlal32teyptf4tvi.onion  &  7650\\
-      \hline
-      Onion Land Search & 3bbaaaccczcbdddz.onion  &  7228\\
-      \hline
-      VisiTOR Search & visitorfi5kl7q7i.onion  &  6210\\
-      \hline
-      Ahmia & msydqstlz2kzerdg.onion  &  5808\\
-      \hline
-      H - indexer & jncyepk6zbnosf4p.onion  &  5695\\
-      \hline
-      List of onion sites & zdxgqrvvvpwnuj2n.onion  &  4045\\
-      \hline
-      Tor Pastebin & happenedpghnqffa.onion  &  3745\\
-      \hline
-      Tor Directory & directoryvi6plzm.onion  &  1596\\
-      \hline
-      The onion crate & cratedvnn5z57xhl.onion  &  1089\\
-      \hline
-      UnderDir & underdj5ziov3ic7.onion  &  1009\\
-      \hline
-    \end{tabular}
-    \caption{Top ten hub hidden services ranked by the number of distinct \emph{outgoing} links to other services.}\label{table:toptenout}
-  \end{wraptable}
-\fi
-
 Some large hubs also feature a search engine. Among the top ten hubs, presented in Table \ref{table:toptenout}, there are three search engines, six lists of links which also download the title of the website to provide some sort of searchable content, and one Pastebin site where links are deposited without organization. Note that the linked hidden services can contain disturbing content (text or images), as some include previews of the linked pages. Additionally some of the URLs provided in this paper might not work anymore due to the high volatility of the Tor network. %Such pages also directly link to a large part of the visible darknet. The page listing the most links to different responding hidden services contained $55.8\%$ of the online hidden services we uncovered and belongs into the link hub category. 
 
 In Table~\ref{table:toptenin}, we present the top ten hidden services ranked by the number of incoming links from unique hidden services. 
@@ -580,10 +578,19 @@ Moreover, we notice that the second most linked hidden service provides hosting 
 The third most linked hidden service is the same blockchain explorer that breaks the \emph{random} strategy, as mentioned in subsection \ref{sec:prioritizationDownload}. 
 We found that the bitcoin scamming scheme that breaks the \emph{prioritized} strategy links to this particular bitcoin explorer. The bitcoin scamming scheme makes up for more than $50\%$ of the distinct incoming links of the bitcoin explorer.
 However, the most remarkable observation is that a library made it into the list of the most referenced services.
+
+\ifdgruyter
+  \begin{figure}[H]
+  \includegraphics[width=\linewidth]{images/LinkhubsRemoval.png}
+  \caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
+  \label{fig:largestConnectedComponent}
+  \end{figure}
+\fi
+
+
 \iflncs
-  \begin{wraptable}[9]{r}[1pt]{10.5cm}
-    \vspace{-25pt}
-    \begin{tabular}{l|l|r}
+  \begin{table}[H]
+    \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}l r}
       \hline
         \textbf{Hub Name}   & \textbf{URI}  & \textbf{Size} \\
         \hline
@@ -612,18 +619,11 @@ However, the most remarkable observation is that a library made it into the list
       \hline
       Imperial Library (Books)    & xfmro77i3lixucja.onion    & 124 \\
       \hline
-    \end{tabular}
+    \end{tabular*}
+    \vspace{10pt}
     \caption{Top ten hidden services ranked by the number of \emph{incoming} links from unique other hidden services.}
     \label{table:toptenin}
-  \end{wraptable}
-\fi
-
-\ifdgruyter
-  \begin{figure}[H]
-  \includegraphics[width=\linewidth]{images/LinkhubsRemoval.png}
-  \caption{Size of the largest connected component of hidden services after iteratively removing the largest hubs.}
-  \label{fig:largestConnectedComponent}
-  \end{figure}
+  \end{table}
 \fi
 %%%-----------------------------------------------------
 %%%---------------Analysis methodology--------------------------

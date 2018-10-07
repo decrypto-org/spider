@@ -19,6 +19,7 @@
 \fi
 \iflncs
     \documentclass[11pt]{llncs}
+    \pagestyle{plain}
 \fi
 
 \usepackage{preamble}
@@ -36,7 +37,9 @@
 \ifdgruyter
     \maketitle
 \fi
-
+\iflncs
+  \thispagestyle{plain}
+\fi
 \import{./}{darknet-body}
 
 \newpage
@@ -48,7 +51,6 @@
 \ifdgruyter
     \printbibliography
 \fi
-
 \appendix
 \import{./}{appendix}
 \end{document}
