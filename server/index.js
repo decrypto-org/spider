@@ -43,7 +43,7 @@ if (commandLineOptions.init_urls_file &&
 if (pathToUrls != "") {
     let csvData = fs.readFileSync(
         pathToUrls,
-        {encoding: "utf8"}
+        {encoding: "utf8"},
     );
 
     let csvOptions = {

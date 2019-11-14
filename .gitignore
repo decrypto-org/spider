@@ -290,3 +290,9 @@ TSWLatexianTemp*
 # repo (since they are specific to a run of the whole project)
 classifier/data
 classifier/outputModels
+
+# builder
+.buildconfig
+
+# old models - no need to commit old models
+oldClassifier/

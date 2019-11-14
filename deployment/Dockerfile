@@ -1,9 +1,9 @@
 # Base Dockerfile to not always reinstall TOR
 
-FROM node:carbon
+FROM node:buster
 
-RUN printf "deb http://deb.debian.org/debian jessie-backports main contrib\n" > /etc/apt/sources.list.d/jessie-backports.list
-RUN printf "deb http://deb.debian.org/debian jessie-backports-sloppy main contrib" >> /etc/apt/sources.list.d/jessie-backports.list
+# RUN printf "deb http://deb.debian.org/debian jessie-backports main contrib\n" > /etc/apt/sources.list.d/jessie-backports.list
+# RUN printf "deb http://deb.debian.org/debian jessie-backports-sloppy main contrib" >> /etc/apt/sources.list.d/jessie-backports.list
 RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
 RUN apt install -y tor
 RUN apt install -y net-tools

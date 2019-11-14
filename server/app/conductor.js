@@ -60,7 +60,7 @@ class Conductor {
 
         // Create a network instance
         this.network = await Network.buildInstance(
-            this.torPort
+            this.torPort,
         );
 
         // Now inserting the start urls into the database with scrape
@@ -74,7 +74,7 @@ class Conductor {
                 let parsedUrl = this.parser.extractOnionURI(
                     rawUrl,
                     "" /* baseUrl */,
-                    false
+                    false,
                 );
                 startUrlsNormalized.push(...parsedUrl);
             }
@@ -96,7 +96,7 @@ class Conductor {
         await db.bulkInsertUri(uriList);
 
         await this.getEntriesToDownloadPool(
-            Network.MAX_POOL_SIZE
+            Network.MAX_POOL_SIZE,
         ).catch((err) => {
             logger.error(err.message);
             logger.error(err.stack);
@@ -131,7 +131,7 @@ class Conductor {
         logger.debug("Getting " + limit + " entries into the pool");
         let excludeKeyObj = Object.filter(
             this.network.waitingRequestPerHost,
-            (pending) => pending >= this.network.maxSimultaneousRequestsPerHost
+            (pending) => pending >= this.network.maxSimultaneousRequestsPerHost,
         );
         let dbResults = [];
         let available = false;
@@ -141,7 +141,7 @@ class Conductor {
             case "new":
                 [dbResults, available] = await db.getNeverScrapedEntries(
                     limit,
-                    this.cutOffDepth
+                    this.cutOffDepth,
                 );
                 break;
             case "prioritized":
@@ -149,7 +149,7 @@ class Conductor {
                     0, /* dateTime */
                     limit - dbResults.length,
                     this.cutOffDepth,
-                    Object.keys(excludeKeyObj)
+                    Object.keys(excludeKeyObj),
                 );
                 break;
             case "random":
@@ -164,7 +164,7 @@ class Conductor {
                 let [unscrapedDbResults, newAvailable] =
                 await db.getNeverScrapedEntries(
                     limit,
-                    this.cutOffDepth
+                    this.cutOffDepth,
                 );
                 dbResults = unscrapedDbResults;
                 if (unscrapedDbResults.length >= limit) {
@@ -175,7 +175,7 @@ class Conductor {
                     0, /* dateTime */
                     limit - dbResults.length,
                     this.cutOffDepth,
-                    Object.keys(excludeKeyObj)
+                    Object.keys(excludeKeyObj),
                 );
                 dbResults.push(...prioritizedPages);
                 if (dbResults.length >= limit) {
@@ -201,7 +201,7 @@ class Conductor {
                     limit,
                     this.cutOffDepth,
                     Object.keys(excludeKeyObj),
-                    inverse
+                    inverse,
                 );
                 break;
         }
@@ -291,13 +291,13 @@ class Conductor {
             networkResponse.startTime,
             networkResponse.endTime,
             dbResult.secure,
-            successful
+            successful,
         );
         let bodyToBeInserted = networkResponse.body;
         if (!isText && bodyToBeInserted != null) {
             bodyToBeInserted = await this.parser.extractText(
                 networkResponse.body,
-                networkResponse.mimeType
+                networkResponse.mimeType,
             ).catch((err) => {
                 console.warn("Could not extract text");
                 console.warn(err.message);
@@ -313,7 +313,7 @@ class Conductor {
             bodyToBeInserted || "",
             networkResponse.mimeType || "[MISSING]",
             networkResponse.endTime,
-            networkResponse.statusCode
+            networkResponse.statusCode,
         );
         // Scrape the links to other pages, then insert them into the db
         // if the download was successful and the MIME Type correct
@@ -333,7 +333,7 @@ class Conductor {
         let urlsList = this.parser.extractOnionURI(
             networkResponse.body,
             dbResult,
-            isHtml
+            isHtml,
         );
 
         if (urlsList.length <= 0) {
@@ -397,7 +397,7 @@ class Conductor {
         GROUP BY links.\"destinationPathId\"";
         let incountsByPathId = await db.sequelize.query(
             queryString,
-            {replacements: replacementsForCount}
+            {replacements: replacementsForCount},
         ).catch((err) => {
             // This error is not that bad, we just log it and continue
             // It might be recalculated in a later step or it would have
@@ -430,7 +430,7 @@ class Conductor {
 
         await db.sequelize.query(
             queryString,
-            {replacements: replacementsForUpdate}
+            {replacements: replacementsForUpdate},
         ).catch((err) => {
             // This error is not that bad, we just log it and continue
             // It might be recalculated in a later step or it would have
@@ -484,7 +484,7 @@ class Conductor {
                     logger.info("Exiting...");
                     // Clean up after ourselves
                     this.network.torController.closeTorInstances().then(
-                        process.exit(0)
+                        process.exit(0),
                     );
                 }
                 // If we are not finished yet, another error must have occured
