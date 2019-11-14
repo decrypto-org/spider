@@ -17,32 +17,36 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:decrypto-org/spider.git"
+    "url": "git+ssh://git@github.com/decrypto-org/spider.git"
   },
   "dependencies": {
-    "cheerio": "^1.0.0-rc.2",
-    "command-line-args": "^5.0.2",
-    "csvjson": "^5.0.0",
+    "cheerio": "^1.0.0-rc.3",
+    "command-line-args": "^5.1.1",
+    "csvjson": "^5.1.0",
     "dotenv": "^5.0.1",
     "dotenv-expand": "^4.2.0",
     "dotenv-parse-variables": "^0.1.0",
     "eslint": "^4.19.1",
-    "follow-redirects": "^1.5.0",
-    "mmmagic": "^0.5.0",
-    "pg": "^7.4.3",
-    "portscanner": "^2.1.1",
+    "follow-redirects": "^1.9.0",
+    "mmmagic": "^0.5.3",
+    "pg": "^7.12.1",
+    "portscanner": "^2.2.0",
     "proxy-agent": "^2.3.1",
-    "sequelize": "^4.37.7",
+    "sequelize": "^4.44.3",
     "textract": "file:../../textract",
-    "tor-router": "^3.4.0",
-    "uuid": "^3.2.1",
-    "winston": "^3.0.0-rc5"
+    "tor-router": "^3.4.3",
+    "uuid": "^3.3.3",
+    "winston": "^3.2.1"
   },
   "devDependencies": {
-    "chai": "^4.1.2",
-    "chai-http": "^4.0.0",
+    "chai": "^4.2.0",
+    "chai-http": "^4.3.0",
     "eslint-config-google": "^0.9.1",
-    "jsdoc": "^3.5.5",
-    "mocha": "^5.1.1"
-  }
+    "jsdoc": "^3.6.3",
+    "mocha": "^5.2.0"
+  },
+  "bugs": {
+    "url": "https://github.com/decrypto-org/spider/issues"
+  },
+  "homepage": "https://github.com/decrypto-org/spider#readme"
 }
