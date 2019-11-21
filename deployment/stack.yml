@@ -21,8 +21,6 @@ services:
       - postgres-vol:/var/lib/postgresql/data
     networks:
       backend:
-    ports:
-      - "5432:5432"
 
   server:
     image: robrunne/tdse-spider:1.0.0
