@@ -32,6 +32,7 @@
     "pg": "^7.12.1",
     "portscanner": "^2.2.0",
     "proxy-agent": "^2.3.1",
+    "robots-txt-parser": "^1.0.1",
     "sequelize": "^4.44.3",
     "textract": "file:../../textract",
     "tor-router": "^3.4.3",
@@ -43,7 +44,8 @@
     "chai-http": "^4.3.0",
     "eslint-config-google": "^0.9.1",
     "jsdoc": "^3.6.3",
-    "mocha": "^5.2.0"
+    "mocha": "^5.2.0",
+    "sequelize-cli": "^5.5.1"
   },
   "bugs": {
     "url": "https://github.com/decrypto-org/spider/issues"

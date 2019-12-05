@@ -2,7 +2,13 @@ version: "3.2"
 
 networks:
   backend:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
   frontend:
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
 
 volumes:
   postgres-vol:
@@ -21,6 +27,7 @@ services:
       - postgres-vol:/var/lib/postgresql/data
     networks:
       backend:
+        ipv4_address: 172.20.0.6
 
   server:
     image: robrunne/tdse-spider:1.0.0
@@ -40,10 +47,12 @@ services:
           - database
           - db
           - postgres
+        ipv4_address: 172.20.0.2
       frontend:
         aliases:
           - tor
           - onionnet
+        ipv4_address: 172.21.0.1
     volumes:
       - log-vol:/home/node/log
       - ${TDSE_INIT_URLS}:/home/node/init_urls.csv
@@ -59,9 +68,11 @@ services:
     restart: always
     networks:
       frontend:
+        ipv4_address: 172.21.0.2
     ports:
       - "127.0.0.1:9077:9077"
       - "127.0.0.1:9000:9000"
+      - "0.0.0.0:65000-65100:65000-65100"
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -83,11 +94,13 @@ services:
         aliases:
           - tor
           - onionnet
+        ipv4_address: 172.21.0.3
       backend:
         aliases:
           - database
           - db
           - postgres
+        ipv4_address: 172.20.0.3
     command: bash
     depends_on:
       - "db"
@@ -108,7 +121,9 @@ services:
       TDSE_LOG_LOCATION: /home/node/log
     networks:
       frontend:
+        ipv4_address: 172.21.0.4
       backend:
+        ipv4_address: 172.20.0.4
     command: bash
     depends_on:
       - "db"
@@ -129,12 +144,11 @@ services:
       TDSE_LOG_LOCATION: /home/node/log
     networks:
       backend:
+        ipv4_address: 172.20.0.5
     volumes:
       - log-vol:/home/node/log
       - $TDSE_HOST_SPIDER_REPO/classifier/outputModels:/usr/src/tdse/spider/classifier/outputModels
     command: bash
-    ports:
-      - "65000-65100:65000-65100"
     depends_on:
       - "db"
     stdin_open: true

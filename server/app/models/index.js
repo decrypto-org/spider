@@ -53,6 +53,11 @@ fs
         db[model.name] = model;
     });
 
+sequelize.sync().catch((err) => {
+    logger.error(err.stack);
+    logger.error(err.message)
+});
+
 Object.keys(db).forEach((modelName) => {
     if (db[modelName].associate) {
         db[modelName].associate(db);

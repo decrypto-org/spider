@@ -90,6 +90,7 @@ class Network {
         logger.info("Initialize Network");
         this.socksPort = socksPort;
         this.ttl = 60100; // Max ttl for Tor: 60s + 100 ms for processing
+        this.minimalBufferSize = 15; // Ensure that the magic number was read
         this.availableSlots = module.exports.MAX_SLOTS;
         this.proxyUri = "socks://" + process.env.TOR_HOST
                         + ":" + this.socksPort;
@@ -456,6 +457,15 @@ class Network {
             response.headers["Content-Type"] ||
             "[ NO CONTENT TYPE HEADER PROVIDED ]";
 
+        robots = false;
+        let paths = url.split("/");
+        /* A robots.txt should always live in the root directory of a service,
+         * hence we know at which index to look at.
+         */
+        if ((paths.length == 2 && paths[1] == "robots.txt")
+            || (paths.length == 4 && paths[3] == "robots.txt")) {
+            robots = true;
+        }
         /* According to RFC 1341, we are safe using split(";")[0] to extract
          * only the mime type part.
          * Definition: Content-Type := type "/" subtype *[";" parameter]
@@ -469,6 +479,7 @@ class Network {
             "statusCode": 200,
             "mimeType": contentType.split(";")[0],
             "startTime": startTime,
+            "robots": robots,
         };
 
         // accept 30x as well as 200x --> Those are not errourness messages
@@ -510,16 +521,11 @@ class Network {
         } else {
             response.setEncoding("utf8");
             let rawData = "";
-            response.on("data", (chunk) => {
+            response.on("data", async (chunk) => {
                 rawData += chunk;
-            });
-            return new Promise(async (resolve, reject) => {
-                response.on("end", async () => {
-                    result["endTime"] = (new Date).getTime();
-                    // Detect mimeType if not available. If mimeType
-                    // is not on our whitelist, we'll proceed as above
-                    // in the else if case
-                    if (contentType === "[ NO CONTENT TYPE HEADER PROVIDED ]") {
+                if (contentType === "[ NO CONTENT TYPE HEADER PROVIDED ]" 
+                    && Buffer.byteLength(str, 'utf8') > this.minimalBufferSize) {
+                        // endTime will be overwritten if MIME Type test passes
                         contentType = await this.detectMimeType(
                             Buffer.from(rawData, "utf8")
                         ).catch(
@@ -535,7 +541,8 @@ class Network {
                                 // detect the mime type, we cannot ensure that
                                 // we comply with legal restrictions
                                 rawData = null;
-                                return result;
+                                // Destroy will trigger the aborted event
+                                response.destroy("Unable to detect MIME Type");
                             });
                         if (!this.mimeTypeWhitelist.test(contentType)) {
                             logger.warn(url + path);
@@ -548,10 +555,21 @@ class Network {
                             // Destroy all references to it by setting it to
                             // null
                             rawData = null;
-                            return result;
+                            // will trigger the aborted event
+                            response.destroy("Unsuported MIME Type. \n" +
+                                "Only accept non media content, but received" +
+                                contentType
+                            );
                         }
                         result["mimeType"] = contentType.split(";")[0];
                     }
+            });
+            return new Promise(async (resolve, reject) => {
+                response.on("end", async () => {
+                    result["endTime"] = (new Date).getTime();
+                    // Detect mimeType if not available. If mimeType
+                    // is not on our whitelist, we'll proceed as above
+                    // in the else if case
                     try {
                         let body = this.parser.removeBase64Media(rawData);
                         result.body = body;
@@ -566,6 +584,16 @@ class Network {
                         reject(e);
                         return;
                     }
+                });
+                response.on("aborted", async () => {
+                    result["endTime"] = (new Date).getTime();
+                    try {
+                        response.consume();
+                    } catch (e) {
+                        logger.silly("Tried to consume response - already closed");
+                    }
+                    resolve(response);
+                    return;
                 });
                 let ttl = this.ttl;
                 setTimeout(function() {

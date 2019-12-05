@@ -28,6 +28,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATE,
             defaultValue: sequelize.literal("NOW()"),
         },
+        robots: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+        },
     }, {
         indexes: [
             {

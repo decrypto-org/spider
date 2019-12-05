@@ -12,7 +12,8 @@ let logger = createLogger({
     format: combine(
         timestamp(),
         loggerFormat,
-        prettyPrint()
+        prettyPrint(),
+        format.errors({ stack: true, }),
     ),
     transports: [
         new transports.File({
