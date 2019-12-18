@@ -9,17 +9,10 @@ module.exports = {
       Example:
       return queryInterface.createTable('users', { id: Sequelize.INTEGER });
     */
-    return queryInterface.addIndex("contents", {
-        unique: true,
-        fields: [
-            {attribute: "contentId", order: "DESC"},
-        ],
-    }).then(() => queryInterface.addIndex("contents", {
-        unique: true,
-        fields: [
-            {attribute: "pathPathId", order: "DESC"},
-        ],
-    }));
+    return queryInterface.addColumn("contents", "robots", {
+      type: Sequelize.BOOLEAN,
+      defaultValue: false
+    });
   },
 
   down: (queryInterface, Sequelize) => {
@@ -30,7 +23,6 @@ module.exports = {
       Example:
       return queryInterface.dropTable('users');
     */
-    return queryInterface.removeIndex("contents", ["contentId"])
-    .then(() => queryInterface.removeIndex("contents", ["pathPathId"]);
+    return queryInterface.removeColumn("contents", "robots");
   }
 };

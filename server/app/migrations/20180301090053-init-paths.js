@@ -49,11 +49,11 @@ module.exports = {
         },
         createdAt: {
             type: Sequelize.DATE,
-            defaultValue: sequelize.literal("NOW()"),
+            defaultValue: Sequelize.literal("NOW()"),
         },
         updatedAt: {
             type: Sequelize.DATE,
-            defaultValue: sequelize.literal("NOW()"),
+            defaultValue: Sequelize.literal("NOW()"),
         },
         numberOfHits: {
             type: Sequelize.BIGINT,

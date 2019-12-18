@@ -9,28 +9,26 @@ module.exports = {
       Example:
       return queryInterface.createTable('users', { id: Sequelize.INTEGER });
     */
-    return queryInterface.createTable("baseUrls",{
-        baseUrlId: {
-            type: DataTypes.UUID,
-            defaultValue: DataTypes.UUIDV4,
+    return queryInterface.createTable("links", {
+        linkId: {
+            type: Sequelize.UUID,
             primaryKey: true,
+            allowNull: false,
+            defaultValue: Sequelize.UUIDV4,
         },
-        baseUrl: {
-            type: DataTypes.TEXT,
+        timestamp: {
+            type: Sequelize.BIGINT,
+            allowNull: false,
         },
         createdAt: {
-            type: DataTypes.DATE,
-            defaultValue: sequelize.literal("NOW()"),
+            type: Sequelize.DATE,
+            defaultValue: Sequelize.literal("NOW()"),
         },
         updatedAt: {
-            type: DataTypes.DATE,
-            defaultValue: sequelize.literal("NOW()"),
+            type: Sequelize.DATE,
+            defaultValue: Sequelize.literal("NOW()"),
         },
-        numberOfHits: {
-            type: DataTypes.BIGINT,
-            defaultValue: 0,
-        },
-    });
+      });
   },
 
   down: (queryInterface, Sequelize) => {
@@ -41,6 +39,6 @@ module.exports = {
       Example:
       return queryInterface.dropTable('users');
     */
-    return queryInterface.dropTable("baseUrls");
+    return queryInterface.dropTable("links");
   }
 };
