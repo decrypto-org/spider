@@ -269,14 +269,16 @@ db.bulkInsertUri = async function(
     baseUrlRequestString += "ON CONFLICT (\"baseUrl\")\n\
     DO UPDATE SET \"numberOfHits\" = \"baseUrls\".\"numberOfHits\" + 1\n\
     RETURNING \"baseUrlId\", \"baseUrl\"";
-    /** @type {Array.<Array|number>} baseUrlReturnValue contains two entries,
-     *                               one Array and a number, indicating the
-     *                               number of affected rows. Since we
-     *                               constructed the query such that all inputs
-     *                               are affecte, the size of the return array
-     *                               and the number should be equal. The array
-     *                               itself contains objects, indexed by column
-     *                               name.
+    /** @type {Array.<Array|number>} */
+    /**
+     * baseUrlReturnValue contains two entries,
+     * one Array and a number, indicating the
+     * number of affected rows. Since we
+     * constructed the query such that all inputs
+     * are affecte, the size of the return array
+     * and the number should be equal. The array
+     * itself contains objects, indexed by column
+     * name.
      */
     let baseUrlRetryCounter = 0;
     let baseUrlReturnValue = await executeQuery(
@@ -523,6 +525,7 @@ db.resetStaleEntries = async function(
  * @property {?Link} link - A Link object, indicating a link between
  *                                 two paths/sites.
  * @property {boolean} secure - Indicate if http or https should be used
+ * @property {?string} subdomain - Subdomain where the path was found
  */
 
 /**

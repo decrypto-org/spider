@@ -2,6 +2,9 @@ let Parser = require("./parser");
 let Network = require("./network");
 let {logger} = require("./library/logger");
 let db = require("./models");
+let robotsParser = require("robots-txt-parse");
+let guard = require("robots-txt-guard");
+let Readable = require("stream").Readable;
 
 /**
  * The conductor is the one controlling the spidering
@@ -272,6 +275,7 @@ class Conductor {
      *                                                   already serialized
      * @param {DbResult} dbResult - The dbResult for which the download was
      *                              started
+     * @returns {DbResult} The actual inserted value
      */
     async insertNetworkResponseIntoDb(networkResponse, dbResult) {
         logger.info("Insert network response into DB");
@@ -282,7 +286,7 @@ class Conductor {
         // yet. Further, also our extraction tool might fail, if we store binary
         // files. Media files are never stored and original binary files are
         // discarded immediately after extraction
-        let isText = networkResponse.mimeType.startsWith("text");
+        let isText = this.network.mimeTypeWhitelist.test(networkResponse.mimeType);
         // We need to await this before proceeding to prevent getting
         // already scraped entries in the next step
         await db.updateUri(
@@ -307,14 +311,16 @@ class Conductor {
                 logger.warn("Error: " + err);
                 return "";
             });
+            dbResult.content = bodyToBeInserted;
         }
-        await db.insertBody(
+        let content = await db.insertBody(
             dbResult.pathId,
             bodyToBeInserted || "",
             networkResponse.mimeType || "[MISSING]",
             networkResponse.endTime,
             networkResponse.statusCode,
         );
+        dbResult.contentId = content.contentId;
         // Scrape the links to other pages, then insert them into the db
         // if the download was successful and the MIME Type correct
         if (
@@ -340,9 +346,11 @@ class Conductor {
             return;
         }
 
-        /** @type {Array<Link>} Can be directyl bulkCreated */
+        // Can be directyl bulkCreated
+        /** @type {Array<Link>} */
         let linkList = [];
-        /** @type {Array<URIDefinition>} URIDefinitions for bulkInsert */
+        // URIDefinitions for bulkInsert
+        /** @type {Array<URIDefinition>} */
         let uriList = [];
 
         for (let url of urlsList) {
@@ -451,7 +459,52 @@ class Conductor {
                 this.gettingNewDataFromDb = false;
             });
         }
+        return dbResult;
     }
+
+    
+    /**
+     * Checks against the robots.txt file for the given domain (including subdomain)
+     * @param  {DbResult} dbResult
+     * @return {Boolean} Indicates if we are allowed to crawl this entry or not
+     */
+    async checkRobotsTxt(dbResult) {
+        let result = await db.path.findOne({
+            where: {
+                baseUrlBaseUrlId: dbResult.baseUrlId,
+                subdomain: dbResult.subdomain,
+                path: "/robots.txt"
+            },
+            include: [{
+                model: db.content,
+                required: true,
+            }]
+        });
+        let content = "";
+        if (result == null){
+            
+            let robotsDbResult = await db.insertUri(
+                dbResult.url,
+                dbResult.subdomain,
+                "/robots.txt",
+                dbResult.depth,
+                secure=dbResult.secure
+            );
+            let response = await this.network.download(robotsDbResult);
+            await this.insertNetworkResponseIntoDb(response, robotsDbResult);
+            content = robotsDbResult.content;
+        } else {
+            content = result.content;
+        }
+        let stream = new Readable();
+        stream._read = () => {};
+        stream.push(content);
+        stream.push(null);
+        let robots = await this.parser(stream);
+        let robotsTxt = guard(robots);
+        return robotsTxt.isAllowed(dbResult.path);
+    }
+
 
     /**
      * Downloads everything within the pool and everything that might be added
@@ -513,9 +566,9 @@ class Conductor {
                     this.network.queuedRequestsByHost[dbResult.baseUrlId];
                 if (!queue) {
                     queue = [];
+                    this.network.queuedRequestsByHost[dbResult.baseUrlId] = queue;
                 }
                 queue.push(dbResult);
-                this.network.queuedRequestsByHost[dbResult.baseUrlId] = queue;
                 continue;
             }
             await this.network.getSlot().catch((err) => {
@@ -537,8 +590,8 @@ class Conductor {
             // very slow connection to not slow down the process as long as we
             // have #db connection many fast downloads
             await this.getDbConnection();
+            checkRobotsTxt(dbResult);
             this.returnDbConnection();
-
 
             // Do not wait for the download to finish.
             // This method should be used as a downloader pool and therefor
