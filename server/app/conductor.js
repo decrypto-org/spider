@@ -340,9 +340,9 @@ class Conductor {
             return;
         }
 
-        /** @type {Array.<Link>} Can be directyl bulkCreated */
+        /** @type {Array<Link>} Can be directyl bulkCreated */
         let linkList = [];
-        /** @type {Array.<URIDefinition>} URIDefinitions for bulkInsert */
+        /** @type {Array<URIDefinition>} URIDefinitions for bulkInsert */
         let uriList = [];
 
         for (let url of urlsList) {

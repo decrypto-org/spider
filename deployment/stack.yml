@@ -28,6 +28,8 @@ services:
     networks:
       backend:
         ipv4_address: 172.20.0.6
+    ports:
+      - "5432:5432"
 
   server:
     image: robrunne/tdse-spider:1.0.0

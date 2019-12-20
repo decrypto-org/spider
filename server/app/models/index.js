@@ -117,7 +117,7 @@ db.insertUri = async function(
     transaction=undefined
 ) {
     logger.info("Insert new entry: " + baseUrl + path);
-    let [baseUrlEntry] = await db.baseUrl.findOrCreate({
+    let [baseUrlEntry, freshHost] = await db.baseUrl.findOrCreate({
         where: {
             baseUrl: baseUrl,
             subdomain: subdomain,
@@ -148,7 +148,7 @@ db.insertUri = async function(
         },
         transaction: transaction,
     });
-    return [baseUrlEntry.baseUrlId, pathEntry.pathId];
+    return [baseUrlEntry.baseUrlId, pathEntry.pathId, freshHost];
 };
 
 db.queriesToRetry = {};
@@ -175,11 +175,11 @@ db.queriesToRetry = {};
  * For the paths we just try to insert them, again with the ON CONFLICT DO
  * NOTHING set. We do not have to worry about the not inserted paths, since
  * they are already present.
- * @param  {Array.<URIDefinition>} uriDefinitions - All the URIs that should be
+ * @param  {Array<URIDefinition>} uriDefinitions - All the URIs that should be
  *                                                  inserted if not yet existent
  * @param {number} numOfRetries=3 How often should a request that times out be
  *                                retried
- * @return {Array.<UUIDv4>} Return the touched pathIds
+ * @return {Array<UUIDv4>} Return the touched pathIds
  */
 db.bulkInsertUri = async function(
     uriDefinitions,
@@ -969,6 +969,27 @@ db.setInProgressFlag = async function(dbResult, inProgress) {
             },
         }
     );
+};
+
+/**
+ * Get the robots.txt file for a given host. Assumption: there only ever exists a
+ * single one, as per definition only ever a single robots.txt should exist.
+ * @param  {UUIDV4} baseUrlId
+ * @return {String} The robots.txt raw string
+ */
+db.getRobotsTxt = async function(baseUrlId) {
+    let contents = await db.content.findAll({
+        where: {
+            robots: true,
+        },
+        include: [{
+            model: Path,
+            where: {
+                baseUrlBaseUrlId: baseUrlId,
+            },
+        }]
+    });
+    return contents[0].content;
 };
 
 module.exports = db;
