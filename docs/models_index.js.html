@@ -26,16 +26,19 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>let Logger = require("../library/logger");
-let logger = Logger.logger;
-let fs = require("fs");
-let path = require("path");
-let Sequelize = require("sequelize");
-let uuidv4 = require("uuid/v4");
-let basename = path.basename(__filename);
+            <pre class="prettyprint source linenums"><code>'use strict';
 
+const Logger = require("../library/logger");
+const logger = Logger.logger;
+const fs = require("fs");
+const path = require("path");
+const Sequelize = require("sequelize");
+const uuidv4 = require("uuid/v4");
+const basename = path.basename(__filename);
+const env = process.env.NODE_ENV || 'development';
+const config = require(__dirname + '/../config/config.json')[env];
 let Op = Sequelize.Op;
-let db = {};
+const db = {};
 
 /**
  * Passing logger.silly directly to sequelize results in a TypeError (since
@@ -81,10 +84,10 @@ fs
         db[model.name] = model;
     });
 
-Object.keys(db).forEach((modelName) => {
-    if (db[modelName].associate) {
-        db[modelName].associate(db);
-    }
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
 });
 
 db.sequelize = sequelize;
@@ -142,14 +145,12 @@ db.insertUri = async function(
     transaction=undefined
 ) {
     logger.info("Insert new entry: " + baseUrl + path);
-    let [baseUrlEntry] = await db.baseUrl.findOrCreate({
+    let [baseUrlEntry, freshHost] = await db.baseUrl.findOrCreate({
         where: {
             baseUrl: baseUrl,
-            subdomain: subdomain,
         },
         defaults: {
             baseUrl: baseUrl,
-            subdomain: subdomain,
         },
         transaction: transaction,
     });
@@ -169,11 +170,12 @@ db.insertUri = async function(
             baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
             secure: secure,
             random: random,
+            subdomain: subdomain,
             inProgress: false,
         },
         transaction: transaction,
     });
-    return [baseUrlEntry.baseUrlId, pathEntry.pathId];
+    return [baseUrlEntry.baseUrlId, pathEntry.pathId, freshHost];
 };
 
 db.queriesToRetry = {};
@@ -200,11 +202,11 @@ db.queriesToRetry = {};
  * For the paths we just try to insert them, again with the ON CONFLICT DO
  * NOTHING set. We do not have to worry about the not inserted paths, since
  * they are already present.
- * @param  {Array.&lt;URIDefinition>} uriDefinitions - All the URIs that should be
+ * @param  {Array&lt;URIDefinition>} uriDefinitions - All the URIs that should be
  *                                                  inserted if not yet existent
  * @param {number} numOfRetries=3 How often should a request that times out be
  *                                retried
- * @return {Array.&lt;UUIDv4>} Return the touched pathIds
+ * @return {Array&lt;UUIDv4>} Return the touched pathIds
  */
 db.bulkInsertUri = async function(
     uriDefinitions,
@@ -294,14 +296,16 @@ db.bulkInsertUri = async function(
     baseUrlRequestString += "ON CONFLICT (\"baseUrl\")\n\
     DO UPDATE SET \"numberOfHits\" = \"baseUrls\".\"numberOfHits\" + 1\n\
     RETURNING \"baseUrlId\", \"baseUrl\"";
-    /** @type {Array.&lt;Array|number>} baseUrlReturnValue contains two entries,
-     *                               one Array and a number, indicating the
-     *                               number of affected rows. Since we
-     *                               constructed the query such that all inputs
-     *                               are affecte, the size of the return array
-     *                               and the number should be equal. The array
-     *                               itself contains objects, indexed by column
-     *                               name.
+    /** @type {Array.&lt;Array|number>} */
+    /**
+     * baseUrlReturnValue contains two entries,
+     * one Array and a number, indicating the
+     * number of affected rows. Since we
+     * constructed the query such that all inputs
+     * are affecte, the size of the return array
+     * and the number should be equal. The array
+     * itself contains objects, indexed by column
+     * name.
      */
     let baseUrlRetryCounter = 0;
     let baseUrlReturnValue = await executeQuery(
@@ -469,6 +473,7 @@ db.updateUri = async function(
  *                             was fetched.
  * @param {number} statusCode=200 - HTTP Status code returned. Indicates whether
  *                                  the download was successful or not.
+ * @param {boolean} robots -- Indicate if the content is a robots.txt or not. Default=false
  * @return {object} Returns the created content entry.
  */
 db.insertBody = async function(
@@ -476,14 +481,16 @@ db.insertBody = async function(
     body,
     mimeType,
     timestamp,
-    statusCode=200
+    statusCode=200,
+    robots=false,
 ) {
     let response = await db.content.create({
-            scrapeTimestamp: timestamp,
-            contentType: mimeType,
-            content: body,
-            pathPathId: pathId,
-            statusCode: statusCode,
+        scrapeTimestamp: timestamp,
+        contentType: mimeType,
+        content: body,
+        pathPathId: pathId,
+        statusCode: statusCode,
+        robots: robots,
     });
     return response;
 };
@@ -548,6 +555,7 @@ db.resetStaleEntries = async function(
  * @property {?Link} link - A Link object, indicating a link between
  *                                 two paths/sites.
  * @property {boolean} secure - Indicate if http or https should be used
+ * @property {?string} subdomain - Subdomain where the path was found
  */
 
 /**
@@ -688,6 +696,7 @@ db.getEntriesRecursive = async function(
     excludedHosts,
     inverse
 ) {
+    // TODO: there is something fishy with this, as it does not get all urls
     /* eslint-disable no-multi-str */
     if (limit == 0) {
         return [[], false];
@@ -996,6 +1005,27 @@ db.setInProgressFlag = async function(dbResult, inProgress) {
     );
 };
 
+/**
+ * Get the robots.txt file for a given host. Assumption: there only ever exists a
+ * single one, as per definition only ever a single robots.txt should exist.
+ * @param  {UUIDV4} baseUrlId
+ * @return {String} The robots.txt raw string
+ */
+db.getRobotsTxt = async function(baseUrlId) {
+    let contents = await db.content.findAll({
+        where: {
+            robots: true,
+        },
+        include: [{
+            model: Path,
+            where: {
+                baseUrlBaseUrlId: baseUrlId,
+            },
+        }]
+    });
+    return contents[0].content;
+};
+
 module.exports = db;
 </code></pre>
         </article>
@@ -1013,7 +1043,7 @@ module.exports = db;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Jul 29 2018 22:19:43 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue Dec 24 2019 11:39:24 GMT+0100 (Mitteleuropäische Normalzeit)
 </footer>
 
 <script> prettyPrint(); </script>

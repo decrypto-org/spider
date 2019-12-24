@@ -185,7 +185,7 @@ module and the models/database.</div>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line11">line 11</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line23">line 23</a>
     </li></ul></dd>
     
 
@@ -195,6 +195,8 @@ module and the models/database.</div>
 
     
 </dl>
+
+
 
 
 
@@ -232,6 +234,165 @@ module and the models/database.</div>
 
     
         <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="checkRobotsTxt"><span class="type-signature">(async) </span>checkRobotsTxt<span class="signature">(dbResult)</span><span class="type-signature"> &rarr; {Boolean}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    Checks against the robots.txt file for the given domain (including subdomain)
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>dbResult</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="global.html#DbResult">DbResult</a></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line472">line 472</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    Indicates if we are allowed to crawl this entry or not
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Boolean</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
 
         
             
@@ -292,7 +453,7 @@ in the future.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line460">line 460</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line526">line 526</a>
     </li></ul></dd>
     
 
@@ -302,6 +463,8 @@ in the future.
 
     
 </dl>
+
+
 
 
 
@@ -380,7 +543,7 @@ connections to the network.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line227">line 227</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line230">line 230</a>
     </li></ul></dd>
     
 
@@ -390,6 +553,8 @@ connections to the network.
 
     
 </dl>
+
+
 
 
 
@@ -538,7 +703,7 @@ connections to the network.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line121">line 121</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line124">line 124</a>
     </li></ul></dd>
     
 
@@ -548,6 +713,8 @@ connections to the network.
 
     
 </dl>
+
+
 
 
 
@@ -594,7 +761,7 @@ connections to the network.
     
 
     
-    <h4 class="name" id="insertNetworkResponseIntoDb"><span class="type-signature">(async) </span>insertNetworkResponseIntoDb<span class="signature">(networkResponse, dbResult)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="insertNetworkResponseIntoDb"><span class="type-signature">(async) </span>insertNetworkResponseIntoDb<span class="signature">(networkResponse, dbResult)</span><span class="type-signature"> &rarr; {<a href="global.html#DbResult">DbResult</a>}</span></h4>
     
 
     
@@ -720,7 +887,7 @@ connections to the network.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line276">line 276</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line280">line 280</a>
     </li></ul></dd>
     
 
@@ -743,6 +910,30 @@ connections to the network.
 
 
 
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    The actual inserted value
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type"><a href="global.html#DbResult">DbResult</a></span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -807,7 +998,7 @@ calls any waiting client.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line254">line 254</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line257">line 257</a>
     </li></ul></dd>
     
 
@@ -817,6 +1008,8 @@ calls any waiting client.
 
     
 </dl>
+
+
 
 
 
@@ -970,7 +1163,7 @@ calls any waiting client.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line53">line 53</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line56">line 56</a>
     </li></ul></dd>
     
 
@@ -980,6 +1173,8 @@ calls any waiting client.
 
     
 </dl>
+
+
 
 
 
@@ -1020,7 +1215,7 @@ calls any waiting client.
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Jul 29 2018 22:19:43 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue Dec 24 2019 11:39:24 GMT+0100 (Mitteleuropäische Normalzeit)
 </footer>
 
 <script> prettyPrint(); </script>

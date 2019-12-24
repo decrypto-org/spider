@@ -30,6 +30,9 @@
 let Network = require("./network");
 let {logger} = require("./library/logger");
 let db = require("./models");
+let robotsParser = require("robots-txt-parse");
+let guard = require("robots-txt-guard");
+let Readable = require("stream").Readable;
 
 /**
  * The conductor is the one controlling the spidering
@@ -88,7 +91,7 @@ class Conductor {
 
         // Create a network instance
         this.network = await Network.buildInstance(
-            this.torPort
+            this.torPort,
         );
 
         // Now inserting the start urls into the database with scrape
@@ -102,7 +105,7 @@ class Conductor {
                 let parsedUrl = this.parser.extractOnionURI(
                     rawUrl,
                     "" /* baseUrl */,
-                    false
+                    false,
                 );
                 startUrlsNormalized.push(...parsedUrl);
             }
@@ -124,7 +127,7 @@ class Conductor {
         await db.bulkInsertUri(uriList);
 
         await this.getEntriesToDownloadPool(
-            Network.MAX_POOL_SIZE
+            Network.MAX_POOL_SIZE,
         ).catch((err) => {
             logger.error(err.message);
             logger.error(err.stack);
@@ -159,7 +162,7 @@ class Conductor {
         logger.debug("Getting " + limit + " entries into the pool");
         let excludeKeyObj = Object.filter(
             this.network.waitingRequestPerHost,
-            (pending) => pending >= this.network.maxSimultaneousRequestsPerHost
+            (pending) => pending >= this.network.maxSimultaneousRequestsPerHost,
         );
         let dbResults = [];
         let available = false;
@@ -169,7 +172,7 @@ class Conductor {
             case "new":
                 [dbResults, available] = await db.getNeverScrapedEntries(
                     limit,
-                    this.cutOffDepth
+                    this.cutOffDepth,
                 );
                 break;
             case "prioritized":
@@ -177,7 +180,7 @@ class Conductor {
                     0, /* dateTime */
                     limit - dbResults.length,
                     this.cutOffDepth,
-                    Object.keys(excludeKeyObj)
+                    Object.keys(excludeKeyObj),
                 );
                 break;
             case "random":
@@ -192,7 +195,7 @@ class Conductor {
                 let [unscrapedDbResults, newAvailable] =
                 await db.getNeverScrapedEntries(
                     limit,
-                    this.cutOffDepth
+                    this.cutOffDepth,
                 );
                 dbResults = unscrapedDbResults;
                 if (unscrapedDbResults.length >= limit) {
@@ -203,7 +206,7 @@ class Conductor {
                     0, /* dateTime */
                     limit - dbResults.length,
                     this.cutOffDepth,
-                    Object.keys(excludeKeyObj)
+                    Object.keys(excludeKeyObj),
                 );
                 dbResults.push(...prioritizedPages);
                 if (dbResults.length >= limit) {
@@ -229,7 +232,7 @@ class Conductor {
                     limit,
                     this.cutOffDepth,
                     Object.keys(excludeKeyObj),
-                    inverse
+                    inverse,
                 );
                 break;
         }
@@ -300,6 +303,7 @@ class Conductor {
      *                                                   already serialized
      * @param {DbResult} dbResult - The dbResult for which the download was
      *                              started
+     * @returns {DbResult} The actual inserted value
      */
     async insertNetworkResponseIntoDb(networkResponse, dbResult) {
         logger.info("Insert network response into DB");
@@ -310,7 +314,7 @@ class Conductor {
         // yet. Further, also our extraction tool might fail, if we store binary
         // files. Media files are never stored and original binary files are
         // discarded immediately after extraction
-        let isText = networkResponse.mimeType.startsWith("text");
+        let isText = this.network.mimeTypeWhitelist.test(networkResponse.mimeType);
         // We need to await this before proceeding to prevent getting
         // already scraped entries in the next step
         await db.updateUri(
@@ -319,13 +323,13 @@ class Conductor {
             networkResponse.startTime,
             networkResponse.endTime,
             dbResult.secure,
-            successful
+            successful,
         );
         let bodyToBeInserted = networkResponse.body;
         if (!isText &amp;&amp; bodyToBeInserted != null) {
             bodyToBeInserted = await this.parser.extractText(
                 networkResponse.body,
-                networkResponse.mimeType
+                networkResponse.mimeType,
             ).catch((err) => {
                 console.warn("Could not extract text");
                 console.warn(err.message);
@@ -335,14 +339,17 @@ class Conductor {
                 logger.warn("Error: " + err);
                 return "";
             });
+            dbResult.content = bodyToBeInserted;
         }
-        await db.insertBody(
+        let content = await db.insertBody(
             dbResult.pathId,
             bodyToBeInserted || "",
             networkResponse.mimeType || "[MISSING]",
             networkResponse.endTime,
-            networkResponse.statusCode
+            networkResponse.statusCode,
+            networkResponse.robots || false,
         );
+        dbResult.contentId = content.contentId;
         // Scrape the links to other pages, then insert them into the db
         // if the download was successful and the MIME Type correct
         if (
@@ -361,16 +368,18 @@ class Conductor {
         let urlsList = this.parser.extractOnionURI(
             networkResponse.body,
             dbResult,
-            isHtml
+            isHtml,
         );
 
         if (urlsList.length &lt;= 0) {
             return;
         }
 
-        /** @type {Array.&lt;Link>} Can be directyl bulkCreated */
+        // Can be directyl bulkCreated
+        /** @type {Array&lt;Link>} */
         let linkList = [];
-        /** @type {Array.&lt;URIDefinition>} URIDefinitions for bulkInsert */
+        // URIDefinitions for bulkInsert
+        /** @type {Array&lt;URIDefinition>} */
         let uriList = [];
 
         for (let url of urlsList) {
@@ -425,7 +434,7 @@ class Conductor {
         GROUP BY links.\"destinationPathId\"";
         let incountsByPathId = await db.sequelize.query(
             queryString,
-            {replacements: replacementsForCount}
+            {replacements: replacementsForCount},
         ).catch((err) => {
             // This error is not that bad, we just log it and continue
             // It might be recalculated in a later step or it would have
@@ -458,7 +467,7 @@ class Conductor {
 
         await db.sequelize.query(
             queryString,
-            {replacements: replacementsForUpdate}
+            {replacements: replacementsForUpdate},
         ).catch((err) => {
             // This error is not that bad, we just log it and continue
             // It might be recalculated in a later step or it would have
@@ -479,7 +488,64 @@ class Conductor {
                 this.gettingNewDataFromDb = false;
             });
         }
+        return dbResult;
     }
+
+    
+    /**
+     * Checks against the robots.txt file for the given domain (including subdomain)
+     * @param  {DbResult} dbResult
+     * @return {Boolean} Indicates if we are allowed to crawl this entry or not
+     */
+    async checkRobotsTxt(dbResult) {
+        let result = await db.path.findOne({
+            where: {
+                baseUrlBaseUrlId: dbResult.baseUrlId,
+                subdomain: dbResult.subdomain,
+                path: "/robots.txt"
+            },
+            include: [{
+                model: db.content,
+                required: true,
+            }]
+        });
+        let content = "";
+        if (result == null){
+            
+            let dbIds = await db.insertUri(
+                dbResult.url,
+                dbResult.subdomain,
+                "/robots.txt",
+                dbResult.depth,
+                dbResult.secure,
+            );
+            let robotsDbResult = {
+                url: dbResult.url,
+                baseUrlId: dbIds[0],
+                path: "/robots.txt",
+                pathId: dbIds[1],
+                depth: dbResult.depth,
+                content: null,
+                contentId: null,
+                link: null,
+                secure: dbResult.secure,
+                subdomain: dbResult.subdomain,
+            };
+            let response = await this.network.download(robotsDbResult);
+            await this.insertNetworkResponseIntoDb(response, robotsDbResult);
+            content = robotsDbResult.content;
+        } else {
+            content = result.contents[0].content;
+        }
+        let stream = new Readable();
+        stream._read = () => {};
+        stream.push(content);
+        stream.push(null);
+        let robots = await robotsParser(stream);
+        let robotsTxt = guard(robots);
+        return robotsTxt.isAllowed(dbResult.path);
+    }
+
 
     /**
      * Downloads everything within the pool and everything that might be added
@@ -512,7 +578,7 @@ class Conductor {
                     logger.info("Exiting...");
                     // Clean up after ourselves
                     this.network.torController.closeTorInstances().then(
-                        process.exit(0)
+                        process.exit(0),
                     );
                 }
                 // If we are not finished yet, another error must have occured
@@ -541,9 +607,9 @@ class Conductor {
                     this.network.queuedRequestsByHost[dbResult.baseUrlId];
                 if (!queue) {
                     queue = [];
+                    this.network.queuedRequestsByHost[dbResult.baseUrlId] = queue;
                 }
                 queue.push(dbResult);
-                this.network.queuedRequestsByHost[dbResult.baseUrlId] = queue;
                 continue;
             }
             await this.network.getSlot().catch((err) => {
@@ -565,8 +631,13 @@ class Conductor {
             // very slow connection to not slow down the process as long as we
             // have #db connection many fast downloads
             await this.getDbConnection();
-            this.returnDbConnection();
+            let allowed = await this.checkRobotsTxt(dbResult);
+            if (!allowed) {
 
+
+                continue;
+            }
+            this.returnDbConnection();
 
             // Do not wait for the download to finish.
             // This method should be used as a downloader pool and therefor
@@ -614,7 +685,7 @@ module.exports = Conductor;
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.5.5</a> on Sun Jul 29 2018 22:19:43 GMT+0200 (CEST)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue Dec 24 2019 11:39:24 GMT+0100 (Mitteleuropäische Normalzeit)
 </footer>
 
 <script> prettyPrint(); </script>
