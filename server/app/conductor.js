@@ -319,6 +319,7 @@ class Conductor {
             networkResponse.mimeType || "[MISSING]",
             networkResponse.endTime,
             networkResponse.statusCode,
+            networkResponse.robots || false,
         );
         dbResult.contentId = content.contentId;
         // Scrape the links to other pages, then insert them into the db
@@ -483,24 +484,36 @@ class Conductor {
         let content = "";
         if (result == null){
             
-            let robotsDbResult = await db.insertUri(
+            let dbIds = await db.insertUri(
                 dbResult.url,
                 dbResult.subdomain,
                 "/robots.txt",
                 dbResult.depth,
-                secure=dbResult.secure
+                dbResult.secure,
             );
+            let robotsDbResult = {
+                url: dbResult.url,
+                baseUrlId: dbIds[0],
+                path: "/robots.txt",
+                pathId: dbIds[1],
+                depth: dbResult.depth,
+                content: null,
+                contentId: null,
+                link: null,
+                secure: dbResult.secure,
+                subdomain: dbResult.subdomain,
+            };
             let response = await this.network.download(robotsDbResult);
             await this.insertNetworkResponseIntoDb(response, robotsDbResult);
             content = robotsDbResult.content;
         } else {
-            content = result.content;
+            content = result.contents[0].content;
         }
         let stream = new Readable();
         stream._read = () => {};
         stream.push(content);
         stream.push(null);
-        let robots = await this.parser(stream);
+        let robots = await robotsParser(stream);
         let robotsTxt = guard(robots);
         return robotsTxt.isAllowed(dbResult.path);
     }
@@ -590,7 +603,12 @@ class Conductor {
             // very slow connection to not slow down the process as long as we
             // have #db connection many fast downloads
             await this.getDbConnection();
-            checkRobotsTxt(dbResult);
+            let allowed = await this.checkRobotsTxt(dbResult);
+            if (!allowed) {
+
+
+                continue;
+            }
             this.returnDbConnection();
 
             // Do not wait for the download to finish.

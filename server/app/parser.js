@@ -159,7 +159,7 @@ class Parser {
                         path: uri,
                     });
                     return true;
-                } else if (uri.startsWith("/") && fromEntry == {}) {
+                } else if (!uri.startsWith("//") && uri.startsWith("/") && fromEntry == {}) {
                     if (relativeBaseUrl) {
                         results.push({
                             secure: fromEntry.secure || false,

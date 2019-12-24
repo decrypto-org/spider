@@ -52,6 +52,11 @@ describe("Parser.extractOnionURI", () => {
         result.length.should.equal(305);
         done();
     });
+    it("should not extract clearnet urls", (done) => {
+        let result = parser.extractOnionURI("https://github.com/ahmia", {}, false);
+        result.length.should.equal(0);
+        done();
+    });
 });
 
 describe("Parser.removeBase64Media", () => {

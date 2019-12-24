@@ -120,11 +120,9 @@ db.insertUri = async function(
     let [baseUrlEntry, freshHost] = await db.baseUrl.findOrCreate({
         where: {
             baseUrl: baseUrl,
-            subdomain: subdomain,
         },
         defaults: {
             baseUrl: baseUrl,
-            subdomain: subdomain,
         },
         transaction: transaction,
     });
@@ -144,6 +142,7 @@ db.insertUri = async function(
             baseUrlBaseUrlId: baseUrlEntry.baseUrlId,
             secure: secure,
             random: random,
+            subdomain: subdomain,
             inProgress: false,
         },
         transaction: transaction,
@@ -446,6 +445,7 @@ db.updateUri = async function(
  *                             was fetched.
  * @param {number} statusCode=200 - HTTP Status code returned. Indicates whether
  *                                  the download was successful or not.
+ * @param {boolean} robots -- Indicate if the content is a robots.txt or not. Default=false
  * @return {object} Returns the created content entry.
  */
 db.insertBody = async function(
@@ -453,14 +453,16 @@ db.insertBody = async function(
     body,
     mimeType,
     timestamp,
-    statusCode=200
+    statusCode=200,
+    robots=false,
 ) {
     let response = await db.content.create({
-            scrapeTimestamp: timestamp,
-            contentType: mimeType,
-            content: body,
-            pathPathId: pathId,
-            statusCode: statusCode,
+        scrapeTimestamp: timestamp,
+        contentType: mimeType,
+        content: body,
+        pathPathId: pathId,
+        statusCode: statusCode,
+        robots: robots,
     });
     return response;
 };
@@ -666,6 +668,7 @@ db.getEntriesRecursive = async function(
     excludedHosts,
     inverse
 ) {
+    // TODO: there is something fishy with this, as it does not get all urls
     /* eslint-disable no-multi-str */
     if (limit == 0) {
         return [[], false];

@@ -457,8 +457,8 @@ class Network {
             response.headers["Content-Type"] ||
             "[ NO CONTENT TYPE HEADER PROVIDED ]";
 
-        robots = false;
-        let paths = url.split("/");
+        let robots = false;
+        let paths = path.split("/");
         /* A robots.txt should always live in the root directory of a service,
          * hence we know at which index to look at.
          */
