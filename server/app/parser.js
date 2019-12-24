@@ -115,7 +115,7 @@ class Parser {
      * Extract all .onion URI within the string
      * @param {string} contentString - String (typically a HTML or JSON) from
      *                                 which .onion uris should be extracted.
-     * @param {DbResult} fromEntry - In order to construct the full URL from
+     * @param {module:models.DbResult} fromEntry - In order to construct the full URL from
      *                           relative URLS, we need to pass in the current
      *                           db entry, where the content was fetched for.
      * @param {boolean} isHtmlString=true - Indicate if input is an html string.
@@ -149,7 +149,7 @@ class Parser {
                 if (uri.startsWith("#")) {
                     // we ignore anchors, since they refere to the same page
                     return true; // equaly continue in .each syntax
-                } else if (uri.startsWith("/") && fromEntry != {}) {
+                } else if (!uri.startsWith("//") && uri.startsWith("/") && fromEntry != {}) {
                     // we are working with a relative url. Get baseurl
                     // from the fromEntry
                     results.push({

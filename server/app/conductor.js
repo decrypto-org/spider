@@ -10,6 +10,14 @@ let Readable = require("stream").Readable;
  * The conductor is the one controlling the spidering
  * through the web. Therefor it needs to access the network
  * module and the models/database.
+ * </br>
+ * A note about the HTTP Status Codes: We use this field to indicate further,
+ * non-standard errors or obstacles. This enables a leaner database design and
+ * can easily be filtered out when analyzing the data.
+ * <ul>
+ *   <li> -1 indicates that the access to the given url was forbidden by
+ *           robots.txt policy. We follow the policies given in the robots file </li>
+ * </ul>
  */
 class Conductor {
     /**
@@ -273,9 +281,9 @@ class Conductor {
      * If the network finished a download, insert it into the database.
      * @param {NetworkHandlerResponse} networkResponse - The networks response
      *                                                   already serialized
-     * @param {DbResult} dbResult - The dbResult for which the download was
+     * @param {module:models.DbResult} dbResult - The dbResult for which the download was
      *                              started
-     * @returns {DbResult} The actual inserted value
+     * @returns {module:models.DbResult} The actual inserted value
      */
     async insertNetworkResponseIntoDb(networkResponse, dbResult) {
         logger.info("Insert network response into DB");
@@ -466,7 +474,7 @@ class Conductor {
     
     /**
      * Checks against the robots.txt file for the given domain (including subdomain)
-     * @param  {DbResult} dbResult
+     * @param  {module:models.DbResult} dbResult
      * @return {Boolean} Indicates if we are allowed to crawl this entry or not
      */
     async checkRobotsTxt(dbResult) {
@@ -517,7 +525,6 @@ class Conductor {
         let robotsTxt = guard(robots);
         return robotsTxt.isAllowed(dbResult.path);
     }
-
 
     /**
      * Downloads everything within the pool and everything that might be added
@@ -605,7 +612,17 @@ class Conductor {
             await this.getDbConnection();
             let allowed = await this.checkRobotsTxt(dbResult);
             if (!allowed) {
-
+                let timestamp = (new Date).getTime();
+                let fakeNetworkResponse = {
+                    url: dbResult.url,
+                    path: dbResult.path,
+                    body: "",
+                    statusCode: -1,  // TODO: Document negative codes as being a certain kind of error, in this case "PROHIBITED BY ROBOTS TXT POLICY"
+                    mimeType: null,
+                    startTime: timestamp,
+                    endTime: timestamp,
+                }
+                await this.insertNetworkResponseIntoDb()
 
                 continue;
             }

@@ -1,4 +1,5 @@
 'use strict';
+/** @module models */
 
 const Logger = require("../library/logger");
 const logger = Logger.logger;
@@ -10,6 +11,8 @@ const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
 const config = require(__dirname + '/../config/config.json')[env];
 let Op = Sequelize.Op;
+
+/** @class */
 const db = {};
 
 /**
@@ -85,7 +88,6 @@ async function executeQuery(queryString, replacements) {
     });
     return result;
 }
-
 
 /**
  * Insert a new URI into the database. The values will only be inserted if not
@@ -514,7 +516,7 @@ db.resetStaleEntries = async function(
  */
 
 /**
- * @typedef DbResult
+ * @typedef module:models.DbResult
  * @type {object}
  * @property {!string} url - The base url
  * @property {!UUIDv4} baseUrlId - The ID of the base url entry.
@@ -546,11 +548,11 @@ db.resetStaleEntries = async function(
  * @param {number} cutoffValue=1 - Set which is the deepest entry one should
  *                                 resolve. This ensures controlled termination
  *                                 of the scraper
- * @param {Array.<UUIDv4>} excludedHosts=[] In order to not fill the memory up
+ * @param {Array<UUIDv4>} excludedHosts=[]] - In order to not fill the memory up
  *                                          with entries that cannot yet be
  *                                          downloaded, one can pass an array
  *                                          of baseUrlIds that should be ignored
- * @return {Array.<DbResult>|boolean} The DbResult contains the results
+ * @return {Array<module:models.DbResult>|boolean} The DbResult contains the results
  *                      returned by the Database.
  *                      The boolean indicates whether more data is available
  *                      as of now.
@@ -652,7 +654,7 @@ db.getEntriesRandomized = async function({
  *                                 page is of high importance) or the least
  *                                 linked page (if the most linked urls are
  *                                 always Icons or similar).
- * @return {Array.<DbResult>|boolean} The DbResult contains the results
+ * @return {Array.<module:models.DbResult>|boolean} The DbResult contains the results
  *                      returned by the Database.
  *                      The boolean indicates whether more data is available
  *                      as of now.
@@ -811,7 +813,7 @@ LIMIT ?;";
  *                                be looking for new entries
  * @param  {Array.<UUIDv4>} excludedHosts Exclude hosts, that should not be
  *                                        returned
- * @return {Array.<DbResult>}             Return an array of DbResults
+ * @return {Array.<module:models.DbResult>}             Return an array of DbResults
  */
 db.getEntriesPrioritized = async function(
     dateTime,
@@ -885,7 +887,7 @@ db.getEntriesPrioritized = async function(
  * Get entries from DB that we have not yet scraped (grouped by host)
  * @param  {number} limit       How many entries that we should try to get
  * @param  {number} cutoffValue The maximum depth that we should look for
- * @return {Array.<DbResult>}   Array of DbResults
+ * @return {Array.<module:models.DbResult>}   Array of DbResults
  */
 db.getNeverScrapedEntries = async function(limit, cutoffValue) {
     /* eslint-disable no-multi-str */
@@ -960,7 +962,7 @@ db.getNeverScrapedEntries = async function(limit, cutoffValue) {
 
 /**
  * Sets the inProgress flag of the specified dbResult to the passed flag.
- * @param {DbResult} dbResult The dbResult for which the flag should be set
+ * @param {module:models.DbResult} dbResult The dbResult for which the flag should be set
  * @param  {boolean} inProgress Pass the value to which the flag should be set
  */
 db.setInProgressFlag = async function(dbResult, inProgress) {

@@ -126,7 +126,7 @@ class Network {
 
     /**
      * Download a single webpage and handle the events around it.
-     * @param {DbResult} dbResult - Contains the DB result to be downloaded
+     * @param {module:models.DbResult} dbResult - Contains the DB result to be downloaded
      * @return {NetworkHandlerResponse} Return the downloaded and parsed
      *                                  result
      */
@@ -280,7 +280,7 @@ class Network {
 
     /**
      * Add new data entries to the pool and notify the appropriate functions
-     * @param {Array.<DbResult>} newData - Contains new pool data to be
+     * @param {Array.<module:models.DbResult>} newData - Contains new pool data to be
      *                                     downloaded
      */
     addDataToPool(newData) {
@@ -312,6 +312,7 @@ class Network {
      * @property {?string} mimeType - The MIME Type of a response.
      * @property {!number} startTime - The timestamp when the response started.
      * @property {!number} endTime - The timestamp when the response ended.
+     * @property {boolean} robots -- Indicate if the response contains a robots.txt file.
      */
 
     /**

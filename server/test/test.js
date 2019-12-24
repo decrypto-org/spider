@@ -26,6 +26,9 @@ let torPort = 9050;
 let extractUriHtml = fs.readFileSync(
     __dirname + "/data/hiddenWiki.html"
 ).toString("utf8");
+let doubleSlashHtml = fs.readFileSync(
+    __dirname+"/data/ahmia.html"
+).toString("utf8");
 let replaceBase64Html = fs.readFileSync(
     __dirname + "/data/base64.html"
 ).toString("utf8");
@@ -49,12 +52,20 @@ describe("Parser.extractOnionURI", () => {
         result[0].baseUrl.should.equal("msydqstlz2kzerdg.onion");
         result[0].path.should.equal("");
         result = parser.extractOnionURI(extractUriHtml, testDbResponse);
-        result.length.should.equal(305);
+        result.length.should.equal(304);
         done();
     });
     it("should not extract clearnet urls", (done) => {
         let result = parser.extractOnionURI("https://github.com/ahmia", {}, false);
         result.length.should.equal(0);
+        done();
+    });
+    it("should not extract double slash urls to the clearnet", (done) => {
+        let results = parser.extractOnionURI(doubleSlashHtml, testDbResponse);
+        for (let i = 0; i < results.length; ++i) {
+            console.log(results[i].path);
+            results[i].path.should.not.equal("//globaleaks.org/");
+        }
         done();
     });
 });

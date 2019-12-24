@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "mocha",
+    "debugTest": "mocha --inspect-brk=0.0.0.0:65101",
     "start": "node --use_strict --max-old-space-size=4096 index.js",
     "debugHost": "export DEBUG=true && node --inspect-brk=0.0.0.0:65101 --use_strict index.js",
     "debugVirt": "export DEBUG=true && node --inspect-brk=0.0.0.0:65001 --use_strict index.js"

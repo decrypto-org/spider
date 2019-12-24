@@ -48,45 +48,5 @@ module.exports = (sequelize, DataTypes) => {
             },
         ],
     });
-    /**
-     * Get contents not yet preprocessed, one per not fully preprocessed
-     * host, ordered lexicographically.
-     * @param {number} limit You can give an upper limit in the number of
-     *                       returned contents
-     * @return {Promise} If resolved, it returns an array of conten object,
-     *                   in order to preprocess them. If an error occurs, the
-     *                   promise is rejected with an error message string
-     */
-    // Content.getContentsToProcess = async function(limit) {
-    //     if (this.offset == undefined) {
-    //         this.offset = 0;
-    //     }
-
-    //     let getContentsQueryString = ""
-    //     let replacementsForContent = [];
-
-    //     let result = [];
-    //     let iterateLimit = limit;
-    //     while(result.length < limit) {
-    //         let tmpResult = await sequelize.query(
-    //             getContentsQueryString,
-    //             {
-    //                 replacements: replacementsForContent,
-    //                 model: Content
-    //             }
-    //         ).catch((err) => {
-    //             // Let the user handle database errors
-    //             return Promise.reject(err.message);
-    //         });
-    //         result.push(...tmpResult);
-    //         if (tmpResult.length >= iterateLimit) {
-    //             this.offset += tmpResult.length;
-    //         } else {
-    //             this.offset = 0;
-    //             iterateLimit = iterateLimit - tmpResult.length;
-    //         }
-    //     }
-    //     return result;
-    // }
     return Content;
 };
