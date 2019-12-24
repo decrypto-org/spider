@@ -6,4 +6,4 @@ set -o nounset
 
 printf "Generating JSDocs...\n"
 
-jsdoc --access all -d docs/ -r ./server/app/
+jsdoc --access all --verbose -r -d docs/ -r ./server/app/

@@ -32,7 +32,15 @@
         
             <div class="class-description">The conductor is the one controlling the spidering
 through the web. Therefor it needs to access the network
-module and the models/database.</div>
+module and the models/database.
+</br>
+A note about the HTTP Status Codes: We use this field to indicate further,
+non-standard errors or obstacles. This enables a leaner database design and
+can easily be filtered out when analyzing the data.
+<ul>
+  <li> -1 indicates that the access to the given url was forbidden by
+          robots.txt policy. We follow the policies given in the robots file </li>
+</ul></div>
         
     
 </header>
@@ -185,7 +193,7 @@ module and the models/database.</div>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line23">line 23</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line31">line 31</a>
     </li></ul></dd>
     
 
@@ -291,7 +299,7 @@ module and the models/database.</div>
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#DbResult">DbResult</a></span>
+<span class="param-type"><a href="module-models.html#.DbResult">module:models.DbResult</a></span>
 
 
             
@@ -342,7 +350,7 @@ module and the models/database.</div>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line472">line 472</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line480">line 480</a>
     </li></ul></dd>
     
 
@@ -453,7 +461,7 @@ in the future.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line526">line 526</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line533">line 533</a>
     </li></ul></dd>
     
 
@@ -543,7 +551,7 @@ connections to the network.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line230">line 230</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line238">line 238</a>
     </li></ul></dd>
     
 
@@ -703,7 +711,7 @@ connections to the network.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line124">line 124</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line132">line 132</a>
     </li></ul></dd>
     
 
@@ -761,7 +769,7 @@ connections to the network.
     
 
     
-    <h4 class="name" id="insertNetworkResponseIntoDb"><span class="type-signature">(async) </span>insertNetworkResponseIntoDb<span class="signature">(networkResponse, dbResult)</span><span class="type-signature"> &rarr; {<a href="global.html#DbResult">DbResult</a>}</span></h4>
+    <h4 class="name" id="insertNetworkResponseIntoDb"><span class="type-signature">(async) </span>insertNetworkResponseIntoDb<span class="signature">(networkResponse, dbResult)</span><span class="type-signature"> &rarr; {<a href="module-models.html#.DbResult">module:models.DbResult</a>}</span></h4>
     
 
     
@@ -835,7 +843,7 @@ connections to the network.
             <td class="type">
             
                 
-<span class="param-type"><a href="global.html#DbResult">DbResult</a></span>
+<span class="param-type"><a href="module-models.html#.DbResult">module:models.DbResult</a></span>
 
 
             
@@ -887,7 +895,7 @@ connections to the network.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line280">line 280</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line288">line 288</a>
     </li></ul></dd>
     
 
@@ -927,7 +935,7 @@ connections to the network.
     </dt>
     <dd>
         
-<span class="param-type"><a href="global.html#DbResult">DbResult</a></span>
+<span class="param-type"><a href="module-models.html#.DbResult">module:models.DbResult</a></span>
 
 
     </dd>
@@ -998,7 +1006,7 @@ calls any waiting client.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line257">line 257</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line265">line 265</a>
     </li></ul></dd>
     
 
@@ -1163,7 +1171,7 @@ calls any waiting client.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line56">line 56</a>
+        <a href="conductor.js.html">conductor.js</a>, <a href="conductor.js.html#line64">line 64</a>
     </li></ul></dd>
     
 
@@ -1209,13 +1217,13 @@ calls any waiting client.
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li><li><a href="global.html#executeQuery">executeQuery</a></li><li><a href="global.html#logForSequelize">logForSequelize</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-models.html">models</a></li></ul><h3>Classes</h3><ul><li><a href="Conductor.html">Conductor</a></li><li><a href="module-models-db.html">db</a></li><li><a href="Network.html">Network</a></li><li><a href="Parser.html">Parser</a></li><li><a href="TorController.html">TorController</a></li></ul><h3>Global</h3><ul><li><a href="global.html#_maxPool">_maxPool</a></li><li><a href="global.html#_maxSlots">_maxSlots</a></li><li><a href="global.html#_minPool">_minPool</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue Dec 24 2019 11:39:24 GMT+0100 (Mitteleuropäische Normalzeit)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.3</a> on Tue Dec 24 2019 16:20:07 GMT+0100 (Mitteleuropäische Normalzeit)
 </footer>
 
 <script> prettyPrint(); </script>
