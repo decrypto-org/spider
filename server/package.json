@@ -35,7 +35,7 @@
     "proxy-agent": "^2.3.1",
     "robots-txt-parse": "^1.0.1",
     "robots-txt-guard": "0.2.1",
-    "sequelize": "^4.44.3",
+    "sequelize": "^5.15.1",
     "textract": "file:../../textract",
     "tor-router": "^3.4.3",
     "uuid": "^3.3.3",
