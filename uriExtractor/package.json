@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/decrypto-org/spider#readme",
   "dependencies": {
-    "sequelize": "^4.44.3",
+    "sequelize": "^5.15.1",
     "pg": "^7.12.1",
     "dotenv": "^5.0.1",
     "dotenv-expand": "^4.2.0",
