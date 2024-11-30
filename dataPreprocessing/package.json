@@ -36,7 +36,7 @@
     "franc-min": "^4.0.0",
     "mathjs": "^5.0.4",
     "pg": "^7.4.3",
-    "sequelize": "^4.38.0",
+    "sequelize": "^5.15.1",
     "stemmer": "^1.0.2",
     "stopword": "^0.1.10",
     "truncate-utf8-bytes": "^1.0.2"
